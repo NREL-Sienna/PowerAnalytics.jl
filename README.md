@@ -3,7 +3,7 @@
 [![main - CI](https://github.com/NREL-SIIP/PowerAnalytics.jl/workflows/main%20-%20CI/badge.svg)](https://github.com/NREL-SIIP/PowerAnalytics.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/NREL-SIIP/PowerAnalytics.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL-SIIP/PowerAnalytics.jl)
 [![Documentation Build](https://github.com/NREL-SIIP/PowerAnalytics.jl/workflows/Documentation/badge.svg?)](https://nrel-siip.github.io/PowerAnalytics.jl/stable)
-[<img src="https://img.shields.io/badge/slack-@SIIP/PA-blue.svg?logo=slack">](https://join.slack.com/t/nrel-siip/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
+[<img src="https://img.shields.io/badge/slack-@SIIP/PG-blue.svg?logo=slack">](https://join.slack.com/t/nrel-siip/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
 
 PowerAnalytics.jl is a Julia package that contains analytic routines for power system simulation results in the SIIP ecosystem, specifically from [PowerSimulations.jl](https://github.com/NREL/PowerSimulations.jl).
 
