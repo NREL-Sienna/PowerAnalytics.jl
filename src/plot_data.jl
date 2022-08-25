@@ -1,33 +1,33 @@
 
 # the fundamental struct for plotting
-struct PGData
+struct PowerData
     data::Dict{Symbol, DataFrames.DataFrame}
     time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}}
 end
 
-function PGData(
+function PowerData(
     data::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}},
 )
     d = Dict(zip(Symbol.(PSI.encode_keys_as_strings(keys(data))), values(data)))
 
     rename_load!(d)
-    return PGData(d, time)
+    return PowerData(d, time)
 end
 
-function PGData(
+function PowerData(
     data::Dict{String, DataFrames.DataFrame},
     time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}},
 )
     d = Dict(zip(Symbol.(keys(data))), values(data))
 
     rename_load!(d)
-    return PGData(d, time)
+    return PowerData(d, time)
 end
 
-function PGData(data::Dict{String, DataFrames.DataFrame})
+function PowerData(data::Dict{String, DataFrames.DataFrame})
     d = Dict(zip(Symbol.(keys(data)), no_datetime.(values(data))))
-    return PGData(d, first(values(data)).DateTime)
+    return PowerData(d, first(values(data)).DateTime)
 end
 
 # Rename Load variables: TODO: find a better way to do this
@@ -257,7 +257,27 @@ function _filter_curtailment!(
     end
 end
 
-function get_generation_data(results::R; kwargs...) where {R <: IS.Results}
+function filter_results!(results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame}, filter_func::Function, results::R) where {R <: IS.Results}
+    for (k, v) in results_dict
+        component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
+        component_names = PSY.get_name.(PSY.get_components(component_type, PSI.get_system(results), filter_func))
+        DataFrames.select!(v, vcat(["DateTime"], component_names))
+    end
+end
+function filter_results!(results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame}, filter_func::Nothing, results::R) where {R <: IS.Results}
+end
+
+
+function get_generation_data(
+    results::R;
+    # aggregation::Union{
+    #     Type{PSY.StaticInjection},
+    #     Type{PSY.Bus},
+    #     Type{PSY.System},
+    #     Type{<:PSY.AggregationTopology},
+    # } = PSY.StaticInjection,
+    filter_func::Union{Function, Nothing} = nothing, 
+    kwargs...) where {R <: IS.Results}
     initial_time = get(kwargs, :initial_time, get(kwargs, :start_time, nothing))
     len = get(kwargs, :horizon, get(kwargs, :len, nothing))
     variable_keys = get(kwargs, :variable_keys, PSI.list_variable_keys(results))
@@ -289,12 +309,15 @@ function get_generation_data(results::R; kwargs...) where {R <: IS.Results}
         start_time = initial_time,
         len = len,
     )
+    filter_results!(variables, filter_func, results)
+
     parameters = PSI.read_parameters_with_keys(
         results,
         parameter_keys;
         start_time = initial_time,
         len = len,
     )
+    filter_results!(parameters, filter_func, results)
 
     aux_variables = PSI.read_aux_variables_with_keys(
         results,
@@ -302,6 +325,7 @@ function get_generation_data(results::R; kwargs...) where {R <: IS.Results}
         start_time = initial_time,
         len = len,
     )
+    filter_results!(aux_variables, filter_func, results)
 
     add_fixed_parameters!(variables, parameters)
     add_aux_variables!(variables, aux_variables)
@@ -312,7 +336,7 @@ function get_generation_data(results::R; kwargs...) where {R <: IS.Results}
     end
 
     timestamps = PSI.get_realized_timestamps(results; start_time = initial_time, len = len)
-    return PGData(variables, timestamps)
+    return PowerData(variables, timestamps)
 end
 
 function get_load_data(results::R; kwargs...) where {R <: IS.Results}
@@ -348,7 +372,7 @@ function get_load_data(results::R; kwargs...) where {R <: IS.Results}
     add_fixed_parameters!(variables, parameters)
 
     timestamps = PSI.get_realized_timestamps(results; start_time = initial_time, len = len)
-    return PGData(variables, timestamps)
+    return PowerData(variables, timestamps)
 end
 
 ################################### INPUT DEMAND #################################
@@ -412,7 +436,7 @@ function get_load_data(
     time_range =
         range(initial_time, step = PSY.get_time_series_resolution(system), length = horizon)
 
-    return PGData(parameters, time_range)
+    return PowerData(parameters, time_range)
 end
 
 function get_service_data(results::R; kwargs...) where {R <: IS.Results}
@@ -432,7 +456,7 @@ function get_service_data(results::R; kwargs...) where {R <: IS.Results}
 
     timestamps = PSI.get_realized_timestamps(results; start_time = initial_time, len = len)
 
-    return PGData(variables, timestamps)
+    return PowerData(variables, timestamps)
 end
 
 #### result combination and aggregation ####
