@@ -443,8 +443,13 @@ function get_load_data(
         end
         parameters[Symbol(colname)] = load_values
     end
-    time_range =
-        range(initial_time, step = PSY.get_time_series_resolution(system), length = horizon)
+    time_range = collect(
+        range(
+            initial_time,
+            step = PSY.get_time_series_resolution(system),
+            length = horizon,
+        ),
+    )
 
     return PowerData(parameters, time_range)
 end
