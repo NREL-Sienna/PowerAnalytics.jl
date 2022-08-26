@@ -1,7 +1,6 @@
 using Documenter
 using PowerAnalytics
 using Literate
-using DataStructures
 
 folders = Dict(
 )
