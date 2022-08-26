@@ -61,6 +61,10 @@ problem_results = run_test_prob()
     )
     @test length(srv.data) == 1
     @test length(srv.time) == 5
+
+    # TODO: make tests for subsetting data
+    #sub_gen = get_generation_data(results_uc, filter_func = x->get_name(get_bus(x)) == "bus2")
+    #@test length(sub_gen.data) == 1
 end
 
 @testset "test curtailment calculations" begin
