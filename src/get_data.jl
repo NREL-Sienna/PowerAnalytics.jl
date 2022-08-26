@@ -257,16 +257,25 @@ function _filter_curtailment!(
     end
 end
 
-function filter_results!(results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame}, filter_func::Function, results::R) where {R <: IS.Results}
+function filter_results!(
+    results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
+    filter_func::Function,
+    results::R,
+) where {R <: IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
-        component_names = PSY.get_name.(PSY.get_components(component_type, PSI.get_system(results), filter_func))
+        component_names =
+            PSY.get_name.(
+                PSY.get_components(component_type, PSI.get_system(results), filter_func),
+            )
         DataFrames.select!(v, vcat(["DateTime"], component_names))
     end
 end
-function filter_results!(results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame}, filter_func::Nothing, results::R) where {R <: IS.Results}
-end
-
+function filter_results!(
+    results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
+    filter_func::Nothing,
+    results::R,
+) where {R <: IS.Results} end
 
 function get_generation_data(
     results::R;
@@ -276,8 +285,9 @@ function get_generation_data(
     #     Type{PSY.System},
     #     Type{<:PSY.AggregationTopology},
     # } = PSY.StaticInjection,
-    filter_func::Union{Function, Nothing} = nothing, 
-    kwargs...) where {R <: IS.Results}
+    filter_func::Union{Function, Nothing} = nothing,
+    kwargs...,
+) where {R <: IS.Results}
     initial_time = get(kwargs, :initial_time, get(kwargs, :start_time, nothing))
     len = get(kwargs, :horizon, get(kwargs, :len, nothing))
     variable_keys = get(kwargs, :variable_keys, PSI.list_variable_keys(results))

@@ -22,7 +22,7 @@ const IS = InfrastructureSystems
 const PSI = PowerSimulations
 
 include("definitions.jl")
-include("plot_data.jl")
+include("get_data.jl")
 include("fuel_results.jl")
 
 greet() = print("Hello World!")
