@@ -30,13 +30,21 @@ function get_generator_mapping(filename = nothing)
 end
 
 """Return the generator category for this fuel and unit_type."""
-function get_generator_category(gentype, fuel, primemover, mappings::Dict{NamedTuple, String})
+function get_generator_category(
+    gentype,
+    fuel,
+    primemover,
+    mappings::Dict{NamedTuple, String},
+)
     fuel = isnothing(fuel) ? nothing : uppercase(string(fuel))
     primemover = isnothing(primemover) ? nothing : uppercase(string(primemover))
     generator = nothing
 
     # Try to match the primemover if it's defined. If it's nothing then just match on fuel.
-    for t in InteractiveUtils.supertypes(gentype), pm in (primemover, nothing), f in (fuel, nothing)
+    for t in InteractiveUtils.supertypes(gentype),
+        pm in (primemover, nothing),
+        f in (fuel, nothing)
+
         key = (gentype = string(nameof(t)), fuel = f, primemover = pm)
         if haskey(mappings, key)
             generator = mappings[key]
