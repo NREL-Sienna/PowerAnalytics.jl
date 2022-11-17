@@ -1,5 +1,3 @@
-order = CATEGORY_DEFAULT # TODO: move inside function
-
 """Return a dict where keys are a tuple of input parameters (fuel, unit_type) and values are
 generator types."""
 function get_generator_mapping(filename = nothing)
