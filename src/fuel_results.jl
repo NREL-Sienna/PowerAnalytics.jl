@@ -17,7 +17,7 @@ function get_generator_mapping(filename = nothing)
             ext = isnothing(ext) ? nothing : uppercase(string(ext))
             gentype = get(val, "gentype", "Any")
             fuel = get(val, "fuel", nothing)
-            key = (gentype =gentype, fuel = fuel, primemover = pm, ext = ext)
+            key = (gentype = gentype, fuel = fuel, primemover = pm, ext = ext)
             if haskey(mappings, key)
                 error(
                     "duplicate generator mappings: $gen_type $(key.gentype) $(key.fuel) $(key.primemover) $(key.ext)",
