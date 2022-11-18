@@ -11,13 +11,16 @@ function get_generator_mapping(filename = nothing)
     mappings = Dict{NamedTuple, String}()
     for (gen_type, vals) in genmap
         for val in vals
-            pm =
-                isnothing(val["primemover"]) ? nothing :
-                uppercase(string(val["primemover"]))
-            key = (gentype = val["gentype"], fuel = val["fuel"], primemover = pm)
+            pm = get(val, "primemover", nothing)
+            pm = isnothing(pm) ? nothing : uppercase(string(pm))
+            ext = get(val, "ext_category", nothing)
+            ext = isnothing(ext) ? nothing : uppercase(string(ext))
+            gentype = get(val, "gentype", "Any")
+            fuel = get(val, "fuel", nothing)
+            key = (gentype =gentype, fuel = fuel, primemover = pm, ext = ext)
             if haskey(mappings, key)
                 error(
-                    "duplicate generator mappings: $gen_type $(key.gentype) $(key.fuel) $(key.primemover)",
+                    "duplicate generator mappings: $gen_type $(key.gentype) $(key.fuel) $(key.primemover) $(key.ext)",
                 )
             end
             mappings[key] = gen_type
@@ -32,18 +35,21 @@ function get_generator_category(
     gentype,
     fuel,
     primemover,
+    ext,
     mappings::Dict{NamedTuple, String},
 )
     fuel = isnothing(fuel) ? nothing : uppercase(string(fuel))
     primemover = isnothing(primemover) ? nothing : uppercase(string(primemover))
     generator = nothing
+    ext = isnothing(ext) ? nothing : uppercase(ext)
 
     # Try to match the primemover if it's defined. If it's nothing then just match on fuel.
     for t in InteractiveUtils.supertypes(gentype),
         pm in (primemover, nothing),
-        f in (fuel, nothing)
+        f in (fuel, nothing),
+        ext in (ext, nothing)
 
-        key = (gentype = string(nameof(t)), fuel = f, primemover = pm)
+        key = (gentype = string(nameof(t)), fuel = f, primemover = pm, ext = ext)
         if haskey(mappings, key)
             generator = mappings[key]
             break
@@ -51,7 +57,7 @@ function get_generator_category(
     end
 
     if isnothing(generator)
-        @error "No mapping defined for generator type=$gentype fuel=$fuel primemover=$primemover"
+        @error "No mapping defined for generator type=$gentype fuel=$fuel primemover=$primemover ext=$ext"
     end
 
     return generator
@@ -90,7 +96,8 @@ function make_fuel_dictionary(sys::PSY.System, mapping::Dict{NamedTuple, String}
             pm =
                 hasmethod(PSY.get_prime_mover, Tuple{typeof(gen)}) ?
                 PSY.get_prime_mover(gen) : nothing
-            category = get_generator_category(typeof(gen), fuel, pm, mapping)
+            ext = get(PSY.get_ext(gen), "ext_category", nothing)
+            category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
         end
         push!(gen_categories["$category"], (string(nameof(typeof(gen))), PSY.get_name(gen)))
     end
