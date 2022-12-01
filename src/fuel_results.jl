@@ -11,13 +11,16 @@ function get_generator_mapping(filename = nothing)
     mappings = Dict{NamedTuple, String}()
     for (gen_type, vals) in genmap
         for val in vals
-            pm =
-                isnothing(val["primemover"]) ? nothing :
-                uppercase(string(val["primemover"]))
-            key = (fuel = val["fuel"], primemover = pm)
+            pm = get(val, "primemover", nothing)
+            pm = isnothing(pm) ? nothing : uppercase(string(pm))
+            ext = get(val, "ext_category", nothing)
+            ext = isnothing(ext) ? nothing : uppercase(string(ext))
+            gentype = get(val, "gentype", "Any")
+            fuel = get(val, "fuel", nothing)
+            key = (gentype = gentype, fuel = fuel, primemover = pm, ext = ext)
             if haskey(mappings, key)
                 error(
-                    "duplicate generator mappings: $gen_type $(key.fuel) $(key.primemover)",
+                    "duplicate generator mappings: $gen_type $(key.gentype) $(key.fuel) $(key.primemover) $(key.ext)",
                 )
             end
             mappings[key] = gen_type
@@ -28,14 +31,25 @@ function get_generator_mapping(filename = nothing)
 end
 
 """Return the generator category for this fuel and unit_type."""
-function get_generator_category(fuel, primemover, mappings::Dict{NamedTuple, String})
+function get_generator_category(
+    gentype,
+    fuel,
+    primemover,
+    ext,
+    mappings::Dict{NamedTuple, String},
+)
     fuel = isnothing(fuel) ? nothing : uppercase(string(fuel))
     primemover = isnothing(primemover) ? nothing : uppercase(string(primemover))
     generator = nothing
+    ext = isnothing(ext) ? nothing : uppercase(ext)
 
     # Try to match the primemover if it's defined. If it's nothing then just match on fuel.
-    for pm in (primemover, nothing), f in (fuel, nothing)
-        key = (fuel = f, primemover = pm)
+    for t in InteractiveUtils.supertypes(gentype),
+        pm in (primemover, nothing),
+        f in (fuel, nothing),
+        ext in (ext, nothing)
+
+        key = (gentype = string(nameof(t)), fuel = f, primemover = pm, ext = ext)
         if haskey(mappings, key)
             generator = mappings[key]
             break
@@ -43,7 +57,7 @@ function get_generator_category(fuel, primemover, mappings::Dict{NamedTuple, Str
     end
 
     if isnothing(generator)
-        @error "No mapping defined for generator fuel=$fuel primemover=$primemover"
+        @error "No mapping defined for generator type=$gentype fuel=$fuel primemover=$primemover ext=$ext"
     end
 
     return generator
@@ -66,12 +80,8 @@ results = solve_op_model!(OpModel)
 generators = make_fuel_dictionary(sys)
 
 """
-function make_fuel_dictionary(
-    sys::PSY.System,
-    mapping::Dict{NamedTuple, String};
-    filter_func::Union{Function, Nothing} = PSY.get_available,
-)
-    generators = PSY.get_components(PSY.StaticInjection, sys, filter_func)
+function make_fuel_dictionary(sys::PSY.System, mapping::Dict{NamedTuple, String})
+    generators = PSY.get_components(PSY.StaticInjection, sys, PSY.get_available)
     gen_categories = Dict()
     for category in unique(values(mapping))
         gen_categories["$category"] = []
@@ -86,7 +96,8 @@ function make_fuel_dictionary(
             pm =
                 hasmethod(PSY.get_prime_mover, Tuple{typeof(gen)}) ?
                 PSY.get_prime_mover(gen) : nothing
-            category = get_generator_category(fuel, pm, mapping)
+            ext = get(PSY.get_ext(gen), "ext_category", nothing)
+            category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
         end
         push!(gen_categories["$category"], (string(nameof(typeof(gen))), PSY.get_name(gen)))
     end
@@ -95,7 +106,6 @@ function make_fuel_dictionary(
 end
 
 function make_fuel_dictionary(sys::PSY.System; kwargs...)
-    filter_func = get(kwargs, :filter_func, PSY.get_available)
     mapping = get_generator_mapping(get(kwargs, :generator_mapping_file, nothing))
-    return make_fuel_dictionary(sys, mapping; filter_func = filter_func)
+    return make_fuel_dictionary(sys, mapping)
 end

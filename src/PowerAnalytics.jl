@@ -16,6 +16,7 @@ import DataStructures: OrderedDict, SortedDict
 import PowerSystems
 import InfrastructureSystems
 import PowerSimulations
+import InteractiveUtils
 
 const PSY = PowerSystems
 const IS = InfrastructureSystems

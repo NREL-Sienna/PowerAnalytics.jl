@@ -1,3 +1,4 @@
 *Manifest.toml
 *.log
 test/test_results
+.DS_Store
