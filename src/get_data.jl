@@ -266,7 +266,7 @@ function filter_results!(
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
         component_names =
             PSY.get_name.(
-                PSY.get_components(component_type, PSI.get_system(results), filter_func),
+                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
             )
         DataFrames.select!(v, vcat(["DateTime"], component_names))
     end
@@ -397,18 +397,18 @@ end
 
 function _get_loads(system::PSY.System, bus::PSY.Bus)
     return [
-        load for load in PSY.get_components(PSY.PowerLoad, system, PSY.get_available) if
+        load for load in PSY.get_components(PSY.StandardLoad, system, PSY.get_available) if
         PSY.get_bus(load) == bus
     ]
 end
 function _get_loads(system::PSY.System, agg::T) where {T <: PSY.AggregationTopology}
-    return PSY.get_components_in_aggregation_topology(PSY.PowerLoad, system, agg)
+    return PSY.get_components_in_aggregation_topology(PSY.StandardLoad, system, agg)
 end
-function _get_loads(system::PSY.System, load::PSY.PowerLoad)
+function _get_loads(system::PSY.System, load::PSY.StandardLoad)
     return [load]
 end
 function _get_loads(system::PSY.System, sys::PSY.System)
-    return PSY.get_components(PSY.PowerLoad, system, PSY.get_available)
+    return PSY.get_components(PSY.StandardLoad, system, PSY.get_available)
 end
 
 get_base_power(system::PSY.System) = PSY.get_base_power(system)
@@ -418,11 +418,11 @@ get_base_power(results::PSI.ProblemResults) = results.base_power
 function get_load_data(
     system::PSY.System;
     aggregation::Union{
-        Type{PSY.PowerLoad},
+        Type{PSY.StandardLoad},
         Type{PSY.Bus},
         Type{PSY.System},
         Type{<:PSY.AggregationTopology},
-    } = PSY.PowerLoad,
+    } = PSY.StandardLoad,
     kwargs...,
 )
     aggregation_components =

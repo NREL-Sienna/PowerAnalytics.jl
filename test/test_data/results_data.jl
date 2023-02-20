@@ -81,9 +81,9 @@ function run_test_sim(result_dir::String)
         @info "Reading results from last execution" sim
     else
         @info "Building UC system from"
-        c_sys5_hy_uc = PSB.build_system(PSB.SIIPExampleSystems, "5_bus_hydro_uc_sys")
+        c_sys5_hy_uc = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
         @info "Building ED system from"
-        c_sys5_hy_ed = PSB.build_system(PSB.SIIPExampleSystems, "5_bus_hydro_ed_sys")
+        c_sys5_hy_ed = PSB.build_system(PSB.PSISystems, "5_bus_hydro_ed_sys")
 
         @info "Adding extra RE"
         add_re!(c_sys5_hy_uc)

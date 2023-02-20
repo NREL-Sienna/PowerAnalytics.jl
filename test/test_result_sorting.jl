@@ -31,7 +31,7 @@ problem_results = run_test_prob()
     load = PA.get_load_data(
         results_ed,
         parameter_keys = [
-            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, PowerLoad}(""),
+            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, StandardLoad}(""),
         ],
         initial_time = Dates.DateTime("2020-01-02T02:00:00"),
         len = 3,
