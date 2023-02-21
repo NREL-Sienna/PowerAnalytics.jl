@@ -31,10 +31,15 @@ function PowerData(data::Dict{String, DataFrames.DataFrame})
 end
 
 # Rename Load variables: TODO: find a better way to do this
+# Using the default keys is inappropriate since there is
+# no subtyping.
 function rename_load!(load_values::Dict)
     for (k, v) in load_values
         if haskey(LOAD_RENAMING, k)
             @debug "renaming" k => LOAD_RENAMING[k]
+            if haskey(load_values, LOAD_RENAMING[k])
+                @warn "Overwriting $(LOAD_RENAMING[k]) with $k"
+            end
             load_values[LOAD_RENAMING[k]] = v
             pop!(load_values, k)
         end
@@ -175,7 +180,7 @@ function add_fixed_parameters!(
         PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
             continue
         if !haskey(variables, param_key)
-            mult = PSI.get_component_type(param_key) ∈ NEGATIVE_PARAMETERS ? -1.0 : 1.0
+            mult = any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
             variables[param_key] = param
             variables[param_key][:, propertynames(param) .!== :DateTime] .*= mult
         end
@@ -192,7 +197,7 @@ function add_aux_variables!(
         PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
             continue
         if !haskey(variables, param_key)
-            mult = PSI.get_component_type(param_key) ∈ NEGATIVE_PARAMETERS ? -1.0 : 1.0
+            mult = any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
             variables[param_key] = param
             variables[param_key][:, propertynames(param) .!== :DateTime] .*= mult
         end
@@ -397,18 +402,18 @@ end
 
 function _get_loads(system::PSY.System, bus::PSY.Bus)
     return [
-        load for load in PSY.get_components(PSY.StandardLoad, system, PSY.get_available) if
+        load for load in PSY.get_components(PSY.StaticLoad, system, PSY.get_available) if
         PSY.get_bus(load) == bus
     ]
 end
 function _get_loads(system::PSY.System, agg::T) where {T <: PSY.AggregationTopology}
-    return PSY.get_components_in_aggregation_topology(PSY.StandardLoad, system, agg)
+    return PSY.get_components_in_aggregation_topology(PSY.StaticLoad, system, agg)
 end
-function _get_loads(system::PSY.System, load::PSY.StandardLoad)
+function _get_loads(system::PSY.System, load::PSY.StaticLoad)
     return [load]
 end
 function _get_loads(system::PSY.System, sys::PSY.System)
-    return PSY.get_components(PSY.StandardLoad, system, PSY.get_available)
+    return PSY.get_components(PSY.StaticLoad, system, PSY.get_available)
 end
 
 get_base_power(system::PSY.System) = PSY.get_base_power(system)
