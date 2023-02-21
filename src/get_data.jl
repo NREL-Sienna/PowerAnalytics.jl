@@ -180,7 +180,8 @@ function add_fixed_parameters!(
         PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
             continue
         if !haskey(variables, param_key)
-            mult = any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
+            mult =
+                any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
             variables[param_key] = param
             variables[param_key][:, propertynames(param) .!== :DateTime] .*= mult
         end
@@ -197,7 +198,8 @@ function add_aux_variables!(
         PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
             continue
         if !haskey(variables, param_key)
-            mult = any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
+            mult =
+                any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
             variables[param_key] = param
             variables[param_key][:, propertynames(param) .!== :DateTime] .*= mult
         end
