@@ -76,14 +76,22 @@ function run_test_sim(result_dir::String)
             joinpath(sim_path, "..", "c_sys5_hy_ed.json"),
             time_series_read_only = true,
         )
-        executions = tryparse.(Int, readdir(sim_path))
-        sim = joinpath(sim_path, string(maximum(executions)))
+
+        sim_dirs = filter(x -> occursin(sim_name, x), readdir(dirname(sim_path)))
+        if length(sim_dirs) == 1
+            sim = joinpath(dirname(sim_path), first(sim_dirs))
+        else
+            sim_dirs = filter(x -> occursin(sim_name * "-", x), sim_dirs)
+            executions =
+                tryparse.(Int, replace.(replace.(sim_dirs, sim_name => ""), "-" => ""))
+            sim = sim_path * "-$(maximum(executions))"
+        end
         @info "Reading results from last execution" sim
     else
         @info "Building UC system from"
-        c_sys5_hy_uc = PSB.build_system(PSB.SIIPExampleSystems, "5_bus_hydro_uc_sys")
+        c_sys5_hy_uc = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
         @info "Building ED system from"
-        c_sys5_hy_ed = PSB.build_system(PSB.SIIPExampleSystems, "5_bus_hydro_ed_sys")
+        c_sys5_hy_ed = PSB.build_system(PSB.PSISystems, "5_bus_hydro_ed_sys")
 
         @info "Adding extra RE"
         add_re!(c_sys5_hy_uc)
@@ -95,28 +103,40 @@ function run_test_sim(result_dir::String)
         GLPK_optimizer =
             optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)
 
-        template_hydro_st_uc = template_unit_commitment()
+        template_hydro_st_uc =
+            ProblemTemplate(NetworkModel(CopperPlatePowerModel, use_slacks = false))
+        set_device_model!(template_hydro_st_uc, ThermalStandard, ThermalBasicUnitCommitment)
+        set_device_model!(template_hydro_st_uc, PowerLoad, StaticPowerLoad)
+        set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
+        set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
         set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
+        set_device_model!(template_hydro_st_uc, GenericBattery, BookKeeping)
         set_device_model!(
             template_hydro_st_uc,
             HydroEnergyReservoir,
             HydroDispatchReservoirStorage,
         )
-        set_device_model!(template_hydro_st_uc, GenericBattery, BookKeeping)
+        set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)
 
-        template_hydro_st_ed = template_economic_dispatch(
-            network = CopperPlatePowerModel,
-            use_slacks = true,
-            duals = [CopperPlateBalanceConstraint],
+        template_hydro_st_ed = ProblemTemplate(
+            NetworkModel(
+                CopperPlatePowerModel,
+                use_slacks = true,
+                duals = [CopperPlateBalanceConstraint],
+            ),
         )
+        set_device_model!(template_hydro_st_ed, ThermalStandard, ThermalBasicDispatch)
+        set_device_model!(template_hydro_st_ed, PowerLoad, StaticPowerLoad)
+        set_device_model!(template_hydro_st_ed, RenewableFix, FixedOutput)
+        set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
         set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
+        set_device_model!(template_hydro_st_ed, GenericBattery, BookKeeping)
         set_device_model!(
             template_hydro_st_ed,
             HydroEnergyReservoir,
             HydroDispatchReservoirStorage,
         )
-        set_device_model!(template_hydro_st_ed, GenericBattery, BookKeeping)
-        template_hydro_st_ed.services = Dict() #remove ed services
+
         models = SimulationModels(
             decision_models = [
                 DecisionModel(
@@ -145,12 +165,13 @@ function run_test_sim(result_dir::String)
                         source = OnVariable,
                         affected_values = [ActivePowerVariable],
                     ),
-                    EnergyLimitFeedforward(
-                        component_type = HydroEnergyReservoir,
-                        source = ActivePowerVariable,
-                        affected_values = [ActivePowerVariable],
-                        number_of_periods = 12,
-                    ),
+                    # TODO: restore this when it's fixed in PSI
+                    # EnergyLimitFeedforward(
+                    #     component_type = HydroEnergyReservoir,
+                    #     source = ActivePowerVariable,
+                    #     affected_values = [ActivePowerVariable],
+                    #     number_of_periods = 12,
+                    # ),
                 ],
             ),
             ini_cond_chronology = InterProblemChronology(),
@@ -176,7 +197,7 @@ function run_test_sim(result_dir::String)
 end
 
 function run_test_prob()
-    c_sys5_hy_uc = PSB.build_system(PSB.SIIPExampleSystems, "5_bus_hydro_uc_sys")
+    c_sys5_hy_uc = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
     add_re!(c_sys5_hy_uc)
     GLPK_optimizer =
         optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)

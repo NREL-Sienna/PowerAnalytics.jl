@@ -1,5 +1,5 @@
 
-NEGATIVE_PARAMETERS = [PSY.PowerLoad]
+NEGATIVE_PARAMETERS = [PSY.StaticLoad]
 SUPPORTED_CURTAILMENT_PARAMETERS = [PSI.ActivePowerTimeSeriesParameter]
 
 SUPPORTED_CURTAILMENT_VARIABLES = [PSI.ActivePowerVariable]
@@ -15,8 +15,12 @@ BALANCE_SLACKVARS = Dict(
 )
 
 LOAD_RENAMING = Dict(
+    :ActivePowerTimeSeriesParameter__StandardLoad => :Load,
     :ActivePowerTimeSeriesParameter__PowerLoad => :Load,
+    :ActivePowerTimeSeriesParameter__ExponentialLoad => :Load,
+    :ActivePowerVariable__StandardLoad => :Dispatchable_Load,
     :ActivePowerVariable__PowerLoad => :Dispatchable_Load,
+    :ActivePowerVariable__ExponentialLoad => :Dispatchable_Load,
 )
 
 GENERATOR_MAPPING_FILE =
