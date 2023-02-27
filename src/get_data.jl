@@ -404,7 +404,7 @@ end
 
 function _get_loads(system::PSY.System, bus::PSY.Bus)
     return [
-        load for load in PSY.get_components(PSY.StaticLoad, system, PSY.get_available) if
+        load for load in PSY.get_components(PSY.get_available, PSY.StaticLoad, system) if
         PSY.get_bus(load) == bus
     ]
 end
