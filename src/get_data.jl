@@ -546,7 +546,10 @@ function categorize_data(
     slacks = true,
 )
     category_dataframes = Dict{String, DataFrames.DataFrame}()
-    var_types = Dict(zip(last.(split.(string.(keys(data)), "_")), keys(data)))
+    var_types = Dict(
+        last(split(string(x), "_")) => x for
+        x in keys(data) if !occursin("ActivePowerInVariable", string(x))
+    )
     for (category, list) in aggregation
         category_df = DataFrames.DataFrame()
         for (component_type, variable) in list
