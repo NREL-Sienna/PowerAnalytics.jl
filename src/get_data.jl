@@ -273,7 +273,7 @@ function filter_results!(
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
         component_names =
             PSY.get_name.(
-                PSY.get_components(filter_funct, component_type, PSI.get_system(results)),
+                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
             )
         DataFrames.select!(v, vcat(["DateTime"], component_names))
     end
