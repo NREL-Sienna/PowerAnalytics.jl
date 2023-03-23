@@ -98,3 +98,18 @@ end
     fuel_agg = PA.combine_categories(fuel)
     @test size(fuel_agg) == (48, 8)
 end
+
+@testset "Test system data getters" begin
+    sys = PSI.get_system(results_uc)
+    load_data1 = PA.get_load_data(sys; aggregation = Bus)
+    @test length(load_data1.data) == 3
+    @test length(load_data1.time) == 24
+
+    load_data2 = PA.get_load_data(sys, aggregation = StaticLoad)
+    @test length(load_data2.data) == 3
+    @test length(load_data2.time) == 24
+
+    load_data3 = PA.get_load_data(sys, aggregation = System)
+    @test length(load_data2.data) == 3
+    @test length(load_data2.time) == 24
+end
