@@ -273,7 +273,7 @@ function filter_results!(
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
         component_names =
             PSY.get_name.(
-                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
+                PSY.get_components(filter_funct, component_type, PSI.get_system(results))
             )
         DataFrames.select!(v, vcat(["DateTime"], component_names))
     end
@@ -415,7 +415,7 @@ function _get_loads(system::PSY.System, load::PSY.StaticLoad)
     return [load]
 end
 function _get_loads(system::PSY.System, sys::PSY.System)
-    return PSY.get_components(PSY.StaticLoad, system, PSY.get_available)
+	return PSY.get_components(PSY.get_available, PSY.StaticLoad, system)
 end
 
 get_base_power(system::PSY.System) = PSY.get_base_power(system)
