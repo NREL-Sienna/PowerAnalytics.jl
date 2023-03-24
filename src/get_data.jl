@@ -534,7 +534,7 @@ Re-categorizes data according to an aggregation dictionary
 # Example
 
 ```julia
-aggregation = PG.make_fuel_dictionary(results_uc.system)
+aggregation = PA.make_fuel_dictionary(results_uc.system)
 categorize_data(gen_uc.data, aggregation)
 ```
 

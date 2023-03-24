@@ -80,8 +80,13 @@ results = solve_op_model!(OpModel)
 generators = make_fuel_dictionary(sys)
 
 """
-function make_fuel_dictionary(sys::PSY.System, mapping::Dict{NamedTuple, String})
-    generators = PSY.get_components(PSY.get_available, PSY.StaticInjection, sys)
+function make_fuel_dictionary(
+    sys::PSY.System,
+    mapping::Dict{NamedTuple, String};
+    filter_func = x -> true,
+)
+    filter_func2 = x -> PSY.get_available(x) && filter_func(x)
+    generators = PSY.get_components(filter_func2, PSY.StaticInjection, sys)
     gen_categories = Dict()
     for category in unique(values(mapping))
         gen_categories["$category"] = []
@@ -107,5 +112,5 @@ end
 
 function make_fuel_dictionary(sys::PSY.System; kwargs...)
     mapping = get_generator_mapping(get(kwargs, :generator_mapping_file, nothing))
-    return make_fuel_dictionary(sys, mapping)
+    return make_fuel_dictionary(sys, mapping; kwargs...)
 end
