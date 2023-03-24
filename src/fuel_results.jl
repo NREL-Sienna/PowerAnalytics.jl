@@ -84,6 +84,7 @@ function make_fuel_dictionary(
     sys::PSY.System,
     mapping::Dict{NamedTuple, String};
     filter_func = x -> true,
+    kwargs...,
 )
     filter_func2 = x -> PSY.get_available(x) && filter_func(x)
     generators = PSY.get_components(filter_func2, PSY.StaticInjection, sys)
