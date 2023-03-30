@@ -415,7 +415,7 @@ function _get_loads(system::PSY.System, load::PSY.StaticLoad)
     return [load]
 end
 function _get_loads(system::PSY.System, sys::PSY.System)
-    return PSY.get_components(PSY.StaticLoad, system, PSY.get_available)
+    return PSY.get_components(PSY.get_available, PSY.StaticLoad, system)
 end
 
 get_base_power(system::PSY.System) = PSY.get_base_power(system)
@@ -425,7 +425,7 @@ get_base_power(results::PSI.ProblemResults) = results.base_power
 function get_load_data(
     system::PSY.System;
     aggregation::Union{
-        Type{PSY.StandardLoad},
+        Type{PSY.StaticLoad},
         Type{PSY.Bus},
         Type{PSY.System},
         Type{<:PSY.AggregationTopology},
@@ -534,7 +534,7 @@ Re-categorizes data according to an aggregation dictionary
 # Example
 
 ```julia
-aggregation = PG.make_fuel_dictionary(results_uc.system)
+aggregation = PA.make_fuel_dictionary(results_uc.system)
 categorize_data(gen_uc.data, aggregation)
 ```
 
