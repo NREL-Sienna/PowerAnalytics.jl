@@ -31,10 +31,15 @@ function PowerData(data::Dict{String, DataFrames.DataFrame})
 end
 
 # Rename Load variables: TODO: find a better way to do this
+# Using the default keys is inappropriate since there is
+# no subtyping.
 function rename_load!(load_values::Dict)
     for (k, v) in load_values
         if haskey(LOAD_RENAMING, k)
             @debug "renaming" k => LOAD_RENAMING[k]
+            if haskey(load_values, LOAD_RENAMING[k])
+                @warn "Overwriting $(LOAD_RENAMING[k]) with $k"
+            end
             load_values[LOAD_RENAMING[k]] = v
             pop!(load_values, k)
         end
@@ -175,7 +180,8 @@ function add_fixed_parameters!(
         PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
             continue
         if !haskey(variables, param_key)
-            mult = PSI.get_component_type(param_key) ∈ NEGATIVE_PARAMETERS ? -1.0 : 1.0
+            mult =
+                any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
             variables[param_key] = param
             variables[param_key][:, propertynames(param) .!== :DateTime] .*= mult
         end
@@ -192,7 +198,8 @@ function add_aux_variables!(
         PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
             continue
         if !haskey(variables, param_key)
-            mult = PSI.get_component_type(param_key) ∈ NEGATIVE_PARAMETERS ? -1.0 : 1.0
+            mult =
+                any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
             variables[param_key] = param
             variables[param_key][:, propertynames(param) .!== :DateTime] .*= mult
         end
@@ -266,7 +273,7 @@ function filter_results!(
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
         component_names =
             PSY.get_name.(
-                PSY.get_components(component_type, PSI.get_system(results), filter_func),
+                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
             )
         DataFrames.select!(v, vcat(["DateTime"], component_names))
     end
@@ -397,18 +404,18 @@ end
 
 function _get_loads(system::PSY.System, bus::PSY.Bus)
     return [
-        load for load in PSY.get_components(PSY.PowerLoad, system, PSY.get_available) if
+        load for load in PSY.get_components(PSY.get_available, PSY.StaticLoad, system) if
         PSY.get_bus(load) == bus
     ]
 end
 function _get_loads(system::PSY.System, agg::T) where {T <: PSY.AggregationTopology}
-    return PSY.get_components_in_aggregation_topology(PSY.PowerLoad, system, agg)
+    return PSY.get_components_in_aggregation_topology(PSY.StaticLoad, system, agg)
 end
-function _get_loads(system::PSY.System, load::PSY.PowerLoad)
+function _get_loads(system::PSY.System, load::PSY.StaticLoad)
     return [load]
 end
 function _get_loads(system::PSY.System, sys::PSY.System)
-    return PSY.get_components(PSY.PowerLoad, system, PSY.get_available)
+    return PSY.get_components(PSY.get_available, PSY.StaticLoad, system)
 end
 
 get_base_power(system::PSY.System) = PSY.get_base_power(system)
@@ -418,11 +425,11 @@ get_base_power(results::PSI.ProblemResults) = results.base_power
 function get_load_data(
     system::PSY.System;
     aggregation::Union{
-        Type{PSY.PowerLoad},
+        Type{PSY.StaticLoad},
         Type{PSY.Bus},
         Type{PSY.System},
         Type{<:PSY.AggregationTopology},
-    } = PSY.PowerLoad,
+    } = PSY.StandardLoad,
     kwargs...,
 )
     aggregation_components =
@@ -527,7 +534,7 @@ Re-categorizes data according to an aggregation dictionary
 # Example
 
 ```julia
-aggregation = PG.make_fuel_dictionary(results_uc.system)
+aggregation = PA.make_fuel_dictionary(results_uc.system)
 categorize_data(gen_uc.data, aggregation)
 ```
 
@@ -539,7 +546,10 @@ function categorize_data(
     slacks = true,
 )
     category_dataframes = Dict{String, DataFrames.DataFrame}()
-    var_types = Dict(zip(last.(split.(string.(keys(data)), "_")), keys(data)))
+    var_types = Dict(
+        last(split(string(x), "_")) => x for
+        x in keys(data) if !occursin("ActivePowerInVariable", string(x))
+    )
     for (category, list) in aggregation
         category_df = DataFrames.DataFrame()
         for (component_type, variable) in list

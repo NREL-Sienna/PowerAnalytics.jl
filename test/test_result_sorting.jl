@@ -63,8 +63,9 @@ problem_results = run_test_prob()
     @test length(srv.time) == 5
 
     # TODO: make tests for subsetting data
-    #sub_gen = get_generation_data(results_uc, filter_func = x->get_name(get_bus(x)) == "bus2")
-    #@test length(sub_gen.data) == 1
+    sub_gen =
+        get_generation_data(results_uc, filter_func = x -> get_name(get_bus(x)) == "bus1")
+    @test length(sub_gen.data) == 8
 end
 
 @testset "test curtailment calculations" begin
@@ -97,4 +98,19 @@ end
 
     fuel_agg = PA.combine_categories(fuel)
     @test size(fuel_agg) == (48, 8)
+end
+
+@testset "Test system data getters" begin
+    sys = PSI.get_system(results_uc)
+    load_data1 = PA.get_load_data(sys; aggregation = Bus)
+    @test length(load_data1.data) == 3
+    @test length(load_data1.time) == 24
+
+    load_data2 = PA.get_load_data(sys, aggregation = StaticLoad)
+    @test length(load_data2.data) == 3
+    @test length(load_data2.time) == 24
+
+    load_data3 = PA.get_load_data(sys, aggregation = System)
+    @test length(load_data2.data) == 3
+    @test length(load_data2.time) == 24
 end

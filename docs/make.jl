@@ -2,8 +2,7 @@ using Documenter
 using PowerAnalytics
 using Literate
 
-folders = Dict(
-)
+folders = Dict()
 
 for (name, folder) in folders
     for file in folder
@@ -17,14 +16,14 @@ if isfile("docs/src/howto/.DS_Store.md")
 end
 
 makedocs(
-    sitename="PowerAnalytics.jl",
-    format=Documenter.HTML(
-        mathengine=Documenter.MathJax(),
-        prettyurls=get(ENV, "CI", nothing) == "true",
+    sitename = "PowerAnalytics.jl",
+    format = Documenter.HTML(
+        mathengine = Documenter.MathJax(),
+        prettyurls = get(ENV, "CI", nothing) == "true",
     ),
-    modules=[PowerAnalytics],
-    authors="Clayton Barrows",
-    pages=Any[
+    modules = [PowerAnalytics],
+    authors = "Clayton Barrows",
+    pages = Any[
         "Introduction" => "index.md",
         #"Quick Start Guide" => "qs_guide.md",
         #"Logging" => "man/logging.md",
