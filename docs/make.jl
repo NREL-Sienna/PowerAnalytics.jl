@@ -45,7 +45,7 @@ makedocs(
 )
 
 deploydocs(
-    repo="github.com/NREL-SIIP/PowerAnalytics.jl.git",
+    repo="github.com/NREL-Sienna/PowerAnalytics.jl.git",
     target="build",
     branch="gh-pages",
     devbranch="main",
