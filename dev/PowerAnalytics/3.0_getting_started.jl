@@ -1,6 +1,6 @@
 # # Getting Started with PowerAnalytics
 
-# Start by creating a results object using [PowerSimulations](http://github.com/nrel-siip/PowerSimulations.jl.git)
+# Start by creating a results object using [PowerSimulations](http://github.com/nrel-sienna/PowerSimulations.jl.git)
 
 # Set up PowerAnalytics:
 # ```julia
