@@ -11,6 +11,8 @@ using PowerAnalytics
 using PowerSimulations
 using GLPK
 using TimeSeries
+using StorageSystemsSimulations
+using HydroPowerSimulations
 
 const PA = PowerAnalytics
 const IS = InfrastructureSystems
