@@ -102,7 +102,7 @@ end
 
 @testset "Test system data getters" begin
     sys = PSI.get_system(results_uc)
-    load_data1 = PA.get_load_data(sys; aggregation = Bus)
+    load_data1 = PA.get_load_data(sys; aggregation = ACBus)
     @test length(load_data1.data) == 3
     @test length(load_data1.time) == 24
 

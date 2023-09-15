@@ -2,7 +2,7 @@ function add_re!(sys)
     re = RenewableDispatch(
         "WindBusA",
         true,
-        get_component(Bus, sys, "bus5"),
+        get_component(ACBus, sys, "bus5"),
         0.0,
         0.0,
         1.200,
@@ -18,7 +18,7 @@ function add_re!(sys)
     fx = RenewableFix(
         "RoofTopSolar",
         true,
-        get_component(Bus, sys, "bus5"),
+        get_component(ACBus, sys, "bus5"),
         0.0,
         0.0,
         1.100,
@@ -45,7 +45,7 @@ function add_re!(sys)
     batt = GenericBattery(
         "test_batt",
         true,
-        get_component(Bus, sys, "bus4"),
+        get_component(ACBus, sys, "bus4"),
         PrimeMovers.BA,
         0.0,
         (min = 0.0, max = 1.0),
