@@ -288,7 +288,7 @@ function get_generation_data(
     results::R;
     # aggregation::Union{
     #     Type{PSY.StaticInjection},
-    #     Type{PSY.Bus},
+    #     Type{PSY.ACBus},
     #     Type{PSY.System},
     #     Type{<:PSY.AggregationTopology},
     # } = PSY.StaticInjection,
@@ -402,7 +402,7 @@ end
 
 ################################### INPUT DEMAND #################################
 
-function _get_loads(system::PSY.System, bus::PSY.Bus)
+function _get_loads(system::PSY.System, bus::PSY.ACBus)
     return [
         load for load in PSY.get_components(PSY.get_available, PSY.StaticLoad, system) if
         PSY.get_bus(load) == bus
@@ -426,7 +426,7 @@ function get_load_data(
     system::PSY.System;
     aggregation::Union{
         Type{PSY.StaticLoad},
-        Type{PSY.Bus},
+        Type{PSY.ACBus},
         Type{PSY.System},
         Type{<:PSY.AggregationTopology},
     } = PSY.StandardLoad,
