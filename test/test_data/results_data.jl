@@ -100,7 +100,7 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
     set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
-    set_device_model!(template_hydro_st_uc, GenericBattery, BookKeeping)
+    set_device_model!(template_hydro_st_uc, GenericBattery, StorageDispatchWithReserves)
     set_device_model!(
         template_hydro_st_uc,
         HydroEnergyReservoir,
@@ -120,7 +120,7 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_ed, RenewableFix, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
-    set_device_model!(template_hydro_st_ed, GenericBattery, BookKeeping)
+    set_device_model!(template_hydro_st_ed, GenericBattery, StorageDispatchWithReserves)
     set_device_model!(
         template_hydro_st_ed,
         HydroEnergyReservoir,
