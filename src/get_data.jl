@@ -425,11 +425,11 @@ get_base_power(results::PSI.ProblemResults) = results.base_power
 function get_load_data(
     system::PSY.System;
     aggregation::Union{
-        Type{PSY.StaticLoad},
+        Type{<:PSY.StaticLoad},
         Type{PSY.ACBus},
         Type{PSY.System},
         Type{<:PSY.AggregationTopology},
-    } = PSY.StandardLoad,
+    } = PSY.StaticLoad,
     kwargs...,
 )
     aggregation_components =

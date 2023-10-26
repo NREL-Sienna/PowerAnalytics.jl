@@ -101,16 +101,32 @@ end
 end
 
 @testset "Test system data getters" begin
-    sys = PSI.get_system(results_uc)
+    # We can test get_load_data without running a simulation
+    sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
+
     load_data1 = PA.get_load_data(sys; aggregation = ACBus)
     @test length(load_data1.data) == 3
     @test length(load_data1.time) == 24
 
-    load_data2 = PA.get_load_data(sys, aggregation = StaticLoad)
+    load_data2 = PA.get_load_data(sys; aggregation = StaticLoad)
     @test length(load_data2.data) == 3
     @test length(load_data2.time) == 24
 
-    load_data3 = PA.get_load_data(sys, aggregation = System)
-    @test length(load_data2.data) == 3
-    @test length(load_data2.time) == 24
+    # With System aggregation, everything gets lumped together
+    load_data3 = PA.get_load_data(sys; aggregation = System)
+    @test length(load_data3.data) == 1
+    @test length(load_data3.time) == 24
+
+    # No aggregation specified: default is StaticLoad
+    load_data4 = PA.get_load_data(sys)
+    @test length(load_data4.data) == 3
+    @test length(load_data4.time) == 24
+
+    load_data5 = PA.get_load_data(sys; aggregation = PowerLoad)
+    @test length(load_data5.data) == 2
+    @test length(load_data5.time) == 24
+
+    load_data6 = PA.get_load_data(sys; aggregation = StandardLoad)
+    @test length(load_data6.data) == 1
+    @test length(load_data6.time) == 24
 end
