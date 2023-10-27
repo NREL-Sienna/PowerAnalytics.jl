@@ -31,7 +31,7 @@ function add_re!(sys)
 
     for g in get_components(HydroEnergyReservoir, sys)
         tpc = get_operation_cost(g)
-        smc = StorageManagementCost(
+        smc = StorageManagementCost(;
             variable = get_variable(tpc),
             fixed = get_fixed(tpc),
             start_up = 0.0,
@@ -69,7 +69,7 @@ function run_test_sim(result_dir::String)
     results = _try_load_simulation_results(sim_path)
     if isnothing(results)
         if isdir(sim_path)
-            rm(sim_path, recursive = true)
+            rm(sim_path; recursive = true)
         end
         results = _execute_simulation(result_dir, sim_name)
     end
@@ -94,7 +94,7 @@ function _execute_simulation(base_path, sim_name)
         optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)
 
     template_hydro_st_uc =
-        ProblemTemplate(NetworkModel(CopperPlatePowerModel, use_slacks = false))
+        ProblemTemplate(NetworkModel(CopperPlatePowerModel; use_slacks = false))
     set_device_model!(template_hydro_st_uc, ThermalStandard, ThermalBasicUnitCommitment)
     set_device_model!(template_hydro_st_uc, PowerLoad, StaticPowerLoad)
     set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
@@ -110,7 +110,7 @@ function _execute_simulation(base_path, sim_name)
 
     template_hydro_st_ed = ProblemTemplate(
         NetworkModel(
-            CopperPlatePowerModel,
+            CopperPlatePowerModel;
             use_slacks = true,
             duals = [CopperPlateBalanceConstraint],
         ),
@@ -127,18 +127,18 @@ function _execute_simulation(base_path, sim_name)
         HydroDispatchReservoirStorage,
     )
 
-    models = SimulationModels(
+    models = SimulationModels(;
         decision_models = [
             DecisionModel(
                 template_hydro_st_uc,
-                c_sys5_hy_uc,
+                c_sys5_hy_uc;
                 optimizer = GLPK_optimizer,
                 name = "UC",
                 system_to_file = true,
             ),
             DecisionModel(
                 template_hydro_st_ed,
-                c_sys5_hy_ed,
+                c_sys5_hy_ed;
                 optimizer = GLPK_optimizer,
                 name = "ED",
                 system_to_file = true,
@@ -146,11 +146,11 @@ function _execute_simulation(base_path, sim_name)
         ],
     )
 
-    sequence = SimulationSequence(
+    sequence = SimulationSequence(;
         models = models,
         feedforwards = feedforward = Dict(
             "ED" => [
-                SemiContinuousFeedforward(
+                SemiContinuousFeedforward(;
                     component_type = ThermalStandard,
                     source = OnVariable,
                     affected_values = [ActivePowerVariable],
@@ -166,7 +166,7 @@ function _execute_simulation(base_path, sim_name)
         ),
         ini_cond_chronology = InterProblemChronology(),
     )
-    sim = Simulation(
+    sim = Simulation(;
         name = sim_name,
         steps = 2,
         models = models,
@@ -191,9 +191,9 @@ function _try_load_simulation_results(sim_path)
         results_uc = get_decision_problem_results(results, "UC")
         results_ed = get_decision_problem_results(results, "ED")
         @info "Reading UC system from" sim_path
-        c_sys5_hy_uc = System(c_sys5_hy_uc_path, time_series_read_only = true)
+        c_sys5_hy_uc = System(c_sys5_hy_uc_path; time_series_read_only = true)
         @info "Reading ED system from" sim_path
-        c_sys5_hy_ed = System(c_sys5_hy_ed_path, time_series_read_only = true)
+        c_sys5_hy_ed = System(c_sys5_hy_ed_path; time_series_read_only = true)
         set_system!(results_uc, c_sys5_hy_uc)
         set_system!(results_ed, c_sys5_hy_ed)
         return results
@@ -231,11 +231,11 @@ function run_test_prob()
 
     prob = DecisionModel(
         template_hydro_st_uc,
-        c_sys5_hy_uc,
+        c_sys5_hy_uc;
         optimizer = GLPK_optimizer,
         horizon = 12,
     )
-    build!(prob, output_dir = mktempdir())
+    build!(prob; output_dir = mktempdir())
     solve!(prob)
     res = ProblemResults(prob)
     return res
