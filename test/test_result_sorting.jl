@@ -2,12 +2,12 @@
 problem_results = run_test_prob()
 
 @testset "test filter results" begin
-    gen = PA.get_generation_data(results_uc, curtailment = false)
+    gen = PA.get_generation_data(results_uc; curtailment = false)
     @test length(gen.data) == 7
     @test length(gen.time) == 48
 
     gen = PA.get_generation_data(
-        results_uc,
+        results_uc;
         variable_keys = [
             PowerSimulations.VariableKey{ActivePowerVariable, ThermalStandard}(""),
             PowerSimulations.VariableKey{ActivePowerVariable, RenewableDispatch}(""),
@@ -29,7 +29,7 @@ problem_results = run_test_prob()
     @test !any(Matrix(PA.no_datetime(load.data[:Load])) .< 0.0)
 
     load = PA.get_load_data(
-        results_ed,
+        results_ed;
         parameter_keys = [
             PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, PowerLoad}(""),
         ],
@@ -47,7 +47,7 @@ problem_results = run_test_prob()
     @test length(srv.data) == 1
 
     srv = PA.get_service_data(
-        results_uc,
+        results_uc;
         variable_keys = [
             PowerSimulations.VariableKey{
                 ActivePowerReserveVariable,
@@ -64,7 +64,7 @@ problem_results = run_test_prob()
 
     # TODO: make tests for subsetting data
     sub_gen =
-        get_generation_data(results_uc, filter_func = x -> get_name(get_bus(x)) == "bus1")
+        get_generation_data(results_uc; filter_func = x -> get_name(get_bus(x)) == "bus1")
     @test length(sub_gen.data) == 8
 end
 

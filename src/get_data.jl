@@ -450,7 +450,7 @@ function get_load_data(
             f = PSY.get_time_series_values( # TODO: this isn't applying the scaling factors
                 PSY.Deterministic,
                 load,
-                "max_active_power",
+                "max_active_power";
                 start_time = initial_time,
                 len = horizon,
             )
@@ -460,7 +460,7 @@ function get_load_data(
     end
     time_range = collect(
         range(
-            initial_time,
+            initial_time;
             step = PSY.get_time_series_resolution(system),
             length = horizon,
         ),
@@ -511,7 +511,7 @@ function combine_categories(
     names::Union{Vector{String}, Vector{Symbol}, Nothing} = nothing,
     aggregate::Union{Function, Nothing} = nothing,
 )
-    aggregate = isnothing(aggregate) ? x -> sum(x, dims = 2) : aggregate
+    aggregate = isnothing(aggregate) ? x -> sum(x; dims = 2) : aggregate
     names = isnothing(names) ? keys(data) : names
     values = []
     keep_names = []
@@ -558,7 +558,7 @@ function categorize_data(
                 colname = typeof(names(category_data)[1]) == String ? "$variable" : variable
                 DataFrames.insertcols!(
                     category_df,
-                    (colname => category_data[:, colname]),
+                    (colname => category_data[:, colname]);
                     makeunique = true,
                 )
             end

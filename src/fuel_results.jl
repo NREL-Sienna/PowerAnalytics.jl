@@ -100,8 +100,11 @@ function make_fuel_dictionary(
         else
             fuel = hasmethod(PSY.get_fuel, Tuple{typeof(gen)}) ? PSY.get_fuel(gen) : nothing
             pm =
-                hasmethod(PSY.get_prime_mover_type, Tuple{typeof(gen)}) ?
-                PSY.get_prime_mover_type(gen) : nothing
+                if hasmethod(PSY.get_prime_mover_type, Tuple{typeof(gen)})
+                    PSY.get_prime_mover_type(gen)
+                else
+                    nothing
+                end
             ext = get(PSY.get_ext(gen), "ext_category", nothing)
             category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
         end
