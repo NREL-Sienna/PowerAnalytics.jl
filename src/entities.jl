@@ -59,6 +59,12 @@ make_entity(
     component_name::AbstractString,
     name::Union{String, Nothing} = nothing,
 ) = ComponentEntity(component_subtype, component_name, name)
+"""
+Construct an EntityElement from a Component reference, pointing to Components in any System
+with the given Component's subtype and name.
+"""
+make_entity(component_ref::Component, name::Union{String, Nothing} = nothing) =
+    make_entity(typeof(component_ref), get_name(component_ref), name)
 
 # Naming
 default_name(e::ComponentEntity) =
@@ -83,6 +89,7 @@ end
 Make an EntitySet pointing to a list of sub-entities. Optionally provide a name for the
 EntitySet.
 """
+# name needs to be a kwarg to disambiguate from content
 make_entity(content::Entity...; name::Union{String, Nothing} = nothing) =
     ListEntitySet(content, name)
 
@@ -97,4 +104,33 @@ end
 function get_components(e::ListEntitySet, sys::PSY.System)
     sub_components = Iterators.map(x -> get_components(x, sys), e.content)
     return IS.FlattenIteratorWrapper(Component, sub_components)
+end
+
+# SubtypeEntitySet
+"EntitySet represented by a subtype of Component"
+struct SubtypeEntitySet <: EntitySet
+    content::Type{<:Component}
+    name::Union{String, Nothing}
+end
+
+# Construction
+"""
+Make a SubtypeEntitySet from a subtype of Component. Optionally provide a name for the
+EntitySet.
+"""
+# name needs to be a kwarg to disambiguate from ComponentEntity's make_entity
+make_entity(content::Type{<:Component}; name::Union{String, Nothing} = nothing) =
+    SubtypeEntitySet(content, name)
+
+# Naming
+default_name(e::SubtypeEntitySet) = subtype_to_string(e.content)
+
+# Contents
+function get_subentities(e::SubtypeEntitySet, sys::PSY.System)
+    # Lazily construct ComponentEntitys from the Components
+    return Iterators.map(make_entity, get_components(e, sys))
+end
+
+function get_components(e::SubtypeEntitySet, sys::PSY.System)
+    return get_components(e.content, sys)
 end

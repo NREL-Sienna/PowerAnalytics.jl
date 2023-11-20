@@ -21,6 +21,7 @@ end
     # Construction
     @test make_entity(ThermalStandard, "Solitude") == test_gen_ent
     @test make_entity(ThermalStandard, "Solitude", "SolGen") == named_test_gen_ent
+    @test make_entity(get_component(ThermalStandard, test_sys, "Solitude")) == test_gen_ent
 
     # Naming
     @test get_name(test_gen_ent) == "ThermalStandard__Solitude"
@@ -44,6 +45,7 @@ end
 
     # Equality
     @test PA.ListEntitySet((comp_ent_1, comp_ent_2), nothing) == test_list_ent
+    @test PA.ListEntitySet((comp_ent_1, comp_ent_2), "TwoComps") == named_test_list_ent
 
     # Construction
     @test make_entity(comp_ent_1, comp_ent_2) == test_list_ent
@@ -60,8 +62,48 @@ end
     @test length(the_components) == 2
     @test get_component(ThermalStandard, test_sys, "Solitude") in the_components
     @test get_component(RenewableDispatch, test_sys, "WindBusA") in the_components
+
+    @test collect(get_subentities(make_entity(), test_sys)) == Vector{Entity}()
     the_subentities = collect(get_subentities(test_list_ent, test_sys))
     @test length(the_subentities) == 2
     @test comp_ent_1 in the_subentities
     @test comp_ent_2 in the_subentities
+end
+
+@testset "Test SubtypeEntitySet" begin
+    test_sub_ent = PA.SubtypeEntitySet(ThermalStandard, nothing)
+    named_test_sub_ent = PA.SubtypeEntitySet(ThermalStandard, "Thermals")
+
+    # Equality
+    @test PA.SubtypeEntitySet(ThermalStandard, nothing) == test_sub_ent
+    @test PA.SubtypeEntitySet(ThermalStandard, "Thermals") == named_test_sub_ent
+
+    # Construction
+    @test make_entity(ThermalStandard) == test_sub_ent
+    @test make_entity(ThermalStandard; name = "Thermals") == named_test_sub_ent
+
+    # Naming
+    @test get_name(test_sub_ent) == "ThermalStandard"
+    @test get_name(named_test_sub_ent) == "Thermals"
+    @test default_name(test_sub_ent) == "ThermalStandard"
+
+    # Contents
+    @test collect(get_components(make_entity(NonexistentComponent), test_sys)) ==
+          Vector{Component}()
+    the_components = sort(collect(get_components(test_sub_ent, test_sys)); by = get_name)
+    compare_to = sort(collect(get_components(ThermalStandard, test_sys)); by = get_name)
+    @test length(the_components) == length(compare_to)
+    @test all(the_components .== compare_to)
+
+    @test collect(get_subentities(make_entity(NonexistentComponent), test_sys)) ==
+          Vector{EntityElement}()
+    entity_sortby = x -> get_name(first(get_components(x, test_sys)))
+    the_subentities =
+        sort(collect(get_subentities(test_sub_ent, test_sys)); by = entity_sortby)
+    compare_to = sort(
+        make_entity.(collect(get_components(ThermalStandard, test_sys)));
+        by = entity_sortby,
+    )
+    @test length(the_subentities) == length(compare_to)
+    @test all(the_subentities .== compare_to)
 end
