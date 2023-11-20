@@ -77,7 +77,7 @@ function get_components(e::ComponentEntity, sys::PSY.System)::Vector{Component}
 end
 
 # ListEntitySet
-"EntitySet represented by a list of other Entities"
+"EntitySet represented by a list of other Entities."
 struct ListEntitySet <: EntitySet
     # Using tuples internally for immutability => `==` is automatically well-behaved
     content::Tuple{Vararg{Entity}}
@@ -107,9 +107,9 @@ function get_components(e::ListEntitySet, sys::PSY.System)
 end
 
 # SubtypeEntitySet
-"EntitySet represented by a subtype of Component"
+"EntitySet represented by a subtype of Component."
 struct SubtypeEntitySet <: EntitySet
-    content::Type{<:Component}
+    component_subtype::Type{<:Component}
     name::Union{String, Nothing}
 end
 
@@ -119,11 +119,11 @@ Make a SubtypeEntitySet from a subtype of Component. Optionally provide a name f
 EntitySet.
 """
 # name needs to be a kwarg to disambiguate from ComponentEntity's make_entity
-make_entity(content::Type{<:Component}; name::Union{String, Nothing} = nothing) =
-    SubtypeEntitySet(content, name)
+make_entity(component_subtype::Type{<:Component}; name::Union{String, Nothing} = nothing) =
+    SubtypeEntitySet(component_subtype, name)
 
 # Naming
-default_name(e::SubtypeEntitySet) = subtype_to_string(e.content)
+default_name(e::SubtypeEntitySet) = subtype_to_string(e.component_subtype)
 
 # Contents
 function get_subentities(e::SubtypeEntitySet, sys::PSY.System)
@@ -132,5 +132,50 @@ function get_subentities(e::SubtypeEntitySet, sys::PSY.System)
 end
 
 function get_components(e::SubtypeEntitySet, sys::PSY.System)
-    return get_components(e.content, sys)
+    return get_components(e.component_subtype, sys)
+end
+
+# TopologyEntitySet
+"EntitySet represented by an AggregationTopology and a subtype of Component."
+struct TopologyEntitySet <: EntitySet
+    topology_subtype::Type{<:PSY.AggregationTopology}
+    topology_name::AbstractString
+    component_subtype::Type{<:Component}
+    name::Union{String, Nothing}
+end
+
+# Construction
+"""
+Make a TopologyEntitySet from an AggregationTopology and a subtype of Component. Optionally
+provide a name for the EntitySet.
+"""
+make_entity(
+    topology_subtype::Type{<:PSY.AggregationTopology},
+    topology_name::AbstractString,
+    component_subtype::Type{<:Component},
+    name::Union{String, Nothing} = nothing,
+) = TopologyEntitySet(
+    topology_subtype,
+    topology_name,
+    component_subtype,
+    name,
+)
+
+# Naming
+default_name(e::TopologyEntitySet) =
+    component_to_qualified_string(e.topology_subtype, e.topology_name) * NAME_DELIMETER *
+    subtype_to_string(e.component_subtype)
+
+# Contents
+function get_subentities(e::TopologyEntitySet, sys::PSY.System)
+    return Iterators.map(make_entity, get_components(e, sys))
+end
+
+function get_components(e::TopologyEntitySet, sys::PSY.System)
+    agg_topology = get_component(e.topology_subtype, sys, e.topology_name)
+    return PSY.get_components_in_aggregation_topology(
+        e.component_subtype,
+        sys,
+        agg_topology,
+    )
 end
