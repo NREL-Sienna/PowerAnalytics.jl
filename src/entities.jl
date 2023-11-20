@@ -33,7 +33,8 @@ function default_name end
 Get the name of the Entity. This is either the default name or a custom name passed in at
 creation time.
 """
-function get_name end
+# Override this if you define an Entity subtype with no name field
+get_name(e::Entity) = (e.name !== nothing) ? e.name : default_name(e)
 
 """
 Get the components of the System that make up the Entity.
@@ -62,10 +63,38 @@ make_entity(
 # Naming
 default_name(e::ComponentEntity) =
     component_to_qualified_string(e.component_subtype, e.component_name)
-get_name(e::ComponentEntity) = (e.name !== nothing) ? e.name : default_name(e)
 
 # Contents
 function get_components(e::ComponentEntity, sys::PSY.System)::Vector{Component}
     com = get_component(e.component_subtype, sys, e.component_name)
     return com === nothing ? [] : [com]
+end
+
+# ListEntitySet
+"EntitySet represented by a list of other Entities"
+struct ListEntitySet <: EntitySet
+    # Using tuples internally for immutability => `==` is automatically well-behaved
+    content::Tuple{Vararg{Entity}}
+    name::Union{String, Nothing}
+end
+
+# Construction
+"""
+Make an EntitySet pointing to a list of sub-entities. Optionally provide a name for the
+EntitySet.
+"""
+make_entity(content::Entity...; name::Union{String, Nothing} = nothing) =
+    ListEntitySet(content, name)
+
+# Naming
+default_name(e::ListEntitySet) = "[$(join(get_name.(e.content), ", "))]"
+
+# Contents
+function get_subentities(e::ListEntitySet, sys::PSY.System)
+    return e.content
+end
+
+function get_components(e::ListEntitySet, sys::PSY.System)
+    sub_components = Iterators.map(x -> get_components(x, sys), e.content)
+    return IS.FlattenIteratorWrapper(Component, sub_components)
 end
