@@ -9,7 +9,7 @@ export no_datetime
 
 export Entity, EntityElement, EntitySet
 export subtype_to_string, component_to_qualified_string
-export make_entity, default_name, get_name
+export make_entity, default_name, get_name, get_subentities
 
 #I/O Imports
 import Dates
