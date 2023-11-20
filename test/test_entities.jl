@@ -1,13 +1,17 @@
 test_sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
-test_gen = PSY.get_component(ThermalStandard, test_sys, "Solitude")
+test_sys2 = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
 
-struct NonexistentComponent <: Component end
+struct NonexistentComponent <: StaticInjection end  # <: Component
+
+sort_name(x) = sort(x; by = get_name)
 
 @testset "Test helper functions" begin
     @test subtype_to_string(ThermalStandard) == "ThermalStandard"
     @test component_to_qualified_string(ThermalStandard, "Solitude") ==
           "ThermalStandard__Solitude"
-    @test component_to_qualified_string(test_gen) == "ThermalStandard__Solitude"
+    @test component_to_qualified_string(
+        PSY.get_component(ThermalStandard, test_sys, "Solitude"),
+    ) == "ThermalStandard__Solitude"
 end
 
 @testset "Test ComponentEntity" begin
@@ -90,20 +94,64 @@ end
     # Contents
     @test collect(get_components(make_entity(NonexistentComponent), test_sys)) ==
           Vector{Component}()
-    the_components = sort(collect(get_components(test_sub_ent, test_sys)); by = get_name)
-    compare_to = sort(collect(get_components(ThermalStandard, test_sys)); by = get_name)
+    the_components = sort_name(get_components(test_sub_ent, test_sys))
+    compare_to = sort_name(get_components(ThermalStandard, test_sys))
     @test length(the_components) == length(compare_to)
     @test all(the_components .== compare_to)
 
     @test collect(get_subentities(make_entity(NonexistentComponent), test_sys)) ==
           Vector{EntityElement}()
-    entity_sortby = x -> get_name(first(get_components(x, test_sys)))
-    the_subentities =
-        sort(collect(get_subentities(test_sub_ent, test_sys)); by = entity_sortby)
-    compare_to = sort(
-        make_entity.(collect(get_components(ThermalStandard, test_sys)));
-        by = entity_sortby,
-    )
+    the_subentities = sort_name(get_subentities(test_sub_ent, test_sys))
+    compare_to = sort_name(make_entity.(get_components(ThermalStandard, test_sys)))
     @test length(the_subentities) == length(compare_to)
     @test all(the_subentities .== compare_to)
+end
+
+@testset "Test TopologyEntitySet" begin
+    topo1 = get_component(Area, test_sys2, "1")
+    topo2 = get_component(LoadZone, test_sys2, "2")
+    test_topo_ent1 = PA.TopologyEntitySet(Area, "1", ThermalStandard, nothing)
+    test_topo_ent2 = PA.TopologyEntitySet(LoadZone, "2", StaticInjection, "Zone_2")
+    @assert (test_topo_ent1 !== nothing) && (test_topo_ent2 !== nothing) "Relies on an out-of-date `5_bus_hydro_uc_sys` definition"
+
+    # Equality
+    @test PA.TopologyEntitySet(Area, "1", ThermalStandard, nothing) == test_topo_ent1
+    @test PA.TopologyEntitySet(LoadZone, "2", StaticInjection, "Zone_2") == test_topo_ent2
+
+    # Construction
+    @test make_entity(Area, "1", ThermalStandard) == test_topo_ent1
+    @test make_entity(LoadZone, "2", StaticInjection, "Zone_2") == test_topo_ent2
+
+    # Naming
+    @test get_name(test_topo_ent1) == "Area__1__ThermalStandard"
+    @test get_name(test_topo_ent2) == "Zone_2"
+
+    # Contents
+    empty_topo_ent = make_entity(Area, "1", NonexistentComponent)
+    @test collect(get_components(empty_topo_ent, test_sys2)) == Vector{Component}()
+    @test collect(get_subentities(empty_topo_ent, test_sys2)) == Vector{EntityElement}()
+
+    answers =
+        sort_name.((
+            PSY.get_components_in_aggregation_topology(
+                ThermalStandard,
+                test_sys2,
+                get_component(Area, test_sys2, "1"),
+            ),
+            PSY.get_components_in_aggregation_topology(
+                StaticInjection,
+                test_sys2,
+                get_component(LoadZone, test_sys2, "2"),
+            )))
+    for (ent, ans) in zip((test_topo_ent1, test_topo_ent2), answers)
+        @assert length(ans) > 0 "Relies on an out-of-date `5_bus_hydro_uc_sys` definition"
+
+        the_components = sort_name(get_components(ent, test_sys2))
+        @test length(the_components) == length(ans)
+        @test all(the_components .== ans)
+
+        the_subentities = sort_name(get_subentities(ent, test_sys2))
+        @test length(the_subentities) == length(ans)
+        @test all(the_subentities .== sort_name(make_entity.(ans)))
+    end
 end
