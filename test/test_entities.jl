@@ -92,19 +92,17 @@ end
     @test default_name(test_sub_ent) == "ThermalStandard"
 
     # Contents
+    answer = sort_name(get_components(ThermalStandard, test_sys))
+
     @test collect(get_components(make_entity(NonexistentComponent), test_sys)) ==
           Vector{Component}()
     the_components = sort_name(get_components(test_sub_ent, test_sys))
-    compare_to = sort_name(get_components(ThermalStandard, test_sys))
-    @test length(the_components) == length(compare_to)
-    @test all(the_components .== compare_to)
+    @test all(the_components .== answer)
 
     @test collect(get_subentities(make_entity(NonexistentComponent), test_sys)) ==
           Vector{EntityElement}()
     the_subentities = sort_name(get_subentities(test_sub_ent, test_sys))
-    compare_to = sort_name(make_entity.(get_components(ThermalStandard, test_sys)))
-    @test length(the_subentities) == length(compare_to)
-    @test all(the_subentities .== compare_to)
+    @test all(the_subentities .== make_entity.(answer))
 end
 
 @testset "Test TopologyEntitySet" begin
@@ -147,11 +145,52 @@ end
         @assert length(ans) > 0 "Relies on an out-of-date `5_bus_hydro_uc_sys` definition"
 
         the_components = sort_name(get_components(ent, test_sys2))
-        @test length(the_components) == length(ans)
         @test all(the_components .== ans)
 
         the_subentities = sort_name(get_subentities(ent, test_sys2))
-        @test length(the_subentities) == length(ans)
         @test all(the_subentities .== sort_name(make_entity.(ans)))
     end
+end
+
+@testset "Test FilterEntitySet" begin
+    starts_with_s(x) = lowercase(first(get_name(x))) == 's'
+    test_filter_ent = PA.FilterEntitySet(starts_with_s, ThermalStandard, nothing)
+    named_test_filter_ent =
+        PA.FilterEntitySet(starts_with_s, ThermalStandard, "ThermStartsWithS")
+
+    # Equality
+    @test PA.FilterEntitySet(starts_with_s, ThermalStandard, nothing) == test_filter_ent
+    @test PA.FilterEntitySet(starts_with_s, ThermalStandard, "ThermStartsWithS") ==
+          named_test_filter_ent
+
+    # Construction
+    @test make_entity(starts_with_s, ThermalStandard) == test_filter_ent
+    @test make_entity(starts_with_s, ThermalStandard, "ThermStartsWithS") ==
+          named_test_filter_ent
+    bad_input_fn(x::Integer) = true  # Should always fail to construct
+    specific_input_fn(x::RenewableDispatch) = true  # Should require compatible subtype
+    @test_throws ArgumentError make_entity(bad_input_fn, ThermalStandard)
+    @test_throws ArgumentError make_entity(specific_input_fn, Component)
+    @test_throws ArgumentError make_entity(specific_input_fn, ThermalStandard)
+    @test make_entity(specific_input_fn, RenewableDispatch) isa Any  # test absence of error
+
+    # Naming
+    @test get_name(test_filter_ent) == "starts_with_s__ThermalStandard"
+    @test get_name(named_test_filter_ent) == "ThermStartsWithS"
+
+    # Contents
+    answer = filter(starts_with_s, collect(get_components(ThermalStandard, test_sys)))
+
+    @test collect(get_components(make_entity(x -> true, NonexistentComponent), test_sys)) ==
+          Vector{Component}()
+    @test collect(get_components(make_entity(x -> false, Component), test_sys)) ==
+          Vector{Component}()
+    @test all(collect(get_components(test_filter_ent, test_sys)) .== answer)
+
+    @test collect(
+        get_subentities(make_entity(x -> true, NonexistentComponent), test_sys),
+    ) == Vector{EntityElement}()
+    @test collect(get_subentities(make_entity(x -> false, Component), test_sys)) ==
+          Vector{EntityElement}()
+    @test all(collect(get_subentities(test_filter_ent, test_sys)) .== make_entity.(answer))
 end
