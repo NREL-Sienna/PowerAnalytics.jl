@@ -21,7 +21,7 @@ component_to_qualified_string(
 component_to_qualified_string(component::Component) =
     component_to_qualified_string(typeof(component), PSY.get_name(component))
 
-# Generic docstrings for simple functions with many methods
+# Generic implementations/generic docstrings for simple functions with many methods
 """
 Get the default name for the Entity, constructed automatically from what the Entity
 contains. Particularly with complex Entities, this may not always be very concise or
@@ -178,4 +178,50 @@ function get_components(e::TopologyEntitySet, sys::PSY.System)
         sys,
         agg_topology,
     )
+end
+
+# FilterEntitySet
+"EntitySet represented by a filter function and a subtype of Component."
+struct FilterEntitySet <: EntitySet
+    filter_fn::Function
+    component_subtype::Type{<:Component}
+    name::Union{String, Nothing}
+end
+
+# Construction
+"""
+Make a FilterEntitySet from a filter function and a subtype of Component. Optionally provide
+a name for the EntitySet. The filter function must accept instances of component_subtype as
+a sole argument and return a Bool.
+"""
+function make_entity(
+    filter_fn::Function,
+    component_subtype::Type{<:Component},
+    name::Union{String, Nothing} = nothing,
+)
+    # Try to catch inappropriate filter functions
+    hasmethod(filter_fn, Tuple{component_subtype}) || throw(
+        ArgumentError(
+            "filter function $filter_fn does not have a method that accepts $(subtype_to_string(component_subtype)).",
+        ),
+    )
+    # TODO it would be nice to have more rigorous checks on filter_fn here: check that the
+    # return type is a Bool and check whether a filter_fn without parameter type annotations
+    # can in fact be called on the given subtype (e.g., filter_fn = (x -> x+1 == 0) should
+    # fail). Core.compiler.return_type does not seem to be stable enough to rely on. The
+    # IsDef.jl library looks interesting.
+    return FilterEntitySet(filter_fn, component_subtype, name)
+end
+
+# Naming
+default_name(e::FilterEntitySet) =
+    string(e.filter_fn) * NAME_DELIMETER * subtype_to_string(e.component_subtype)
+
+# Contents
+function get_subentities(e::FilterEntitySet, sys::PSY.System)
+    return Iterators.map(make_entity, get_components(e, sys))
+end
+
+function get_components(e::FilterEntitySet, sys::PSY.System)
+    return get_components(e.filter_fn, e.component_subtype, sys)
 end
