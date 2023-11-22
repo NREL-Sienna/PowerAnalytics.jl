@@ -11,7 +11,7 @@ function linear_fuel_to_linear_cost(fc::FuelCurve{LinearCurve})
 end
 
 function add_re!(sys)
-    re = RenewableDispatch(
+    re1 = RenewableDispatch(
         "WindBusA",
         true,
         get_component(ACBus, sys, "bus5"),
@@ -22,10 +22,26 @@ function add_re!(sys)
         (min = 0.0, max = 0.0),
         1.0,
         RenewableGenerationCost(CostCurve(LinearCurve(0.220))),
-        100.0,
+        10.0,
     )
-    add_component!(sys, re)
-    copy_time_series!(re, get_component(PowerLoad, sys, "bus2"))
+    add_component!(sys, re1)
+    copy_time_series!(re1, get_component(PowerLoad, sys, "bus2"))
+
+    re2 = RenewableDispatch(
+        "SolarBusC",
+        true,
+        get_component(ACBus, sys, "bus1"),
+        0.0,
+        0.0,
+        1.200,
+        PrimeMovers.PVe,
+        (min = 0.0, max = 0.0),
+        1.0,
+        TwoPartCost(0.220, 0.0),
+        2.0,
+    )
+    add_component!(sys, re2)
+    copy_time_series!(re2, get_component(PowerLoad, sys, "bus3"))
 
     fx = RenewableNonDispatch(
         "RoofTopSolar",
