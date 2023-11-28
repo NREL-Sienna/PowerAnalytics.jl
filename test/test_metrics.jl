@@ -1,4 +1,4 @@
-(results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR)
+(results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR, TEST_SIM_NAME)
 results_prob = run_test_prob()
 resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
 @assert all(
