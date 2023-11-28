@@ -94,9 +94,8 @@ function add_re!(sys)
     add_component!(sys, batt)
 end
 
-function run_test_sim(result_dir::String)
+function run_test_sim(result_dir::String, sim_name::String)
     mkpath(result_dir)
-    sim_name = "results_sim"
     sim_path = joinpath(result_dir, sim_name)
 
     results = _try_load_simulation_results(sim_path)
