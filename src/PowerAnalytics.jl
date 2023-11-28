@@ -10,11 +10,14 @@ export no_datetime
 export Entity, EntityElement, EntitySet
 export subtype_to_string, component_to_qualified_string
 export make_entity, default_name, get_name, get_subentities
+export Metric, EntityTimedMetric, ComponentTimedMetric
+export compute
 
 #I/O Imports
 import Dates
 import TimeSeries
 import DataFrames
+import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
 import DataStructures: OrderedDict, SortedDict
 import PowerSystems
@@ -32,6 +35,7 @@ include("definitions.jl")
 include("get_data.jl")
 include("fuel_results.jl")
 include("entities.jl")
+include("metrics.jl")
 
 greet() = print("Hello World!")
 
