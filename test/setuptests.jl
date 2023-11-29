@@ -27,6 +27,7 @@ const TEST_OUTPUTS = joinpath(BASE_DIR, "test", "test_results")
 const TEST_RESULT_DIR = joinpath(TEST_OUTPUTS, "results")
 !isdir(TEST_RESULT_DIR) && mkdir(TEST_RESULT_DIR)
 const TEST_SIM_NAME = "results_sim"
+const TEST_DUPLICATE_RESULTS_NAME = "temp_duplicate_results"
 
 import PowerSystemCaseBuilder
 const PSB = PowerSystemCaseBuilder
