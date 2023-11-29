@@ -12,6 +12,9 @@ export subtype_to_string, component_to_qualified_string
 export make_entity, default_name, get_name, get_subentities
 export Metric, EntityTimedMetric, ComponentTimedMetric
 export compute
+export read_serialized_system,
+    get_populated_decision_problem_results,
+    create_problem_results_dict
 
 #I/O Imports
 import Dates
@@ -34,8 +37,10 @@ const PSI = PowerSimulations
 include("definitions.jl")
 include("get_data.jl")
 include("fuel_results.jl")
+
 include("entities.jl")
 include("metrics.jl")
+include("input.jl")
 
 greet() = print("Hello World!")
 
