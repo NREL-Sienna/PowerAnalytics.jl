@@ -4,6 +4,7 @@ resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
 @assert all(
     in.("ActivePowerVariable__ThermalStandard", list_variable_names.(values(resultses))),
 ) "Expected all results to contain ActivePowerVariable__ThermalStandard"
+comp_results = Dict()  # Will be populated later
 
 test_calc_active_power = ComponentTimedMetric(
     "ActivePower",
@@ -17,6 +18,18 @@ test_calc_active_power = ComponentTimedMetric(
     end,
 )
 
+test_calc_production_cost = ComponentTimedMetric(
+    "ProductionCost",
+    "Calculate the production cost of the specified Entity",
+    (res::IS.Results, comp::Component,
+        start_time::Union{Nothing, Dates.DateTime},
+        len::Union{Int, Nothing}) -> let
+        key = PSI.ExpressionKey(ProductionCostExpression, typeof(comp))
+        res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
+        first(values(res))[!, ["DateTime", get_name(comp)]]
+    end,
+)
+
 function test_component_timed_metric(met, res, ent, agg_fn = nothing)
     kwargs = (ent isa Component || agg_fn isa Nothing) ? Dict() : Dict(:agg_fn => agg_fn)
     # Metadata tests
@@ -24,6 +37,8 @@ function test_component_timed_metric(met, res, ent, agg_fn = nothing)
     @test metadata(computed_alltime, "title") == met.name
     @test metadata(computed_alltime, "metric") === met
     the_components = (ent isa Component) ? [ent] : get_components(ent, get_system(res))
+    @test colmetadata(computed_alltime, get_name(ent), "metric") ==
+          metadata(computed_alltime, "metric")
     @test all(colmetadata(computed_alltime, get_name(ent), "components") .== the_components)
     (ent isa Entity) && @test colmetadata(computed_alltime, get_name(ent), "entity") == ent
 
@@ -46,7 +61,29 @@ function test_component_timed_metric(met, res, ent, agg_fn = nothing)
     return computed_alltime, computed_sometime
 end
 
-comp_results = Dict()
+@testset "Metrics helper functions" begin
+    @test metric_entity_to_string(test_calc_active_power, make_entity(ThermalStandard)) ==
+          "ActivePower__ThermalStandard"
+
+    my_dates = [DateTime(2023), DateTime(2024)]
+    my_data1 = [3.14, 2.71]
+    my_data2 = [1.61, 1.41]
+
+    my_df1 = DataFrame(; DateTime = my_dates, MyComponent = my_data1)
+    @test time_df(my_df1) == DataFrame(; DateTime = copy(my_dates))
+    @test time_vec(my_df1) == copy(my_dates)
+    @test data_df(my_df1) == DataFrame(; MyComponent = copy(my_data1))
+    @test data_vec(my_df1) == copy(my_data1)
+    @test data_mat(my_df1) == copy(my_data1)[:, :]
+
+    my_df2 = DataFrame(; DateTime = my_dates, Comp1 = my_data1, Comp2 = my_data2)
+    @test time_df(my_df2) == DataFrame(; DateTime = copy(my_dates))
+    @test time_vec(my_df2) == copy(my_dates)
+    @test data_df(my_df2) == DataFrame(; Comp1 = copy(my_data1), Comp2 = copy(my_data2))
+    @test_throws ArgumentError data_vec(my_df2)
+    @test data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
+end
+
 @testset "ComponentTimedMetric on Components" begin
     for (label, res) in pairs(resultses)
         comps1 = collect(get_components(RenewableDispatch, get_system(res)))
@@ -74,10 +111,11 @@ test_entities = [wind_ent, solar_ent, thermal_ent]
             component_name = get_name(first(get_components(ent, get_system(res))))
             base_computed_alltime, base_computed_sometime =
                 comp_results[(label, component_name)]
-            @test computed_alltime[!, :DateTime] == base_computed_alltime[!, :DateTime]
-            @test computed_alltime[!, 2] == base_computed_alltime[!, 2]
-            @test computed_sometime[!, :DateTime] == base_computed_sometime[!, :DateTime]
-            @test computed_sometime[!, 2] == base_computed_sometime[!, 2]
+            @test time_df(computed_alltime) == time_df(base_computed_alltime)
+            # Using data_vec because the column names are allowed to differ
+            @test data_vec(computed_alltime) == data_vec(base_computed_alltime)
+            @test time_df(computed_sometime) == time_df(base_computed_sometime)
+            @test data_vec(computed_sometime) == data_vec(base_computed_sometime)
         end
     end
 end
@@ -98,15 +136,54 @@ end
                 component_names = get_name.(get_components(ent, get_system(res)))
                 (base_computed_alltimes, base_computed_sometimes) =
                     zip([comp_results[(label, cn)] for cn in component_names]...)
-                @test computed_alltime[!, :DateTime] ==
-                      first(base_computed_alltimes)[!, :DateTime]
-                @test computed_alltime[!, 2] ==
-                      agg_fn([sub[!, 2] for sub in base_computed_alltimes])
-                @test computed_sometime[!, :DateTime] ==
-                      first(base_computed_sometimes)[!, :DateTime]
-                @test computed_sometime[!, 2] ==
-                      agg_fn([sub[!, 2] for sub in base_computed_sometimes])
+                @test time_df(computed_alltime) == time_df(first(base_computed_alltimes))
+                @test data_vec(computed_alltime) ==
+                      agg_fn([data_vec(sub) for sub in base_computed_alltimes])
+                @test time_df(computed_sometime) ==
+                      time_df(first(base_computed_sometimes))
+                @test data_vec(computed_sometime) ==
+                      agg_fn([data_vec(sub) for sub in base_computed_sometimes])
             end
         end
     end
+end
+
+@testset "Non-fundamental Functions" begin
+    my_metrics = [test_calc_active_power, test_calc_active_power,
+        test_calc_production_cost, test_calc_production_cost]
+    my_entities = [make_entity(ThermalStandard), make_entity(RenewableDispatch),
+        make_entity(ThermalStandard), make_entity(RenewableDispatch)]
+    all_result = compute_all(my_metrics, results_uc, my_entities)
+
+    for (metric, entity) in zip(my_metrics, my_entities)
+        one_result = compute(metric, results_uc, entity)
+        @test time_df(all_result) == time_df(one_result)
+        @test all_result[!, metric_entity_to_string(metric, entity)] == data_vec(one_result)
+        @test metadata(all_result, "results") == metadata(one_result, "results")
+        # Comparing the components iterators with == gives false failures
+        # TODO why do we need collect here but not in test_component_timed_metric?
+        @test all(
+            collect(
+                colmetadata(
+                    all_result,
+                    metric_entity_to_string(metric, entity),
+                    "components",
+                ),
+            ) .== collect(colmetadata(one_result, 2, "components")),
+        )
+        @test colmetadata(all_result, metric_entity_to_string(metric, entity), "entity") ==
+              colmetadata(one_result, 2, "entity")
+        @test colmetadata(all_result, metric_entity_to_string(metric, entity), "metric") ==
+              colmetadata(one_result, 2, "metric")
+    end
+
+    my_names = ["Thermal Power", "Renewable Power", "Thermal Cost", "Renewable Cost"]
+    all_result_named = compute_all(my_metrics, results_uc, my_entities, my_names)
+    @test names(all_result_named) == vcat("DateTime", my_names...)
+    @test time_df(all_result_named) == time_df(all_result)
+    @test data_mat(all_result_named) == data_mat(all_result)
+
+    @test_throws ArgumentError compute_all(my_metrics, results_uc, my_entities[2:end])
+    @test_throws ArgumentError compute_all(my_metrics, results_uc, my_entities,
+        my_names[2:end])
 end
