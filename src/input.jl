@@ -56,7 +56,7 @@ are loaded results datasets with (by default) attached systems.
 function create_problem_results_dict(
     results_dir::AbstractString,
     problem::String,
-    scenarios::Union{Vector{AbstractString}, Nothing} = nothing;
+    scenarios::Union{Vector{<:AbstractString}, Nothing} = nothing;
     kwargs...,
 )
     if scenarios === nothing
