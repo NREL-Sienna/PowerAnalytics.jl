@@ -8,13 +8,16 @@ export categorize_data
 export no_datetime
 
 export Entity, EntityElement, EntitySet
-export subtype_to_string, component_to_qualified_string
+export NAME_DELIMETER, subtype_to_string, component_to_qualified_string
 export make_entity, default_name, get_name, get_subentities
 export Metric, EntityTimedMetric, ComponentTimedMetric
-export compute
+export time_df,
+    time_vec, data_df, data_vec, data_mat, get_description, metric_entity_to_string
+export compute, compute_all
 export read_serialized_system,
     get_populated_decision_problem_results,
     create_problem_results_dict
+export calc_active_power, calc_production_cost
 
 #I/O Imports
 import Dates
@@ -41,6 +44,7 @@ include("fuel_results.jl")
 include("entities.jl")
 include("metrics.jl")
 include("input.jl")
+include("builtin_metrics.jl")
 
 greet() = print("Hello World!")
 

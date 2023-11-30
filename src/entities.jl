@@ -7,6 +7,7 @@ abstract type EntityElement <: Entity end
 "Entities that are composed of other Entities."
 abstract type EntitySet <: Entity end
 
+# TODO perhaps put this elsewhere; it is also referenced in metrics.jl
 "Delimeter to use when constructing fully-qualified names."
 const NAME_DELIMETER::String = "__"
 
