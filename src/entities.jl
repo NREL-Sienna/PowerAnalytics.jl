@@ -1,3 +1,5 @@
+# TODO add a kwarg and testing for filtering on is_available
+
 "The basic type for all Entities."
 abstract type Entity end
 
@@ -74,7 +76,7 @@ default_name(e::ComponentEntity) =
 # Contents
 function get_components(e::ComponentEntity, sys::PSY.System)::Vector{Component}
     com = get_component(e.component_subtype, sys, e.component_name)
-    return com === nothing ? [] : [com]
+    return (com === nothing || !get_available(com)) ? [] : [com]
 end
 
 # ListEntitySet
@@ -104,7 +106,10 @@ end
 
 function get_components(e::ListEntitySet, sys::PSY.System)
     sub_components = Iterators.map(x -> get_components(x, sys), e.content)
-    return IS.FlattenIteratorWrapper(Component, sub_components)
+    return Iterators.filter(
+        get_available,
+        IS.FlattenIteratorWrapper(Component, sub_components),
+    )
 end
 
 # SubtypeEntitySet
@@ -133,7 +138,7 @@ function get_subentities(e::SubtypeEntitySet, sys::PSY.System)
 end
 
 function get_components(e::SubtypeEntitySet, sys::PSY.System)
-    return get_components(e.component_subtype, sys)
+    return Iterators.filter(get_available, get_components(e.component_subtype, sys))
 end
 
 # TopologyEntitySet
@@ -174,10 +179,13 @@ end
 
 function get_components(e::TopologyEntitySet, sys::PSY.System)
     agg_topology = get_component(e.topology_subtype, sys, e.topology_name)
-    return PSY.get_components_in_aggregation_topology(
-        e.component_subtype,
-        sys,
-        agg_topology,
+    return Iterators.filter(
+        get_available,
+        PSY.get_components_in_aggregation_topology(
+            e.component_subtype,
+            sys,
+            agg_topology,
+        ),
     )
 end
 
@@ -224,5 +232,8 @@ function get_subentities(e::FilterEntitySet, sys::PSY.System)
 end
 
 function get_components(e::FilterEntitySet, sys::PSY.System)
-    return get_components(e.filter_fn, e.component_subtype, sys)
+    return Iterators.filter(
+        get_available,
+        get_components(e.filter_fn, e.component_subtype, sys),
+    )
 end
