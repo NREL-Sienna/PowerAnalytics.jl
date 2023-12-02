@@ -27,7 +27,7 @@ import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
 import DataStructures: OrderedDict, SortedDict
 import PowerSystems
-import PowerSystems: Component, get_component, get_components
+import PowerSystems: Component, get_component, get_components, get_available
 import InfrastructureSystems
 import InfrastructureSystems: get_name
 import PowerSimulations
