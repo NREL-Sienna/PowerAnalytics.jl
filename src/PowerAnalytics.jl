@@ -17,7 +17,7 @@ export compute, compute_all
 export read_serialized_system,
     get_populated_decision_problem_results,
     create_problem_results_dict
-export calc_active_power, calc_production_cost
+export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost
 
 #I/O Imports
 import Dates

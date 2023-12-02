@@ -10,6 +10,13 @@ struct ComponentTimedMetric <: EntityTimedMetric
     eval_fn::Function
 end
 
+"""
+The metric does not have a result for the Component/Entity/etc. on which it is being called.
+"""
+struct NoResultError <: Exception
+    msg::AbstractString
+end
+
 get_name(m::ComponentTimedMetric) = m.name
 get_description(m::ComponentTimedMetric) = m.description
 
