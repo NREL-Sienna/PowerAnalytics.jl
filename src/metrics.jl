@@ -13,20 +13,23 @@ end
 get_name(m::ComponentTimedMetric) = m.name
 get_description(m::ComponentTimedMetric) = m.description
 
-"Select the DateTime column of the DataFrame as a one-column DataFrame."
-time_df(df::DataFrames.AbstractDataFrame) = DataFrames.select(df, :DateTime)
-
-"Select the DateTime column of the DataFrame as a Vector."
-time_vec(df::DataFrames.AbstractDataFrame) = df[!, :DateTime]
-
-"Select the non-DateTime columns of the DataFrame as a DataFrame."
-data_df(df::DataFrames.AbstractDataFrame) = DataFrames.select(df, DataFrames.Not(:DateTime))
-
 "Canonical way to represent a (Metric, Entity) pair as a string."
 metric_entity_to_string(m::Metric, e::Entity) =
     get_name(m) * NAME_DELIMETER * get_name(e)
 
-"Select the non-DateTime column of the DataFrame as a vector, errors if more than one"
+# TODO test that mutating the selection mutates the original
+"Select the DateTime column of the DataFrame as a one-column DataFrame without copying."
+time_df(df::DataFrames.AbstractDataFrame) =
+    DataFrames.select(df, :DateTime; copycols = false)
+
+"Select the DateTime column of the DataFrame as a Vector without copying."
+time_vec(df::DataFrames.AbstractDataFrame) = df[!, :DateTime]
+
+"Select the non-DateTime columns of the DataFrame as a DataFrame without copying."
+data_df(df::DataFrames.AbstractDataFrame) =
+    DataFrames.select(df, DataFrames.Not(:DateTime); copycols = false)
+
+"Select the non-DateTime column of the DataFrame as a vector without copying, errors if more than one."
 function data_vec(df::DataFrames.AbstractDataFrame)
     the_data = data_df(df)
     (size(the_data, 2) > 1) && throw(
@@ -37,7 +40,7 @@ function data_vec(df::DataFrames.AbstractDataFrame)
     return the_data[!, 1]
 end
 
-"Select the non-DateTime columns of the DataFrame as a Matrix"
+"Select the non-DateTime columns of the DataFrame as a Matrix with copying."
 data_mat(df::DataFrames.AbstractDataFrame) = Matrix(data_df(df))
 
 """
@@ -65,12 +68,30 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, comp::Compon
     return val
 end
 
-function _extract_common_time(dfs::Vector{<:DataFrames.AbstractDataFrame}; ex_fn = time_vec)
-    time_col = ex_fn(first(dfs))
+# TODO test allow_missing behavior
+function _extract_common_time(dfs::Vector{<:DataFrames.AbstractDataFrame};
+    allow_missing = true, ex_fn::Function = time_vec)
+    time_cols = ex_fn.(dfs)
+    allow_missing || !any([any(ismissing.(ex_fn(tc))) for tc in time_cols]) ||
+        throw(ErrorException("Missing time columns"))
+    # Candidate time column is the one with the most non-missing values
+    time_col = argmax(x -> count(!ismissing, Array(x)), time_cols)
+    # Other time columns must either be the same or [nothing]
     # TODO come up with a more informative error here
-    all([ex_fn(sub) == time_col for sub in dfs[2:end]]) ||
+    all([
+        isequal(sub, time_col) ||
+            (all(ismissing.(Array(sub))) && size(sub, 1) == 1) for sub in time_cols
+    ]) ||
         throw(ErrorException("Mismatched time columns"))
     return time_col
+end
+
+# TODO test
+function _broadcast_time(data_cols, time_col; allow_unitary = true)
+    size(data_cols, 1) == size(time_col, 1) && return data_cols
+    (allow_unitary && size(data_cols, 1) == 1) ||
+        throw(ErrorException("Individual data column does not match aggregate time column"))
+    return repeat(data_cols, size(time_col, 1))  # Preserves metadata
 end
 
 """
@@ -95,10 +116,12 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
     ]
-    (length(vals) == 0) && return DataFrame()
+    (length(vals) == 0) && return DataFrame(
+        "DateTime" => Vector{Union{Missing, Dates.DateTime}}([missing]),
+        get_name(entity) => agg_fn(Vector{Float64}()))
 
     time_col = _extract_common_time(vals)
-    data_col = agg_fn([data_vec(sub) for sub in vals])
+    data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
     val = DataFrame("DateTime" => time_col, get_name(entity) => data_col)
 
     metadata!(val, "title", metric.name; style = :note)
@@ -120,8 +143,8 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
  - `metrics::Vector{<:EntityTimedMetric}`: the metrics to compute
  - `results::IS.Results`: the results from which to fetch data
  - `entities::Vector{<:Entity}`: the entities on which to compute the metrics
- - `names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector of
-   names for the columns of ouput data. Entries of `nothing` default to the result of
+ - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
+   of names for the columns of ouput data. Entries of `nothing` default to the result of
    [`metric_entity_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
    `nothing`
  - `kwargs...`: pass through to [`compute`](@ref)
@@ -129,25 +152,25 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
 function compute_all(metrics::Vector{<:EntityTimedMetric},
     results::IS.Results,
     entities::Vector{<:Entity},
-    names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
+    col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
 )
-    (names === nothing) && (names = fill(nothing, length(metrics)))
+    (col_names === nothing) && (col_names = fill(nothing, length(metrics)))
     length(entities) == length(metrics) || throw(
         ArgumentError("Got $(length(metrics)) metrics but $(length(entities)) entities"))
-    length(names) == length(metrics) || throw(
-        ArgumentError("Got $(length(metrics)) metrics but $(length(names)) names"))
+    length(col_names) == length(metrics) || throw(
+        ArgumentError("Got $(length(metrics)) metrics but $(length(col_names)) names"))
 
     vals = [
         DataFrames.rename(
             compute(metric, results, entity; kwargs...),
             get_name(entity) =>
                 (name === nothing) ? metric_entity_to_string(metric, entity) : name,
-        ) for (metric, entity, name) in zip(metrics, entities, names)
+        ) for (metric, entity, name) in zip(metrics, entities, col_names)
     ]
 
     time_col = _extract_common_time(vals; ex_fn = time_df)
-    result_cols = data_df.(vals)
+    result_cols = _broadcast_time.(data_df.(vals), Ref(time_col))
     pushfirst!(result_cols, time_col)
     result = hcat(result_cols...)
     return result
