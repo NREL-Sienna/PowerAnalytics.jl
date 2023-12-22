@@ -4,6 +4,7 @@ abstract type Metric end
 "Time series Metrics defined on Entities."
 abstract type EntityTimedMetric <: Metric end
 
+"EntityTimedMetrics implemented by evaluating a function on Components"
 struct ComponentTimedMetric <: EntityTimedMetric
     name::String
     description::String
@@ -17,6 +18,18 @@ struct NoResultError <: Exception
     msg::AbstractString
 end
 
+# TODO remove :DateTime hardcoding in PowerSimulations
+"Name of the column that represents the time axis in computed DataFrames"
+const DATETIME_COL::String = "DateTime"
+
+"""
+Column metadata key whose value signifies whether the column is metadata (i.e.,
+`is_metadata = get(colmetadata(df, colname), META_COL_KEY, false)`). Metadata columns are
+excluded from data_cols and similar and can be used to represent things like a time
+aggregation.
+"""
+const META_COL_KEY::String = "meta_col"
+
 get_name(m::ComponentTimedMetric) = m.name
 get_description(m::ComponentTimedMetric) = m.description
 
@@ -27,16 +40,26 @@ metric_entity_to_string(m::Metric, e::Entity) =
 # TODO test that mutating the selection mutates the original
 "Select the DateTime column of the DataFrame as a one-column DataFrame without copying."
 time_df(df::DataFrames.AbstractDataFrame) =
-    DataFrames.select(df, :DateTime; copycols = false)
+    DataFrames.select(df, DATETIME_COL; copycols = false)
 
 "Select the DateTime column of the DataFrame as a Vector without copying."
-time_vec(df::DataFrames.AbstractDataFrame) = df[!, :DateTime]
+time_vec(df::DataFrames.AbstractDataFrame) = df[!, DATETIME_COL]
 
-"Select the non-DateTime columns of the DataFrame as a DataFrame without copying."
+"Select the data columns of the DataFrame, i.e., those that are not DateTime and not metadata"
+data_cols(df::DataFrames.AbstractDataFrame) =
+    filter(
+        (
+            colname ->
+                (colname != DATETIME_COL) &&
+                    !get(colmetadata(df, colname), META_COL_KEY, false)
+        ),
+        names(df))
+
+"Select the data columns of the DataFrame as a DataFrame without copying."
 data_df(df::DataFrames.AbstractDataFrame) =
-    DataFrames.select(df, DataFrames.Not(:DateTime); copycols = false)
+    DataFrames.select(df, data_cols(df); copycols = false)
 
-"Select the non-DateTime column of the DataFrame as a vector without copying, errors if more than one."
+"Select the data column of the DataFrame as a vector without copying, errors if more than one."
 function data_vec(df::DataFrames.AbstractDataFrame)
     the_data = data_df(df)
     (size(the_data, 2) > 1) && throw(
@@ -47,7 +70,7 @@ function data_vec(df::DataFrames.AbstractDataFrame)
     return the_data[!, 1]
 end
 
-"Select the non-DateTime columns of the DataFrame as a Matrix with copying."
+"Select the data columns of the DataFrame as a Matrix with copying."
 data_mat(df::DataFrames.AbstractDataFrame) = Matrix(data_df(df))
 
 """
@@ -66,10 +89,13 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, comp::Compon
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
     val = metric.eval_fn(results, comp, start_time, len)
+    (DATETIME_COL in names(val)) || throw(ArgumentError(
+        "Result metric.eval_fn did not include a $DATETIME_COL column"))
 
     metadata!(val, "title", metric.name; style = :note)
     metadata!(val, "metric", metric; style = :note)
     metadata!(val, "results", results; style = :note)
+    colmetadata!(val, DATETIME_COL, META_COL_KEY, true; style = :note)
     colmetadata!(val, 2, "components", [comp]; style = :note)
     colmetadata!(val, 2, "metric", metric; style = :note)
     return val
@@ -123,17 +149,20 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
     ]
-    (length(vals) == 0) && return DataFrame(
-        "DateTime" => Vector{Union{Missing, Dates.DateTime}}([missing]),
-        get_name(entity) => agg_fn(Vector{Float64}()))
+    (length(vals) == 0) && return colmetadata(
+        DataFrame(
+            DATETIME_COL => Vector{Union{Missing, Dates.DateTime}}([missing]),
+            get_name(entity) => agg_fn(Vector{Float64}())),
+        DATETIME_COL, META_COL_KEY, true; style = :note)
 
     time_col = _extract_common_time(vals)
     data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
-    val = DataFrame("DateTime" => time_col, get_name(entity) => data_col)
+    val = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
 
     metadata!(val, "title", metric.name; style = :note)
     metadata!(val, "metric", metric; style = :note)
     metadata!(val, "results", results; style = :note)
+    colmetadata!(val, DATETIME_COL, META_COL_KEY, true; style = :note)
     colmetadata!(val, 2, "components", components; style = :note)
     colmetadata!(val, 2, "entity", entity; style = :note)
     colmetadata!(val, 2, "metric", metric; style = :note)

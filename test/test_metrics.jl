@@ -14,7 +14,7 @@ test_calc_active_power = ComponentTimedMetric(
         len::Union{Int, Nothing}) -> let
         key = PSI.VariableKey(ActivePowerVariable, typeof(comp))
         res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
-        first(values(res))[!, ["DateTime", get_name(comp)]]
+        first(values(res))[!, [DATETIME_COL, get_name(comp)]]
     end,
 )
 
@@ -26,7 +26,7 @@ test_calc_production_cost = ComponentTimedMetric(
         len::Union{Int, Nothing}) -> let
         key = PSI.ExpressionKey(ProductionCostExpression, typeof(comp))
         res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
-        first(values(res))[!, ["DateTime", get_name(comp)]]
+        first(values(res))[!, [DATETIME_COL, get_name(comp)]]
     end,
 )
 
@@ -43,19 +43,19 @@ function test_component_timed_metric(met, res, ent, agg_fn = nothing)
     (ent isa Entity) && @test colmetadata(computed_alltime, get_name(ent), "entity") == ent
 
     # Column tests
-    @test names(computed_alltime) == ["DateTime", get_name(ent)]
-    @test eltype(computed_alltime[!, "DateTime"]) <: DateTime
+    @test names(computed_alltime) == [DATETIME_COL, get_name(ent)]
+    @test eltype(computed_alltime[!, DATETIME_COL]) <: DateTime
     @test eltype(computed_alltime[!, get_name(ent)]) <: Number
 
     # Row tests, all time
     # TODO check that the number of rows is correct?
 
     # Row tests, specified time
-    test_start_time = computed_alltime[2, :DateTime]
+    test_start_time = computed_alltime[2, DATETIME_COL]
     test_len = 3
     computed_sometime = compute(test_calc_active_power, res, ent;
         start_time = test_start_time, len = test_len, kwargs...)
-    @test computed_sometime[1, :DateTime] == test_start_time
+    @test computed_sometime[1, DATETIME_COL] == test_start_time
     @test size(computed_sometime, 1) == test_len
 
     return computed_alltime, computed_sometime
@@ -68,18 +68,27 @@ end
     my_dates = [DateTime(2023), DateTime(2024)]
     my_data1 = [3.14, 2.71]
     my_data2 = [1.61, 1.41]
+    my_meta = [1, 2]
 
-    my_df1 = DataFrame(; DateTime = my_dates, MyComponent = my_data1)
-    @test time_df(my_df1) == DataFrame(; DateTime = copy(my_dates))
+    my_df1 = DataFrame(DATETIME_COL => my_dates, "MyComponent" => my_data1)
+    @test time_df(my_df1) == DataFrame(DATETIME_COL => copy(my_dates))
     @test time_vec(my_df1) == copy(my_dates)
     @test data_df(my_df1) == DataFrame(; MyComponent = copy(my_data1))
     @test data_vec(my_df1) == copy(my_data1)
     @test data_mat(my_df1) == copy(my_data1)[:, :]
 
-    my_df2 = DataFrame(; DateTime = my_dates, Comp1 = my_data1, Comp2 = my_data2)
-    @test time_df(my_df2) == DataFrame(; DateTime = copy(my_dates))
+    my_df2 = DataFrame(
+        DATETIME_COL => my_dates,
+        "Component1" => my_data1,
+        "Component2" => my_data2,
+        "MyMeta" => my_meta,
+    )
+    colmetadata!(my_df2, "MyMeta", META_COL_KEY, true)
+    @test data_cols(my_df2) == ["Component1", "Component2"]
+    @test time_df(my_df2) == DataFrame(DATETIME_COL => copy(my_dates))
     @test time_vec(my_df2) == copy(my_dates)
-    @test data_df(my_df2) == DataFrame(; Comp1 = copy(my_data1), Comp2 = copy(my_data2))
+    @test data_df(my_df2) ==
+          DataFrame("Component1" => copy(my_data1), "Component2" => copy(my_data2))
     @test_throws ArgumentError data_vec(my_df2)
     @test data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
 end
@@ -179,7 +188,7 @@ end
 
     my_names = ["Thermal Power", "Renewable Power", "Thermal Cost", "Renewable Cost"]
     all_result_named = compute_all(my_metrics, results_uc, my_entities, my_names)
-    @test names(all_result_named) == vcat("DateTime", my_names...)
+    @test names(all_result_named) == vcat(DATETIME_COL, my_names...)
     @test time_df(all_result_named) == time_df(all_result)
     @test data_mat(all_result_named) == data_mat(all_result)
 
