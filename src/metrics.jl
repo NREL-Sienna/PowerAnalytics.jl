@@ -23,9 +23,8 @@ end
 const DATETIME_COL::String = "DateTime"
 
 """
-Column metadata key whose value signifies whether the column is metadata (i.e.,
-`is_metadata = get(colmetadata(df, colname), META_COL_KEY, false)`). Metadata columns are
-excluded from data_cols and similar and can be used to represent things like a time
+Column metadata key whose value signifies whether the column is metadata. Metadata columns
+are excluded from data_cols and similar and can be used to represent things like a time
 aggregation.
 """
 const META_COL_KEY::String = "meta_col"
@@ -36,6 +35,13 @@ get_description(m::ComponentTimedMetric) = m.description
 "Canonical way to represent a (Metric, Entity) pair as a string."
 metric_entity_to_string(m::Metric, e::Entity) =
     get_name(m) * NAME_DELIMETER * get_name(e)
+
+"Check whether a column is metadata"
+is_col_meta(df, colname) = get(colmetadata(df, colname), META_COL_KEY, false)
+
+"Mark a column as metadata"
+set_col_meta!(df, colname, val = true) =
+    colmetadata!(df, colname, META_COL_KEY, val; style = :note)
 
 # TODO test that mutating the selection mutates the original
 "Select the DateTime column of the DataFrame as a one-column DataFrame without copying."
@@ -51,7 +57,7 @@ data_cols(df::DataFrames.AbstractDataFrame) =
         (
             colname ->
                 (colname != DATETIME_COL) &&
-                    !get(colmetadata(df, colname), META_COL_KEY, false)
+                    !is_col_meta(df, colname)
         ),
         names(df))
 
@@ -95,7 +101,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, comp::Compon
     metadata!(val, "title", metric.name; style = :note)
     metadata!(val, "metric", metric; style = :note)
     metadata!(val, "results", results; style = :note)
-    colmetadata!(val, DATETIME_COL, META_COL_KEY, true; style = :note)
+    set_col_meta!(val, DATETIME_COL)
     colmetadata!(val, 2, "components", [comp]; style = :note)
     colmetadata!(val, 2, "metric", metric; style = :note)
     return val
@@ -149,12 +155,13 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
     ]
-    (length(vals) == 0) && return colmetadata(
-        DataFrame(
+    if length(vals) == 0
+        result = DataFrame(
             DATETIME_COL => Vector{Union{Missing, Dates.DateTime}}([missing]),
-            get_name(entity) => agg_fn(Vector{Float64}())),
-        DATETIME_COL, META_COL_KEY, true; style = :note)
-
+            get_name(entity) => agg_fn(Vector{Float64}()))
+        set_col_meta!(result, DATETIME_COL)
+        return result
+    end
     time_col = _extract_common_time(vals)
     data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
     val = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
@@ -162,7 +169,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
     metadata!(val, "title", metric.name; style = :note)
     metadata!(val, "metric", metric; style = :note)
     metadata!(val, "results", results; style = :note)
-    colmetadata!(val, DATETIME_COL, META_COL_KEY, true; style = :note)
+    set_col_meta!(val, DATETIME_COL)
     colmetadata!(val, 2, "components", components; style = :note)
     colmetadata!(val, 2, "entity", entity; style = :note)
     colmetadata!(val, 2, "metric", metric; style = :note)
@@ -209,5 +216,70 @@ function compute_all(metrics::Vector{<:EntityTimedMetric},
     result_cols = _broadcast_time.(data_df.(vals), Ref(time_col))
     pushfirst!(result_cols, time_col)
     result = hcat(result_cols...)
+    return result
+end
+
+# We need a temporary column name that doesn't overlap with the existing ones
+function _make_groupby_col_name(col_names)
+    groupby_col = "grouped"
+    while groupby_col in col_names  # Worst case length(col_names) iterations
+        groupby_col *= "!"
+    end
+    return groupby_col
+end
+
+"""
+Given a DataFrame like that produced by [`compute_all`](@ref), group by a function of the
+time axis, apply a reduction, and report the resulting aggregation indexed by the first
+timestamp in each group.
+
+# Arguments
+ - `df::DataFrames.AbstractDataFrame`: the DataFrame to operate upon
+ - `groupby_fn = nothing`: a callable that can be passed a DateTime; two rows will be in the
+   same group iff their timestamps produce the same result under `groupby_fn`. Note that
+   `groupby_fn=month` puts January 2023 and January 2024 into the same group whereas
+   `groupby_fn=(x -> (year(x), month(x)))` does not.
+ - `reduce_fn = sum`: a callable that takes a vector of data and produces a scalar of data;
+   gets called for each column in each group
+ - `groupby_col::Union{Nothing, AbstractString, Symbol} = nothing`: specify a column name to
+   report the result of `groupby_fn` in the output DataFrame, or `nothing` to not
+"""
+function aggregate_time(
+    df::DataFrames.AbstractDataFrame;
+    groupby_fn = nothing,
+    reduce_fn = sum,
+    groupby_col::Union{Nothing, AbstractString, Symbol} = nothing)
+
+    # Everything goes into the same group by default
+    (groupby_fn === nothing) && (groupby_fn = (_ -> 0))
+
+    keep_groupby_col = (groupby_col !== nothing)
+    if keep_groupby_col
+        (groupby_col in names(df)) &&
+            throw("groupby_col cannot be an existing column name of df")
+    else
+        groupby_col = _make_groupby_col_name(names(df))
+    end
+
+    transformed = DataFrames.transform(
+        df,
+        DATETIME_COL => DataFrames.ByRow(groupby_fn) => groupby_col,
+    )
+    grouped = DataFrames.groupby(transformed, groupby_col)
+    # Operate on all data columns and non-special metadata columns
+    not_index = DataFrames.Not(groupby_col, DATETIME_COL)
+    # Take the first DateTime in each group, reduce the other columns, preserve column names
+    # TODO is it okay to always just take the first timestamp, or should there be a
+    # reduce_time_fn kwarg to, for instance, allow users to specify that they want the
+    # midpoint timestamp?
+    combined = DataFrames.combine(grouped,
+        DATETIME_COL => first => DATETIME_COL,
+        not_index .=> reduce_fn .=> not_index)
+    # Reorder the columns for convention
+    result = DataFrames.select(combined, DATETIME_COL, groupby_col, not_index)
+
+    set_col_meta!(result, DATETIME_COL)
+    set_col_meta!(result, groupby_col)
+    keep_groupby_col || (result = DataFrames.select(result, DataFrames.Not(groupby_col)))
     return result
 end

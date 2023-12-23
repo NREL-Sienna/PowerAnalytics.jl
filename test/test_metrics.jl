@@ -1,3 +1,4 @@
+# LOAD RESULTS
 (results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR, TEST_SIM_NAME)
 results_prob = run_test_prob()
 resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
@@ -6,6 +7,7 @@ resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
 ) "Expected all results to contain ActivePowerVariable__ThermalStandard"
 comp_results = Dict()  # Will be populated later
 
+# CONSTRUCT COMMON TEST RESOURCES
 test_calc_active_power = ComponentTimedMetric(
     "ActivePower",
     "Calculate the active power output of the specified Entity",
@@ -30,6 +32,35 @@ test_calc_production_cost = ComponentTimedMetric(
     end,
 )
 
+my_dates = [DateTime(2023), DateTime(2024)]
+my_data1 = [3.14, 2.71]
+my_data2 = [1.61, 1.41]
+my_meta = [1, 2]
+
+my_df1 = DataFrame(DATETIME_COL => my_dates, "MyComponent" => my_data1)
+colmetadata!(my_df1, DATETIME_COL, META_COL_KEY, true)
+
+my_df2 = DataFrame(
+    DATETIME_COL => my_dates,
+    "Component1" => my_data1,
+    "Component2" => my_data2,
+    "MyMeta" => my_meta,
+)
+colmetadata!(my_df2, DATETIME_COL, META_COL_KEY, true)
+colmetadata!(my_df2, "MyMeta", META_COL_KEY, true)
+
+my_dates_long = collect(DateTime(2023, 1, 1):Hour(8):DateTime(2023, 3, 31, 16))
+my_data_long_1 = collect(range(0, 100, length(my_dates_long)))
+my_data_long_2 = collect(range(24, 0, length(my_dates_long))) .+ 0.5 / length(my_dates_long)
+my_meta_long = (my_dates_long .|> day) .% 2
+my_df3 = DataFrame(
+    DATETIME_COL => my_dates_long,
+    "Component1" => my_data_long_1,
+    "Component2" => my_data_long_2,
+    "MyMeta" => my_meta_long,
+)
+
+# HELPER FUNCTIONS
 function test_component_timed_metric(met, res, ent, agg_fn = nothing)
     kwargs = (ent isa Component || agg_fn isa Nothing) ? Dict() : Dict(:agg_fn => agg_fn)
     # Metadata tests
@@ -61,29 +92,39 @@ function test_component_timed_metric(met, res, ent, agg_fn = nothing)
     return computed_alltime, computed_sometime
 end
 
+function test_df_approx_equal(lhs, rhs)
+    @test all(names(lhs) .== names(rhs))
+    for (lhs_col, rhs_col) in zip(eachcol(lhs), eachcol(rhs))
+        if eltype(lhs_col) <: AbstractFloat || eltype(lhs_col) <: AbstractFloat
+            @test all(isapprox.(lhs_col, rhs_col))
+        else
+            @test all(lhs_col .== rhs_col)
+        end
+    end
+end
+
+# BEGIN TEST SETS
 @testset "Metrics helper functions" begin
     @test metric_entity_to_string(test_calc_active_power, make_entity(ThermalStandard)) ==
           "ActivePower__ThermalStandard"
 
-    my_dates = [DateTime(2023), DateTime(2024)]
-    my_data1 = [3.14, 2.71]
-    my_data2 = [1.61, 1.41]
-    my_meta = [1, 2]
+    @test is_col_meta(my_df2, DATETIME_COL)
+    @test !is_col_meta(my_df2, "Component1")
+    @test is_col_meta(my_df2, "MyMeta")
 
-    my_df1 = DataFrame(DATETIME_COL => my_dates, "MyComponent" => my_data1)
+    my_df1_copy = copy(my_df1)
+    @test !is_col_meta(my_df1_copy, "MyComponent")
+    set_col_meta!(my_df1_copy, "MyComponent")
+    @test is_col_meta(my_df1_copy, "MyComponent")
+    set_col_meta!(my_df1_copy, "MyComponent", false)
+    @test !is_col_meta(my_df1_copy, "MyComponent")
+
     @test time_df(my_df1) == DataFrame(DATETIME_COL => copy(my_dates))
     @test time_vec(my_df1) == copy(my_dates)
     @test data_df(my_df1) == DataFrame(; MyComponent = copy(my_data1))
     @test data_vec(my_df1) == copy(my_data1)
     @test data_mat(my_df1) == copy(my_data1)[:, :]
 
-    my_df2 = DataFrame(
-        DATETIME_COL => my_dates,
-        "Component1" => my_data1,
-        "Component2" => my_data2,
-        "MyMeta" => my_meta,
-    )
-    colmetadata!(my_df2, "MyMeta", META_COL_KEY, true)
     @test data_cols(my_df2) == ["Component1", "Component2"]
     @test time_df(my_df2) == DataFrame(DATETIME_COL => copy(my_dates))
     @test time_vec(my_df2) == copy(my_dates)
@@ -91,6 +132,72 @@ end
           DataFrame("Component1" => copy(my_data1), "Component2" => copy(my_data2))
     @test_throws ArgumentError data_vec(my_df2)
     @test data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
+end
+
+@testset "Test aggregate_time" begin
+    test_df_approx_equal(
+        aggregate_time(my_df3),
+        DataFrame(
+            DATETIME_COL => first(my_dates_long),
+            "Component1" => sum(my_data_long_1),
+            "Component2" => sum(my_data_long_2),
+            "MyMeta" => sum(my_meta_long),
+        ),
+    )
+    @test is_col_meta(aggregate_time(my_df3), DATETIME_COL)
+
+    month_agg = aggregate_time(my_df3; groupby_fn = dt -> (year(dt), month(dt)))
+    @test size(month_agg, 1) == 3
+    test_df_approx_equal(
+        month_agg[1:1, :],
+        DataFrame(
+            DATETIME_COL => first(my_dates_long),
+            "Component1" => sum(my_data_long_1[1:(31 * 3)]),
+            "Component2" => sum(my_data_long_2[1:(31 * 3)]),
+            "MyMeta" => sum(my_meta_long[1:(31 * 3)]),
+        ),
+    )
+
+    day_agg = aggregate_time(my_df3; groupby_fn = Date)
+    @test size(day_agg, 1) == 31 + 28 + 31
+    test_df_approx_equal(
+        day_agg[1:1, :],
+        DataFrame(
+            DATETIME_COL => first(my_dates_long),
+            "Component1" => sum(my_data_long_1[1:3]),
+            "Component2" => sum(my_data_long_2[1:3]),
+            "MyMeta" => sum(my_meta_long[1:3]),
+        ),
+    )
+
+    hour_agg = aggregate_time(my_df3; groupby_fn = hour)
+    @test size(hour_agg, 1) == 3
+    test_df_approx_equal(
+        hour_agg[1:1, :],
+        DataFrame(
+            DATETIME_COL => first(my_dates_long),
+            "Component1" => sum(my_data_long_1[1:3:end]),
+            "Component2" => sum(my_data_long_2[1:3:end]),
+            "MyMeta" => sum(my_meta_long[1:3:end]),
+        ),
+    )
+
+    for reduce_fn in (sum, length, (x -> sum(x) / length(x)), (_ -> 0))
+        test_df_approx_equal(
+            aggregate_time(my_df3; reduce_fn = reduce_fn),
+            DataFrame(
+                DATETIME_COL => first(my_dates_long),
+                "Component1" => reduce_fn(my_data_long_1),
+                "Component2" => reduce_fn(my_data_long_2),
+                "MyMeta" => reduce_fn(my_meta_long),
+            ),
+        )
+    end
+
+    day_agg_2 = aggregate_time(my_df3; groupby_fn = Date, groupby_col = "day")
+    @test "day" in names(day_agg_2)
+    @test is_col_meta(day_agg_2, "day")
+    @test day_agg_2[!, "day"] == Date.(time_vec(day_agg_2))
 end
 
 @testset "ComponentTimedMetric on Components" begin
