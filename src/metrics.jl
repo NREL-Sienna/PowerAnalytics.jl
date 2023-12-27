@@ -108,7 +108,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, comp::Compon
 end
 
 # TODO test allow_missing behavior
-function _extract_common_time(dfs::Vector{<:DataFrames.AbstractDataFrame};
+function _extract_common_time(dfs::DataFrames.AbstractDataFrame...;
     allow_missing = true, ex_fn::Function = time_vec)
     time_cols = ex_fn.(dfs)
     allow_missing || !any([any(ismissing.(ex_fn(tc))) for tc in time_cols]) ||
@@ -133,6 +133,17 @@ function _broadcast_time(data_cols, time_col; allow_unitary = true)
     return repeat(data_cols, size(time_col, 1))  # Preserves metadata
 end
 
+# NOTE this really makes the case for a dedicated type for time-indexed dataframes
+"""
+Horizontally concatenate the dataframes leaving one time column if the time axes all match
+and throwing an error if not
+"""
+function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
+    time_col = _extract_common_time(vals...; ex_fn = time_df)
+    broadcasted_vals = [data_df(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
+    return hcat(time_col, broadcasted_vals...)
+end
+
 """
 Compute the given metric on the given entity within the given set of results, aggregating
 across all the components in the entity if necessary and returning a DataFrame with a
@@ -150,6 +161,7 @@ DateTime column and a data column labeled with the entity's name.
 function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Entity;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing, agg_fn::Function = sum)
+    # TODO incorporate allow_missing
     components = get_components(entity, PowerSimulations.get_system(results))
     vals = [
         compute(metric, results, com; start_time = start_time, len = len) for
@@ -162,7 +174,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
         set_col_meta!(result, DATETIME_COL)
         return result
     end
-    time_col = _extract_common_time(vals)
+    time_col = _extract_common_time(vals...)
     data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
     val = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
 
@@ -212,7 +224,7 @@ function compute_all(metrics::Vector{<:EntityTimedMetric},
         ) for (metric, entity, name) in zip(metrics, entities, col_names)
     ]
 
-    time_col = _extract_common_time(vals; ex_fn = time_df)
+    time_col = _extract_common_time(vals...; ex_fn = time_df)
     result_cols = _broadcast_time.(data_df.(vals), Ref(time_col))
     pushfirst!(result_cols, time_col)
     result = hcat(result_cols...)
