@@ -98,3 +98,20 @@ calc_shutdown_cost = ComponentTimedMetric(
         end
     ),
 )
+
+calc_discharge_cycles = ComponentTimedMetric(
+    "DischargeCycles",
+    "Calculate the number of discharge cycles a storage device has gone through in the time period",
+    (
+        (res::IS.Results, comp::Component,
+            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
+            val = read_component_result(res, PSI.ActivePowerOutVariable, comp, start_time, len)
+            soc_limits = get_state_of_charge_limits(comp)
+            # TODO verify this algorithm with a domain expert
+            soc_range = soc_limits.max
+            # soc_range = soc_limits.max - soc_limits.min
+            data_vec(val) ./= soc_range
+            return val
+        end
+    ),
+)

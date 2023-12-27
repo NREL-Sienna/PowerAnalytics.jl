@@ -38,7 +38,7 @@ my_data2 = [1.61, 1.41]
 my_meta = [1, 2]
 
 my_df1 = DataFrame(DATETIME_COL => my_dates, "MyComponent" => my_data1)
-colmetadata!(my_df1, DATETIME_COL, META_COL_KEY, true)
+colmetadata!(my_df1, DATETIME_COL, META_COL_KEY, true; style = :note)
 
 my_df2 = DataFrame(
     DATETIME_COL => my_dates,
@@ -46,8 +46,13 @@ my_df2 = DataFrame(
     "Component2" => my_data2,
     "MyMeta" => my_meta,
 )
-colmetadata!(my_df2, DATETIME_COL, META_COL_KEY, true)
-colmetadata!(my_df2, "MyMeta", META_COL_KEY, true)
+colmetadata!(my_df2, DATETIME_COL, META_COL_KEY, true; style = :note)
+colmetadata!(my_df2, "MyMeta", META_COL_KEY, true; style = :note)
+
+missing_df = DataFrame(
+    DATETIME_COL => Vector{Union{Missing, Dates.DateTime}}([missing]),
+    "MissingComponent" => 0.0)
+colmetadata!(missing_df, DATETIME_COL, META_COL_KEY, true; style = :note)
 
 my_dates_long = collect(DateTime(2023, 1, 1):Hour(8):DateTime(2023, 3, 31, 16))
 my_data_long_1 = collect(range(0, 100, length(my_dates_long)))
@@ -132,6 +137,13 @@ end
           DataFrame("Component1" => copy(my_data1), "Component2" => copy(my_data2))
     @test_throws ArgumentError data_vec(my_df2)
     @test data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
+
+    @test hcat_timed(my_df1, DataFrames.rename(my_df1, "MyComponent" => "YourComponent")) ==
+          DataFrame(
+        DATETIME_COL => my_dates,
+        "MyComponent" => my_data1,
+        "YourComponent" => my_data1,
+    )
 end
 
 @testset "Test aggregate_time" begin
