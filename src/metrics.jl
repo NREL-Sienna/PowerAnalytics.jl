@@ -249,8 +249,8 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
    `nothing`
  - `kwargs...`: pass through to [`compute`](@ref)
 """
-function compute_all(metrics::Vector{<:TimedMetric},
-    results::IS.Results,
+function compute_all(results::IS.Results,
+    metrics::Vector{<:TimedMetric},
     entities::Vector{<:Union{Entity, Nothing}},
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,

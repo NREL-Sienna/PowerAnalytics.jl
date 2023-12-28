@@ -320,7 +320,7 @@ end
         test_calc_production_cost, test_calc_production_cost]
     my_entities = [make_entity(ThermalStandard), make_entity(RenewableDispatch),
         make_entity(ThermalStandard), make_entity(RenewableDispatch)]
-    all_result = compute_all(my_metrics, results_uc, my_entities)
+    all_result = compute_all(results_uc, my_metrics, my_entities)
 
     for (metric, entity) in zip(my_metrics, my_entities)
         one_result = compute(metric, results_uc, entity)
@@ -345,12 +345,12 @@ end
     end
 
     my_names = ["Thermal Power", "Renewable Power", "Thermal Cost", "Renewable Cost"]
-    all_result_named = compute_all(my_metrics, results_uc, my_entities, my_names)
+    all_result_named = compute_all(results_uc, my_metrics, my_entities, my_names)
     @test names(all_result_named) == vcat(DATETIME_COL, my_names...)
     @test time_df(all_result_named) == time_df(all_result)
     @test data_mat(all_result_named) == data_mat(all_result)
 
-    @test_throws ArgumentError compute_all(my_metrics, results_uc, my_entities[2:end])
-    @test_throws ArgumentError compute_all(my_metrics, results_uc, my_entities,
+    @test_throws ArgumentError compute_all(results_uc, my_metrics, my_entities[2:end])
+    @test_throws ArgumentError compute_all(results_uc, my_metrics, my_entities,
         my_names[2:end])
 end
