@@ -18,7 +18,8 @@ export compute, compute_all, aggregate_time
 export read_serialized_system,
     get_populated_decision_problem_results, create_problem_results_dict
 export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
-    calc_discharge_cycles, calc_system_slack_up
+    calc_discharge_cycles, calc_system_slack_up, calc_load_forecast, calc_active_power_in,
+    calc_active_power_out, calc_stored_energy, calc_active_power_forecast, calc_curtailment
 
 #I/O Imports
 import Dates

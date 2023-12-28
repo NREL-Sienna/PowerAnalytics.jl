@@ -103,7 +103,7 @@ make_system_metric_from_entry(
 # TODO perhaps these built-in metrics should be in some sort of container
 calc_active_power = make_component_metric_from_entry(
     "ActivePower",
-    "Calculate the active power output of the specified Entity",
+    "Calculate the active power of the specified Entity",
     PSI.ActivePowerVariable,
 )
 
@@ -111,6 +111,52 @@ calc_production_cost = make_component_metric_from_entry(
     "ProductionCost",
     "Calculate the active power output of the specified Entity",
     PSI.ProductionCostExpression,
+)
+
+calc_active_power_in = make_component_metric_from_entry(
+    "ActivePowerIn",
+    "Calculate the active power input to the specified (storage) Entity",
+    PSI.ActivePowerInVariable,
+)
+
+calc_active_power_out = make_component_metric_from_entry(
+    "ActivePowerOut",
+    "Calculate the active power output of the specified (storage) Entity",
+    PSI.ActivePowerOutVariable,
+)
+
+calc_stored_energy = make_component_metric_from_entry(
+    "StoredEnergy",
+    "Calculate the energy stored in the specified (storage) Entity",
+    PSI.EnergyVariable,
+)
+
+calc_active_power_forecast = make_component_metric_from_entry(
+    "ActivePowerForecast",
+    "Fetch the forecast active power of the specified Entity",
+    PSI.ActivePowerTimeSeriesParameter,
+)
+
+calc_load_forecast = ComponentTimedMetric(
+    "Load",
+    "Fetch the forecast active load of the specified Entity",
+    # Load is negative power
+    # TODO maybe eval_fn is too much of an implementation detail and I should use compute
+    # instead (in which case it's annoying that compute has start_time and len as kwargs and
+    # eval_fn has them as positional args)
+    # NOTE if we had our own time-indexed dataframe type we could overload multiplication with a scalar and simplify this
+    (args...) -> let
+        val = calc_active_power_forecast.eval_fn(args...)
+        data_vec(val) .*= -1
+        return val
+    end,
+)
+
+calc_curtailment = ComponentTimedMetric(
+    "Curtailment",
+    "Calculate the curtailment (=forecast active power - actual active power) of the specified Entity",
+    (args...) ->
+        calc_active_power_forecast.eval_fn(args...) - calc_active_power.eval_fn(args...),
 )
 
 calc_startup_cost = ComponentTimedMetric(
@@ -134,8 +180,8 @@ calc_shutdown_cost = ComponentTimedMetric(
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.StartVariable, comp, start_time, len)
-            start_cost = PSY.get_shut_down(PSY.get_operation_cost(comp))
-            data_vec(val) .*= start_cost
+            stop_cost = PSY.get_shut_down(PSY.get_operation_cost(comp))
+            data_vec(val) .*= stop_cost
             return val
         end
     ),
