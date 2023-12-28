@@ -32,6 +32,20 @@ test_calc_production_cost = ComponentTimedMetric(
     end,
 )
 
+test_calc_system_slack_up = SystemTimedMetric(
+    "SystemSlackUp",
+    "Calculate the system balance slack up",
+    (res::IS.Results,
+        start_time::Union{Nothing, Dates.DateTime},
+        len::Union{Int, Nothing}) -> let
+        key = PSI.VariableKey(SystemBalanceSlackUp, System)
+        res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
+        # If there's more than a datetime column and a data column, we are misunderstanding
+        @assert size(first(values(res)), 2) == 2
+        first(values(res))
+    end,
+)
+
 my_dates = [DateTime(2023), DateTime(2024)]
 my_data1 = [3.14, 2.71]
 my_data2 = [1.61, 1.41]
@@ -66,31 +80,51 @@ my_df3 = DataFrame(
 )
 
 # HELPER FUNCTIONS
-function test_component_timed_metric(met, res, ent, agg_fn = nothing)
-    kwargs = (ent isa Component || agg_fn isa Nothing) ? Dict() : Dict(:agg_fn => agg_fn)
+function test_timed_metric_helper(computed_alltime, met, data_colname)
     # Metadata tests
-    computed_alltime = compute(met, res, ent; kwargs...)
     @test metadata(computed_alltime, "title") == met.name
     @test metadata(computed_alltime, "metric") === met
-    the_components = (ent isa Component) ? [ent] : get_components(ent, get_system(res))
-    @test colmetadata(computed_alltime, get_name(ent), "metric") ==
+    @test colmetadata(computed_alltime, data_colname, "metric") ==
           metadata(computed_alltime, "metric")
-    @test all(colmetadata(computed_alltime, get_name(ent), "components") .== the_components)
-    (ent isa Entity) && @test colmetadata(computed_alltime, get_name(ent), "entity") == ent
 
     # Column tests
-    @test names(computed_alltime) == [DATETIME_COL, get_name(ent)]
+    @test names(computed_alltime) == [DATETIME_COL, data_colname]
     @test eltype(computed_alltime[!, DATETIME_COL]) <: DateTime
-    @test eltype(computed_alltime[!, get_name(ent)]) <: Number
+    @test eltype(computed_alltime[!, data_colname]) <: Number
 
     # Row tests, all time
     # TODO check that the number of rows is correct?
+end
+
+function test_component_timed_metric(met, res, ent, agg_fn = nothing)
+    kwargs = (ent isa Component || agg_fn isa Nothing) ? Dict() : Dict(:agg_fn => agg_fn)
+    computed_alltime = compute(met, res, ent; kwargs...)
+    test_timed_metric_helper(computed_alltime, met, get_name(ent))
 
     # Row tests, specified time
     test_start_time = computed_alltime[2, DATETIME_COL]
     test_len = 3
-    computed_sometime = compute(test_calc_active_power, res, ent;
+    computed_sometime = compute(met, res, ent;
         start_time = test_start_time, len = test_len, kwargs...)
+    @test computed_sometime[1, DATETIME_COL] == test_start_time
+    @test size(computed_sometime, 1) == test_len
+
+    the_components = (ent isa Component) ? [ent] : get_components(ent, get_system(res))
+    @test all(colmetadata(computed_alltime, get_name(ent), "components") .== the_components)
+    (ent isa Entity) && @test colmetadata(computed_alltime, get_name(ent), "entity") == ent
+
+    return computed_alltime, computed_sometime
+end
+
+function test_system_timed_metric(met, res)
+    computed_alltime = compute(met, res)
+    test_timed_metric_helper(computed_alltime, met, names(computed_alltime)[2])
+    @test compute(met, res, nothing) == computed_alltime
+
+    # Row tests, specified time
+    test_start_time = computed_alltime[2, DATETIME_COL]
+    test_len = 3
+    computed_sometime = compute(met, res; start_time = test_start_time, len = test_len)
     @test computed_sometime[1, DATETIME_COL] == test_start_time
     @test size(computed_sometime, 1) == test_len
 
@@ -274,6 +308,11 @@ end
             end
         end
     end
+end
+
+@testset "Test SystemTimedMetric" begin
+    # The relevant data only exists in the ED results
+    test_system_timed_metric(test_calc_system_slack_up, results_ed)
 end
 
 @testset "Non-fundamental Functions" begin

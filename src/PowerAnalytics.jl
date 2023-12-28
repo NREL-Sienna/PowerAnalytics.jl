@@ -10,16 +10,15 @@ export no_datetime
 export Entity, EntityElement, EntitySet
 export NAME_DELIMETER, subtype_to_string, component_to_qualified_string
 export make_entity, default_name, get_name, get_subentities
-export Metric, EntityTimedMetric, ComponentTimedMetric
-export DATETIME_COL, META_COL_KEY
+export Metric, EntityTimedMetric, ComponentTimedMetric, SystemTimedMetric
+export DATETIME_COL, META_COL_KEY, SYSTEM_COL
 export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, data_df,
     data_vec, data_mat, get_description, metric_entity_to_string, hcat_timed
 export compute, compute_all, aggregate_time
 export read_serialized_system,
-    get_populated_decision_problem_results,
-    create_problem_results_dict
-export calc_active_power,
-    calc_production_cost, calc_startup_cost, calc_shutdown_cost, calc_discharge_cycles
+    get_populated_decision_problem_results, create_problem_results_dict
+export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
+    calc_discharge_cycles, calc_system_slack_up
 
 #I/O Imports
 import Dates
