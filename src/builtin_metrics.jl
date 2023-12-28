@@ -1,13 +1,20 @@
 # TODO: put make_key in PowerSimulations and refactor existing code to use it
 # TODO test
-"The various key entry types that can be used to make a PSI.OptimizationContainerKey"
-const EntryType = Union{
+
+"The various key entry types that can work with a System"
+const SystemEntryType = Union{
     PSI.VariableType,
     PSI.ExpressionType,
+}
+
+"The various key entry types that can be used to make a PSI.OptimizationContainerKey"
+const EntryType = Union{
+    SystemEntryType,
     PSI.ParameterType,
     PSI.AuxVariableType,
     PSI.InitialConditionType,
 }
+
 "Create a PSI.OptimizationContainerKey from the given key entry type and component.
 
 # Arguments
@@ -47,25 +54,60 @@ function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::
                 "$(get_name(comp)) not in the results for $(PSI.encode_key_as_string(key))",
             ),
         )
-    return res[!, ["DateTime", get_name(comp)]]
+    return res[!, [DATETIME_COL, get_name(comp)]]
+end
+
+"Given an EntryType that applies to the System, fetch a single column of results"
+function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType},
+    start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
+    key = make_key(entry, PSY.System)
+    res = first(
+        values(PSI.read_results_with_keys(
+                res,
+                [key];
+                start_time = start_time,
+                len = len,
+            )),
+    )
+    @assert size(res, 2) == 2 "Expected a time column and a data column in the results for $(PSI.encode_key_as_string(key)), got $(size(res, 2)) columns"
+    @assert DATETIME_COL in names(res) "Expected a column named $DATETIME_COL in the results for $(PSI.encode_key_as_string(key)), got $(names(res))"
+    # Whatever the non-time column is, rename it to something standard
+    res = DataFrames.rename(res, findfirst(!=(DATETIME_COL), names(res)) => SYSTEM_COL)
+    return res[!, [DATETIME_COL, SYSTEM_COL]]
 end
 
 # TODO test
-"Convenience function to convert an EntryType to a function and make a Metric from it"
-make_metric_from_entry(name::String, description::String, key::Type{<:EntryType}) =
+"Convenience function to convert an EntryType to a function and make a ComponentTimedMetric from it"
+make_component_metric_from_entry(
+    name::String,
+    description::String,
+    key::Type{<:EntryType},
+) =
     ComponentTimedMetric(name, description,
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
             read_component_result(res, key, comp, start_time, len))
 
+# TODO test
+"Convenience function to convert a SystemEntryType to a function and make a SystemTimedMetric from it"
+make_system_metric_from_entry(
+    name::String,
+    description::String,
+    key::Type{<:SystemEntryType},
+) =
+    SystemTimedMetric(name, description,
+        (res::IS.Results,
+            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+            read_system_result(res, key, start_time, len))
+
 # TODO perhaps these built-in metrics should be in some sort of container
-calc_active_power = make_metric_from_entry(
+calc_active_power = make_component_metric_from_entry(
     "ActivePower",
     "Calculate the active power output of the specified Entity",
     PSI.ActivePowerVariable,
 )
 
-calc_production_cost = make_metric_from_entry(
+calc_production_cost = make_component_metric_from_entry(
     "ProductionCost",
     "Calculate the active power output of the specified Entity",
     PSI.ProductionCostExpression,
@@ -114,4 +156,10 @@ calc_discharge_cycles = ComponentTimedMetric(
             return val
         end
     ),
+)
+
+calc_system_slack_up = make_system_metric_from_entry(
+    "SystemSlackUp",
+    "Calculate the system balance slack up",
+    PSI.SystemBalanceSlackUp,
 )

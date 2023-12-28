@@ -1,11 +1,22 @@
+# TODO there is probably a more principled way of structuring this Metric type hierarchy -- maybe parameterization?
 "The basic type for all Metrics."
 abstract type Metric end
 
-"Time series Metrics defined on Entities."
-abstract type EntityTimedMetric <: Metric end
+"Time series Metrics."
+abstract type TimedMetric <: Metric end
 
-"EntityTimedMetrics implemented by evaluating a function on Components"
+"Time series Metrics defined on Entities."
+abstract type EntityTimedMetric <: TimedMetric end
+
+"EntityTimedMetrics implemented by evaluating a function on each Component"
 struct ComponentTimedMetric <: EntityTimedMetric
+    name::String
+    description::String
+    eval_fn::Function
+end
+
+"Time series Metrics defined on Systems."
+struct SystemTimedMetric <: TimedMetric
     name::String
     description::String
     eval_fn::Function
@@ -29,8 +40,11 @@ aggregation.
 """
 const META_COL_KEY::String = "meta_col"
 
-get_name(m::ComponentTimedMetric) = m.name
-get_description(m::ComponentTimedMetric) = m.description
+"Name of a column that represents whole-of-System data"
+const SYSTEM_COL::String = "System"
+
+get_name(m::Union{ComponentTimedMetric, SystemTimedMetric}) = m.name
+get_description(m::Union{ComponentTimedMetric, SystemTimedMetric}) = m.description
 
 "Canonical way to represent a (Metric, Entity) pair as a string."
 metric_entity_to_string(m::Metric, e::Entity) =
@@ -79,6 +93,18 @@ end
 "Select the data columns of the DataFrame as a Matrix with copying."
 data_mat(df::DataFrames.AbstractDataFrame) = Matrix(data_df(df))
 
+# Validation and metadata management helper function for various compute methods
+function _compute_meta!(val, metric, results)
+    (DATETIME_COL in names(val)) || throw(ArgumentError(
+        "Result metric.eval_fn did not include a $DATETIME_COL column"))
+
+    metadata!(val, "title", get_name(metric); style = :note)
+    metadata!(val, "metric", metric; style = :note)
+    metadata!(val, "results", results; style = :note)
+    set_col_meta!(val, DATETIME_COL)
+    colmetadata!(val, 2, "metric", metric; style = :note)
+end
+
 """
 Compute the given metric on the given component within the given set of results, returning a
 DataFrame with a DateTime column and a data column labeled with the component's name.
@@ -95,17 +121,39 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, comp::Compon
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
     val = metric.eval_fn(results, comp, start_time, len)
-    (DATETIME_COL in names(val)) || throw(ArgumentError(
-        "Result metric.eval_fn did not include a $DATETIME_COL column"))
-
-    metadata!(val, "title", metric.name; style = :note)
-    metadata!(val, "metric", metric; style = :note)
-    metadata!(val, "results", results; style = :note)
-    set_col_meta!(val, DATETIME_COL)
+    _compute_meta!(val, metric, results)
     colmetadata!(val, 2, "components", [comp]; style = :note)
-    colmetadata!(val, 2, "metric", metric; style = :note)
     return val
 end
+
+"""
+Compute the given metric on the System associated with the given set of results, returning a
+DataFrame with a DateTime column and a data column.
+
+# Arguments
+ - `metric::SystemTimedMetric`: the metric to compute
+ - `results::IS.Results`: the results from which to fetch data
+ - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+   time series should begin
+ - `len::Union{Int, Nothing} = nothing`: the number of points in the resulting time series
+"""
+function compute(metric::SystemTimedMetric, results::IS.Results;
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing)
+    val = metric.eval_fn(results, start_time, len)
+    _compute_meta!(val, metric, results)
+    return val
+end
+
+"""
+Compute the given metric on the System associated with the given set of results, returning a
+DataFrame with a DateTime column and a data column; takes Nothing where the
+ComponentTimedMetric method of this function would take a Component/Entity for convenience
+"""
+compute(metric::SystemTimedMetric, results::IS.Results, entity::Nothing;
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing) = compute(metric, results;
+    start_time = start_time, len = len)
 
 # TODO test allow_missing behavior
 function _extract_common_time(dfs::DataFrames.AbstractDataFrame...;
@@ -178,13 +226,9 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
     data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
     val = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
 
-    metadata!(val, "title", metric.name; style = :note)
-    metadata!(val, "metric", metric; style = :note)
-    metadata!(val, "results", results; style = :note)
-    set_col_meta!(val, DATETIME_COL)
+    _compute_meta!(val, metric, results)
     colmetadata!(val, 2, "components", components; style = :note)
     colmetadata!(val, 2, "entity", entity; style = :note)
-    colmetadata!(val, 2, "metric", metric; style = :note)
     return val
 end
 
@@ -195,18 +239,19 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
 [`compute`](@ref) and collect the results in a DataFrame with a single DateTime column.
 
 # Arguments
- - `metrics::Vector{<:EntityTimedMetric}`: the metrics to compute
+ - `metrics::Vector{<:TimedMetric}`: the metrics to compute
  - `results::IS.Results`: the results from which to fetch data
- - `entities::Vector{<:Entity}`: the entities on which to compute the metrics
+ - `entities::Vector{<:Union{Entity, Nothing}}`: the entities on which to compute the
+   metrics, or nothing for system metrics
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
    of names for the columns of ouput data. Entries of `nothing` default to the result of
    [`metric_entity_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
    `nothing`
  - `kwargs...`: pass through to [`compute`](@ref)
 """
-function compute_all(metrics::Vector{<:EntityTimedMetric},
+function compute_all(metrics::Vector{<:TimedMetric},
     results::IS.Results,
-    entities::Vector{<:Entity},
+    entities::Vector{<:Union{Entity, Nothing}},
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
 )
@@ -216,11 +261,13 @@ function compute_all(metrics::Vector{<:EntityTimedMetric},
     length(col_names) == length(metrics) || throw(
         ArgumentError("Got $(length(metrics)) metrics but $(length(col_names)) names"))
 
+    # For each triplet, do the computation, then rename the entity/System column to the
+    # given name or construct our own name
     vals = [
         DataFrames.rename(
             compute(metric, results, entity; kwargs...),
-            get_name(entity) =>
-                (name === nothing) ? metric_entity_to_string(metric, entity) : name,
+            ((entity === nothing) ? SYSTEM_COL : get_name(entity)) =>
+                ((name === nothing) ? metric_entity_to_string(metric, entity) : name),
         ) for (metric, entity, name) in zip(metrics, entities, col_names)
     ]
 
