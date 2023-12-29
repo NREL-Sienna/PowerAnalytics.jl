@@ -40,10 +40,26 @@ test_calc_system_slack_up = SystemTimedMetric(
         len::Union{Int, Nothing}) -> let
         key = PSI.VariableKey(SystemBalanceSlackUp, System)
         res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
+        res = first(values(res))
         # If there's more than a datetime column and a data column, we are misunderstanding
-        @assert size(first(values(res)), 2) == 2
-        first(values(res))
+        @assert size(res, 2) == 2
+        return DataFrames.rename(
+            res,
+            findfirst(!=(DATETIME_COL), names(res)) => SYSTEM_COL,
+        )
     end,
+)
+
+test_calc_sum_objective_value = ResultsTimelessMetric(
+    "SumObjectiveValue",
+    "Sum the objective values achieved in the optimization problems",
+    (res::IS.Results) -> sum(PSI.read_optimizer_stats(res)[!, "objective_value"]),
+)
+
+test_calc_sum_solve_time = ResultsTimelessMetric(
+    "SumSolveTime",
+    "Sum the solve times taken by the optimization problems",
+    (res::IS.Results) -> sum(PSI.read_optimizer_stats(res)[!, "solve_time"]),
 )
 
 my_dates = [DateTime(2023), DateTime(2024)]
@@ -81,19 +97,20 @@ my_df3 = DataFrame(
 
 # HELPER FUNCTIONS
 function test_timed_metric_helper(computed_alltime, met, data_colname)
-    # Metadata tests
-    @test metadata(computed_alltime, "title") == met.name
-    @test metadata(computed_alltime, "metric") === met
-    @test colmetadata(computed_alltime, data_colname, "metric") ==
-          metadata(computed_alltime, "metric")
-
-    # Column tests
+    test_generic_metric_helper(computed_alltime, met, data_colname)
     @test names(computed_alltime) == [DATETIME_COL, data_colname]
     @test eltype(computed_alltime[!, DATETIME_COL]) <: DateTime
-    @test eltype(computed_alltime[!, data_colname]) <: Number
 
     # Row tests, all time
     # TODO check that the number of rows is correct?
+end
+
+function test_generic_metric_helper(computed, met, data_colname)
+    @test metadata(computed, "title") == met.name
+    @test metadata(computed, "metric") === met
+    @test colmetadata(computed, data_colname, "metric") ==
+          metadata(computed, "metric")
+    @test eltype(computed[!, data_colname]) <: Number
 end
 
 function test_component_timed_metric(met, res, ent, agg_fn = nothing)
@@ -118,7 +135,7 @@ end
 
 function test_system_timed_metric(met, res)
     computed_alltime = compute(met, res)
-    test_timed_metric_helper(computed_alltime, met, names(computed_alltime)[2])
+    test_timed_metric_helper(computed_alltime, met, SYSTEM_COL)
     @test compute(met, res, nothing) == computed_alltime
 
     # Row tests, specified time
@@ -129,6 +146,13 @@ function test_system_timed_metric(met, res)
     @test size(computed_sometime, 1) == test_len
 
     return computed_alltime, computed_sometime
+end
+
+function test_results_timeless_metric(met, res)
+    computed = compute(met, res)
+    test_generic_metric_helper(computed, met, RESULTS_COL)
+    @test compute(met, res, nothing) == computed
+    return computed
 end
 
 function test_df_approx_equal(lhs, rhs)
@@ -315,6 +339,12 @@ end
     test_system_timed_metric(test_calc_system_slack_up, results_ed)
 end
 
+@testset "Test ResultsTimelessMetric" begin
+    for (label, res) in pairs(resultses)
+        test_results_timeless_metric(test_calc_sum_objective_value, res)
+    end
+end
+
 @testset "Non-fundamental Functions" begin
     my_metrics = [test_calc_active_power, test_calc_active_power,
         test_calc_production_cost, test_calc_production_cost]
@@ -353,4 +383,11 @@ end
     @test_throws ArgumentError compute_all(results_uc, my_metrics, my_entities[2:end])
     @test_throws ArgumentError compute_all(results_uc, my_metrics, my_entities,
         my_names[2:end])
+
+    for (label, res) in pairs(resultses)
+        @test compute_all(res, [test_calc_sum_objective_value, test_calc_sum_solve_time];
+            col_names = ["Met1", "Met2"]) == DataFrame(
+            "Met1" => first(data_mat(compute(test_calc_sum_objective_value, res))),
+            "Met2" => first(data_mat(compute(test_calc_sum_solve_time, res))))
+    end
 end
