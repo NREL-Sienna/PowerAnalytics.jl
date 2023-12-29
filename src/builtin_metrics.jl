@@ -57,6 +57,7 @@ function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::
     return res[!, [DATETIME_COL, get_name(comp)]]
 end
 
+# TODO caching here too
 "Given an EntryType that applies to the System, fetch a single column of results"
 function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType},
     start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
@@ -209,3 +210,28 @@ calc_system_slack_up = make_system_metric_from_entry(
     "Calculate the system balance slack up",
     PSI.SystemBalanceSlackUp,
 )
+
+# TODO caching here too
+make_results_metric_from_sum_optimizer_stat(
+    name::String,
+    description::String,
+    stats_key::String) = ResultsTimelessMetric(
+    name,
+    description,
+    (res::IS.Results) -> sum(PSI.read_optimizer_stats(res)[!, stats_key]),
+)
+
+calc_sum_objective_value = make_results_metric_from_sum_optimizer_stat(
+    "SumObjectiveValue",
+    "Sum the objective values achieved in the optimization problems",
+    "objective_value")
+
+calc_sum_solve_time = make_results_metric_from_sum_optimizer_stat(
+    "SumSolveTime",
+    "Sum the solve times taken by the optimization problems",
+    "solve_time")
+
+calc_sum_bytes_alloc = make_results_metric_from_sum_optimizer_stat(
+    "SumBytesAlloc",
+    "Sum the bytes allocated to the optimization problems",
+    "solve_bytes_alloc")
