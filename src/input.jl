@@ -41,8 +41,8 @@ end
 
 """
 Accept a directory that contains several results subdirectories (that each contain
-`results`, `problems`, etc. sub-subdirectories) and construct a String =>
-SimulationProblemResults dictionary where the keys are the subdirectory names and the values
+`results`, `problems`, etc. sub-subdirectories) and construct a sorted dictionary from
+String to SimulationProblemResults where the keys are the subdirectory names and the values
 are loaded results datasets with (by default) attached systems.
 
 # Arguments
@@ -62,7 +62,7 @@ function create_problem_results_dict(
     if scenarios === nothing
         scenarios = filter(x -> isdir(joinpath(results_dir, x)), readdir(results_dir))
     end
-    return Dict(
+    return SortedDict(
         scenario => get_populated_decision_problem_results(
             PSI.SimulationResults(joinpath(results_dir, scenario)),
             problem; kwargs...) for scenario in scenarios

@@ -139,17 +139,35 @@ calc_active_power_forecast = make_component_metric_from_entry(
 )
 
 calc_load_forecast = ComponentTimedMetric(
-    "Load",
+    "LoadForecast",
     "Fetch the forecast active load of the specified Entity",
     # Load is negative power
-    # TODO maybe eval_fn is too much of an implementation detail and I should use compute
-    # instead (in which case it's annoying that compute has start_time and len as kwargs and
-    # eval_fn has them as positional args)
     # NOTE if we had our own time-indexed dataframe type we could overload multiplication with a scalar and simplify this
     (args...) -> let
-        val = calc_active_power_forecast.eval_fn(args...)
+        val = compute(calc_active_power_forecast, args...)
         data_vec(val) .*= -1
         return val
+    end,
+)
+
+calc_system_load_forecast = SystemTimedMetric(
+    "SystemLoadForecast",
+    "Fetch the forecast active load of all the ElectricLoad Components in the system",
+    (res::IS.Results, st::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+        compute(calc_load_forecast, res, make_entity(PSY.ElectricLoad), st, len),
+)
+
+calc_net_load_forecast = CustomTimedMetric(
+    "NetLoadForecast",
+    "SystemLoadForecast minus ActivePowerForecast of the given Entity",
+    (res::IS.Results, comp::Union{Component, Entity},
+        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
+        vals = compute_all(res,
+            [calc_system_load_forecast, calc_active_power],
+            [nothing, comp],
+            ["load", "pow"])
+        res = DataFrames.transform(vals, ["load", "pow"] => (-) => get_name(comp))
+        return res[!, [DATETIME_COL, get_name(comp)]]
     end,
 )
 
@@ -188,6 +206,27 @@ calc_shutdown_cost = ComponentTimedMetric(
     ),
 )
 
+calc_total_cost = ComponentTimedMetric(
+    "TotalCost",
+    "Calculate the production+startup+shutdown cost of the specified Entity; startup and shutdown costs are assumed to be zero if undefined",
+    (args...) -> let
+        production = compute(calc_production_cost, args...)
+        startup = try
+            data_vec(compute(calc_startup_cost, args...))
+        catch
+            repeat(0.0, size(production, 1))
+        end
+        shutdown = try
+            data_vec(compute(calc_shutdown_cost, args...))
+        catch
+            repeat(0.0, size(production, 1))
+        end
+        # NOTE if I ever make my own type for timed dataframes, should do custom setindex! to make this less painful
+        production[!, first(data_cols(production))] += startup + shutdown
+        return production
+    end,
+)
+
 calc_discharge_cycles = ComponentTimedMetric(
     "DischargeCycles",
     "Calculate the number of discharge cycles a storage device has gone through in the time period",
@@ -210,6 +249,24 @@ calc_system_slack_up = make_system_metric_from_entry(
     "Calculate the system balance slack up",
     PSI.SystemBalanceSlackUp,
 )
+
+"""
+Create a boolean Metric for whether the given time period has system balance slack up of
+magnitude greater than the `threshold` argument
+"""
+make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(
+    "IsSlackUp($threshold)",
+    "Calculate whether the given time period has system balance slack up of magnitude greater than $threshold",
+    (args...) -> let
+        val = compute(calc_system_slack_up, args...)
+        val[!, first(data_cols(val))] =
+            abs.(val[!, first(data_cols(val))]) .> threshold
+        return val
+    end,
+)
+
+# TODO is this the appropriate place to put a default threshold (and is it the appropriate default)?
+calc_is_slack_up = make_calc_is_slack_up(1e-3)
 
 # TODO caching here too
 make_results_metric_from_sum_optimizer_stat(

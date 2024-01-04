@@ -15,14 +15,22 @@ abstract type EntityTimedMetric <: TimedMetric end
 struct ComponentTimedMetric <: EntityTimedMetric
     name::String
     description::String
-    eval_fn::Function
+    eval_fn::Function  # Only needs to handle Components, not Entities
+end
+
+# TODO test CustomTimedMetric
+"EntityTimedMetrics implemented without drilling down to the base Components, just call the eval_fn directly"
+struct CustomTimedMetric <: EntityTimedMetric
+    name::String
+    description::String
+    eval_fn::Function  # Needs to handle both Components and Entities
 end
 
 "Time series Metrics defined on Systems."
 struct SystemTimedMetric <: TimedMetric
     name::String
     description::String
-    eval_fn::Function
+    eval_fn::Function  # Doesn't take a Component or Entity
 end
 
 "Timeless Metrics with a single value per Results struct"
@@ -56,12 +64,12 @@ const SYSTEM_COL::String = "System"
 "Name of a column that represents whole-of-Results data"
 const RESULTS_COL::String = "Results"
 
-get_name(m::Union{ComponentTimedMetric, SystemTimedMetric, ResultsTimelessMetric}) = m.name
-get_description(m::Union{ComponentTimedMetric, SystemTimedMetric, ResultsTimelessMetric}) =
-    m.description
+# Override these if you define Metric subtypes with different implementations
+get_name(m::Metric) = m.name
+get_description(m::Metric) = m.description
 
-"Canonical way to represent a (Metric, Entity) pair as a string."
-metric_entity_to_string(m::Metric, e::Entity) =
+"Canonical way to represent a (Metric, Entity) or (Metric, Component) pair as a string."
+metric_entity_to_string(m::Metric, e::Union{Entity, Component}) =
     get_name(m) * NAME_DELIMETER * get_name(e)
 
 "Check whether a column is metadata"
@@ -128,6 +136,17 @@ function _compute_meta_generic!(val, metric, results)
     )
 end
 
+# Helper function to call eval_fn and set the appropriate metadata
+function _compute_entity_timed_helper(metric::EntityTimedMetric, results::IS.Results,
+    comp::Union{Component, Entity};
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing)
+    val = metric.eval_fn(results, comp, start_time, len)
+    _compute_meta_timed!(val, metric, results)
+    colmetadata!(val, 2, "components", [comp]; style = :note)
+    return val
+end
+
 """
 Compute the given metric on the given component within the given set of results, returning a
 DataFrame with a DateTime column and a data column labeled with the component's name.
@@ -140,14 +159,27 @@ DataFrame with a DateTime column and a data column labeled with the component's 
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of points in the resulting time series
 """
-function compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component;
+compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing)
-    val = metric.eval_fn(results, comp, start_time, len)
-    _compute_meta_timed!(val, metric, results)
-    colmetadata!(val, 2, "components", [comp]; style = :note)
-    return val
-end
+    len::Union{Int, Nothing} = nothing) =
+    _compute_entity_timed_helper(metric, results, comp; start_time, len)
+
+"""
+Compute the given metric on the given component within the given set of results, returning a
+DataFrame with a DateTime column and a data column labeled with the component's name.
+
+# Arguments
+ - `metric::CustomTimedMetric`: the metric to compute
+ - `results::IS.Results`: the results from which to fetch data
+ - `comp::Component`: the component on which to compute the metric
+ - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+   time series should begin
+ - `len::Union{Int, Nothing} = nothing`: the number of points in the resulting time series
+"""
+compute(metric::CustomTimedMetric, results::IS.Results, comp::Union{Component, Entity};
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing) =
+    _compute_entity_timed_helper(metric, results, comp; start_time, len)
 
 """
 Compute the given metric on the System associated with the given set of results, returning a
@@ -184,7 +216,7 @@ end
 
 """
 Compute the given metric on the given set of results, returning a DataFrame with a single
-cell; takes Nothing where the ComponentTimedMetric method of this function would take a
+cell; takes Nothing where the EntityTimedMetric method of this function would take a
 Component/Entity for convenience
 """
 compute(metric::ResultsTimelessMetric, results::IS.Results, entity::Nothing) =
@@ -193,7 +225,7 @@ compute(metric::ResultsTimelessMetric, results::IS.Results, entity::Nothing) =
 """
 Compute the given metric on the System associated with the given set of results, returning a
 DataFrame with a DateTime column and a data column; takes Nothing where the
-ComponentTimedMetric method of this function would take a Component/Entity for convenience
+EntityTimedMetric method of this function would take a Component/Entity for convenience
 """
 compute(metric::SystemTimedMetric, results::IS.Results, entity::Nothing;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
@@ -278,6 +310,17 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
     return val
 end
 
+# TODO these are currently necessary because eval_fn is supposed to take start_time and len
+# as positional arguments and compute as kwargs; would it be better to just switch one of
+# those?
+"""A version of compute that takes positional arguments for convenience"""
+compute(met, res, ent, start_time, len) =
+    compute(met, res, ent; start_time = start_time, len = len)
+
+"""A version of compute that takes positional arguments for convenience"""
+compute(met, res, start_time, len) =
+    compute(met, res; start_time = start_time, len = len)
+
 # TODO function compute_set
 
 # The core of compute_all, shared between the timed and timeless versions
@@ -320,7 +363,7 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
 """
 compute_all(results::IS.Results,
     metrics::Vector{<:TimedMetric},
-    entities::Union{Nothing, Vector{<:Union{Nothing, Entity}}} = nothing,
+    entities::Union{Nothing, Vector} = nothing,
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
 ) = hcat_timed(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
@@ -341,7 +384,7 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
  - `kwargs...`: pass through to [`compute`](@ref)
 """
 compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric};
-    entities::Union{Nothing, Vector{<:Union{Nothing, Entity}}} = nothing,
+    entities::Union{Nothing, Vector} = nothing,
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing,
     kwargs...,
 ) = hcat(_common_compute_all(results, metrics, entities, col_names; kwargs)...)

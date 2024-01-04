@@ -108,7 +108,7 @@ function get_components(e::ListEntitySet, sys::PSY.System)
     sub_components = Iterators.map(x -> get_components(x, sys), e.content)
     return Iterators.filter(
         get_available,
-        IS.FlattenIteratorWrapper(Component, sub_components),
+        Iterators.flatten(sub_components),
     )
 end
 

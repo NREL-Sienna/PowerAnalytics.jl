@@ -348,8 +348,9 @@ end
 @testset "Non-fundamental Functions" begin
     my_metrics = [test_calc_active_power, test_calc_active_power,
         test_calc_production_cost, test_calc_production_cost]
+    my_component = first(get_components(RenewableDispatch, get_system(results_uc)))
     my_entities = [make_entity(ThermalStandard), make_entity(RenewableDispatch),
-        make_entity(ThermalStandard), make_entity(RenewableDispatch)]
+        make_entity(ThermalStandard), my_component]
     all_result = compute_all(results_uc, my_metrics, my_entities)
 
     for (metric, entity) in zip(my_metrics, my_entities)
@@ -368,10 +369,13 @@ end
                 ),
             ) .== collect(colmetadata(one_result, 2, "components")),
         )
-        @test colmetadata(all_result, metric_entity_to_string(metric, entity), "entity") ==
-              colmetadata(one_result, 2, "entity")
         @test colmetadata(all_result, metric_entity_to_string(metric, entity), "metric") ==
               colmetadata(one_result, 2, "metric")
+        (entity isa Component) || @test colmetadata(
+            all_result,
+            metric_entity_to_string(metric, entity),
+            "entity",
+        ) == colmetadata(one_result, 2, "entity")
     end
 
     my_names = ["Thermal Power", "Renewable Power", "Thermal Cost", "Renewable Cost"]
