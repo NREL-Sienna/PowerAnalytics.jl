@@ -167,7 +167,7 @@ function test_df_approx_equal(lhs, rhs)
 end
 
 # BEGIN TEST SETS
-@testset "Metrics helper functions" begin
+@testset "Test metrics helper functions" begin
     @test metric_entity_to_string(test_calc_active_power, make_entity(ThermalStandard)) ==
           "ActivePower__ThermalStandard"
 
@@ -270,7 +270,7 @@ end
     @test day_agg_2[!, "day"] == Date.(time_vec(day_agg_2))
 end
 
-@testset "ComponentTimedMetric on Components" begin
+@testset "Test ComponentTimedMetric on Components" begin
     for (label, res) in pairs(resultses)
         comps1 = collect(get_components(RenewableDispatch, get_system(res)))
         comps2 = collect(get_components(ThermalStandard, get_system(res)))
@@ -287,7 +287,7 @@ wind_ent = make_entity(RenewableDispatch, "WindBusA")
 solar_ent = make_entity(RenewableDispatch, "SolarBusC")
 thermal_ent = make_entity(ThermalStandard, "Brighton")
 test_entities = [wind_ent, solar_ent, thermal_ent]
-@testset "ComponentTimedMetric on EntityElements" begin
+@testset "Test ComponentTimedMetric on EntityElements" begin
     for (label, res) in pairs(resultses)
         for ent in test_entities
             computed_alltime, computed_sometime =
@@ -306,7 +306,7 @@ test_entities = [wind_ent, solar_ent, thermal_ent]
     end
 end
 
-@testset "ComponentTimedMetric on EntitySets" begin
+@testset "Test ComponentTimedMetric on EntitySets" begin
     test_entitysets = [
         make_entity(wind_ent, solar_ent),
         make_entity(test_entities...),
@@ -345,7 +345,7 @@ end
     end
 end
 
-@testset "Non-fundamental Functions" begin
+@testset "Test compute_all" begin
     my_metrics = [test_calc_active_power, test_calc_active_power,
         test_calc_production_cost, test_calc_production_cost]
     my_component = first(get_components(RenewableDispatch, get_system(results_uc)))
@@ -389,9 +389,85 @@ end
         my_names[2:end])
 
     for (label, res) in pairs(resultses)
-        @test compute_all(res, [test_calc_sum_objective_value, test_calc_sum_solve_time];
-            col_names = ["Met1", "Met2"]) == DataFrame(
+        @test compute_all(res, [test_calc_sum_objective_value, test_calc_sum_solve_time],
+            nothing, ["Met1", "Met2"]) == DataFrame(
             "Met1" => first(data_mat(compute(test_calc_sum_objective_value, res))),
             "Met2" => first(data_mat(compute(test_calc_sum_solve_time, res))))
     end
+
+    broadcasted_compute_all = compute_all(
+        results_uc,
+        [test_calc_active_power, test_calc_active_power],
+        make_entity(ThermalStandard),
+        ["discard", "ThermalStandard"],
+    )
+    @test broadcasted_compute_all[!, [DATETIME_COL, "ThermalStandard"]] ==
+          compute(test_calc_active_power, results_uc, make_entity(ThermalStandard))
+end
+
+@testset "Test compose_metrics" begin
+    myent = make_entity(ThermalStandard)
+    mymet1 = compose_metrics(
+        "ThriceActivePower",
+        "Computes ActivePower*3",
+        (+),
+        test_calc_active_power,
+        test_calc_active_power,
+        test_calc_active_power,
+    )
+    results1 = compute_all(
+        results_uc,
+        [test_calc_active_power, mymet1],
+        [myent, myent],
+        ["once", "thrice"],
+    )
+    @test all(results1[!, "once"] * 3 .== results1[!, "thrice"])
+
+    mymet2 = compose_metrics(
+        "ThriceSystemSlackUp",
+        "Computes SystemSlackUp*3",
+        (+),
+        test_calc_system_slack_up,
+        test_calc_system_slack_up,
+        test_calc_system_slack_up,
+    )
+    results2 = compute_all(
+        results_ed,
+        [test_calc_system_slack_up, mymet2],
+        nothing,
+        ["once", "thrice"],
+    )
+    @test all(results2[!, "once"] * 3 .== results2[!, "thrice"])
+
+    mymet3 = compose_metrics(
+        "ThriceSumObjectiveValue",
+        "Computes SumObjectiveValue*3",
+        (+),
+        test_calc_sum_objective_value,
+        test_calc_sum_objective_value,
+        test_calc_sum_objective_value,
+    )
+    results3 = compute_all(
+        results_uc,
+        [test_calc_sum_objective_value, mymet3],
+        nothing,
+        ["once", "thrice"],
+    )
+    @test all(results3[!, "once"] * 3 .== results3[!, "thrice"])
+
+    mymet4 = compose_metrics(
+        "SlackSlackPower",
+        "Computes SystemSlackUp^2*ActivePower (element-wise)",
+        (.*),
+        test_calc_system_slack_up,
+        test_calc_active_power,
+        test_calc_system_slack_up,
+    )
+    results4 = compute_all(
+        results_ed,
+        [test_calc_system_slack_up, test_calc_active_power, mymet4],
+        [nothing, myent, myent],
+        ["slack", "power", "final"],
+    )
+    @test all(results4[!, "slack"].^2 .* results4[!, "power"] .== results4[!, "final"])
 end
