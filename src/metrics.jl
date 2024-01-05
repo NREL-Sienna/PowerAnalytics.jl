@@ -326,6 +326,7 @@ compute(met, res, start_time, len) =
 # The core of compute_all, shared between the timed and timeless versions
 function _common_compute_all(results, metrics, entities, col_names; kwargs)
     (entities === nothing) && (entities = fill(nothing, length(metrics)))
+    (entities isa Vector) || (entities = repeat([entities], length(metrics)))
     (col_names === nothing) && (col_names = fill(nothing, length(metrics)))
 
     length(entities) == length(metrics) || throw(
@@ -351,10 +352,10 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
 [`compute`](@ref) and collect the results in a DataFrame with a single DateTime column.
 
 # Arguments
- - `metrics::Vector{<:TimedMetric}`: the metrics to compute
  - `results::IS.Results`: the results from which to fetch data
- - `entities::Union{Nothing, Vector{<:Union{Nothing, Entity}}} = nothing`: the entities on
-   which to compute the metrics, or nothing for system/results metrics
+ - `metrics::Vector{<:TimedMetric}`: the metrics to compute
+ - `entities`: either a scalar or vector of `Nothing`/`Component`/`Entity`: the entities on
+   which to compute the metrics, or nothing for system/results metrics; broadcast if scalar
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
    of names for the columns of ouput data. Entries of `nothing` default to the result of
    [`metric_entity_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
@@ -363,7 +364,7 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
 """
 compute_all(results::IS.Results,
     metrics::Vector{<:TimedMetric},
-    entities::Union{Nothing, Vector} = nothing,
+    entities::Union{Nothing, Component, Entity, Vector} = nothing,
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
 ) = hcat_timed(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
@@ -373,19 +374,19 @@ For each (metric, result, entity) tuple in zip(metrics, results, entities), call
 [`compute`](@ref) and collect the results in a DataFrame.
 
 # Arguments
- - `metrics::Vector{<:TimelessMetric}`: the metrics to compute
  - `results::IS.Results`: the results from which to fetch data
- - `entities::Union{Nothing, Vector{<:Union{Nothing, Entity}}} = nothing`: the entities on
-   which to compute the metrics, or nothing for system/results metrics
+ - `metrics::Vector{<:TimelessMetric}`: the metrics to compute
+ - `entities`: either a scalar or vector of `Nothing`/`Component`/`Entity`: the entities on
+   which to compute the metrics, or nothing for system/results metrics; broadcast if scalar
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
    of names for the columns of ouput data. Entries of `nothing` default to the result of
    [`metric_entity_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
    `nothing`
  - `kwargs...`: pass through to [`compute`](@ref)
 """
-compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric};
-    entities::Union{Nothing, Vector} = nothing,
-    col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing,
+compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
+    entities::Union{Nothing, Component, Entity, Vector} = nothing,
+    col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
 ) = hcat(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
 
@@ -452,4 +453,106 @@ function aggregate_time(
     set_col_meta!(result, groupby_col)
     keep_groupby_col || (result = DataFrames.select(result, DataFrames.Not(groupby_col)))
     return result
+end
+
+function _common_compose_metrics(res, ent, reduce_fn, metrics, output_col_name; kwargs...)
+    col_names = string.(range(1, length(metrics)))
+    sub_results = compute_all(res, collect(metrics), ent, col_names; kwargs...)
+    result = DataFrames.transform(sub_results, col_names => reduce_fn => output_col_name)
+    (DATETIME_COL in names(result)) && return result[!, [DATETIME_COL, output_col_name]]
+    return first(result[!, output_col_name])  # eval_fn of timeless metrics returns scalar
+end
+
+"""
+Given a list of metrics and a function that applies to their results to produce one result,
+create a new metric that computes the sub-metrics and applies the function to produce its
+own result.
+
+# Arguments
+ - `name::String`: the name of the new Metric
+ - `description::String`: the description of the new Metric
+ - `reduce_fn`: a callable that takes one value from each of the input Metrics and returns a
+   single value that will be the result of this Metric. "Value" means a vector (not a
+   DataFrame) in the case of timed Metrics and a scalar for timeless Metrics.
+ - `metrics`: the input Metrics. It is currently not possible to combine timed with timeless
+   Metrics, though it is possible to combine EntityTimedMetrics with SystemTimedMetrics.
+"""
+function compose_metrics end  # For the unified docstring
+
+compose_metrics(
+    name::String,
+    description::String,
+    reduce_fn,
+    metrics::EntityTimedMetric...,
+) = CustomTimedMetric(name, description,
+    (res::IS.Results, ent::Union{Component, Entity},
+        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+        _common_compose_metrics(
+            res,
+            ent,
+            reduce_fn,
+            metrics,
+            get_name(ent);
+            start_time = start_time,
+            len = len,
+        ),
+)
+
+compose_metrics(
+    name::String,
+    description::String,
+    reduce_fn,
+    metrics::SystemTimedMetric...) = SystemTimedMetric(name, description,
+    (
+        res::IS.Results,
+        start_time::Union{Nothing, Dates.DateTime},
+        len::Union{Int, Nothing},
+    ) ->
+        _common_compose_metrics(
+            res,
+            nothing,
+            reduce_fn,
+            metrics,
+            SYSTEM_COL;
+            start_time = start_time,
+            len = len,
+        ),
+)
+
+compose_metrics(
+    name::String,
+    description::String,
+    reduce_fn,
+    metrics::ResultsTimelessMetric...) = ResultsTimelessMetric(name, description,
+    res::IS.Results ->
+        _common_compose_metrics(
+            res,
+            nothing,
+            reduce_fn,
+            metrics,
+            RESULTS_COL,
+        ),
+)
+
+# Create an EntityTimedMetric that wraps a SystemTimedMetric, disregarding the entity
+entity_metric_from_system_metric(in_metric::SystemTimedMetric) = CustomTimedMetric(
+    get_name(in_metric),
+    get_description(in_metric),
+    (res::IS.Results, comp::Union{Component, Entity},
+        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+        compute(in_metric, res, start_time, len))
+
+# This one only gets triggered when we have at least one EntityTimedMetric *and* at least
+# one SystemTimedMetric, in which case the behavior is to treat the SystemTimedMetrics as if
+# they applied to the entity
+function compose_metrics(
+    name::String,
+    description::String,
+    reduce_fn,
+    metrics::Union{EntityTimedMetric, SystemTimedMetric}...)
+    wrapped_metrics = [
+        (m isa SystemTimedMetric) ? entity_metric_from_system_metric(m) : m for
+        m in metrics
+    ]
+    return compose_metrics(name, description, reduce_fn, wrapped_metrics...)
 end
