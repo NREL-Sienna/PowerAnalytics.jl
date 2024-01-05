@@ -14,8 +14,9 @@ export Metric, TimedMetric, TimelessMetric, EntityTimedMetric, ComponentTimedMet
     SystemTimedMetric, ResultsTimelessMetric, CustomTimedMetric
 export DATETIME_COL, META_COL_KEY, SYSTEM_COL, RESULTS_COL
 export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, data_df,
-    data_vec, data_mat, get_description, metric_entity_to_string, hcat_timed
-export compute, compute_all, aggregate_time, compose_metrics
+    data_vec, data_mat, get_description, get_entity_agg_fn, get_time_agg_fn,
+    with_entity_agg_fn, with_time_agg_fn, metric_entity_to_string
+export compute, compute_all, hcat_timed, aggregate_time, compose_metrics
 export read_serialized_system,
     get_populated_decision_problem_results, create_problem_results_dict
 export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
