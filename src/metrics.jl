@@ -11,27 +11,79 @@ abstract type TimelessMetric <: Metric end
 "Time series Metrics defined on Entities."
 abstract type EntityTimedMetric <: TimedMetric end
 
-"EntityTimedMetrics implemented by evaluating a function on each Component"
+"""
+EntityTimedMetrics implemented by evaluating a function on each Component.
+
+# Arguments
+ - `name::String`: the name of the Metric
+ - `description::String`: a description of the Metric
+ - `eval_fn`: a callable with signature
+   `(::IS.Results, ::Component, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})`
+   that returns a DataFrame representing the results for that Component
+ - `entity_agg_fn`: optional, a callable to aggregate results between Components/Entities,
+   defaults to `sum`
+ - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
+    
+"""
 struct ComponentTimedMetric <: EntityTimedMetric
     name::String
     description::String
-    eval_fn::Function  # Only needs to handle Components, not Entities
+    eval_fn::Any
+    entity_agg_fn::Any
+    time_agg_fn::Any
 end
 
+ComponentTimedMetric(
+    name::String,
+    description::String,
+    eval_fn::Function;
+    entity_agg_fn = sum,
+    time_agg_fn = sum,
+) =
+    ComponentTimedMetric(name, description, eval_fn, entity_agg_fn, time_agg_fn)
+
 # TODO test CustomTimedMetric
-"EntityTimedMetrics implemented without drilling down to the base Components, just call the eval_fn directly"
+"""
+EntityTimedMetrics implemented without drilling down to the base Components, just call the eval_fn directly.
+
+# Arguments
+ - `name::String`: the name of the Metric
+ - `description::String`: a description of the Metric
+ - `eval_fn`: a callable with signature
+   `(::IS.Results, ::Union{Entity, Component}, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})`
+   that returns a DataFrame representing the results for that Component
+ - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
+"""
 struct CustomTimedMetric <: EntityTimedMetric
     name::String
     description::String
-    eval_fn::Function  # Needs to handle both Components and Entities
+    eval_fn::Any
+    time_agg_fn::Any
 end
 
-"Time series Metrics defined on Systems."
+CustomTimedMetric(name::String, description::String, eval_fn::Function; time_agg_fn = sum) =
+    CustomTimedMetric(name, description, eval_fn, time_agg_fn)
+
+"""
+Time series Metrics defined on Systems..
+
+# Arguments
+ - `name::String`: the name of the Metric
+ - `description::String`: a description of the Metric
+ - `eval_fn`: a callable with signature
+   `(::IS.Results, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
+   DataFrame representing the results for that Component
+ - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
+"""
 struct SystemTimedMetric <: TimedMetric
     name::String
     description::String
-    eval_fn::Function  # Doesn't take a Component or Entity
+    eval_fn::Any
+    time_agg_fn::Any
 end
+
+SystemTimedMetric(name::String, description::String, eval_fn::Function; time_agg_fn = sum) =
+    SystemTimedMetric(name, description, eval_fn, time_agg_fn)
 
 "Timeless Metrics with a single value per Results struct"
 struct ResultsTimelessMetric <: TimelessMetric
@@ -67,6 +119,16 @@ const RESULTS_COL::String = "Results"
 # Override these if you define Metric subtypes with different implementations
 get_name(m::Metric) = m.name
 get_description(m::Metric) = m.description
+get_time_agg_fn(m::TimedMetric) = m.time_agg_fn
+# TODO is there a naming convention for this kind of function?
+"Returns a Metric identical to the input except with the given time_agg_fn"
+with_time_agg_fn(m::T, time_agg_fn) where {T <: EntityTimedMetric} =
+    T(m.name, m.description, m.eval_fn; time_agg_fn = time_agg_fn)
+
+get_entity_agg_fn(m::ComponentTimedMetric) = m.entity_agg_fn
+"Returns a Metric identical to the input except with the given entity_agg_fn"
+with_entity_agg_fn(m::ComponentTimedMetric, entity_agg_fn) =
+    ComponentTimedMetric(m.name, m.description, m.eval_fn; entity_agg_fn = entity_agg_fn)
 
 "Canonical way to represent a (Metric, Entity) or (Metric, Component) pair as a string."
 metric_entity_to_string(m::Metric, e::Union{Entity, Component}) =
@@ -282,32 +344,30 @@ DateTime column and a data column labeled with the entity's name.
  - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of points in the resulting time series
- - `agg_fn::Function = sum`: specifies how to aggregate across the components in the entity
 """
 function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Entity;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing, agg_fn::Function = sum)
+    len::Union{Int, Nothing} = nothing)
     # TODO incorporate allow_missing
+    agg_fn = get_entity_agg_fn(metric)
     components = get_components(entity, PowerSimulations.get_system(results))
     vals = [
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
     ]
     if length(vals) == 0
-        result = DataFrame(
-            DATETIME_COL => Vector{Union{Missing, Dates.DateTime}}([missing]),
-            get_name(entity) => agg_fn(Vector{Float64}()))
-        set_col_meta!(result, DATETIME_COL)
-        return result
+        time_col = Vector{Union{Missing, Dates.DateTime}}([missing])
+        data_col = agg_fn(Vector{Float64}())
+    else
+        time_col = _extract_common_time(vals...)
+        data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
     end
-    time_col = _extract_common_time(vals...)
-    data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
-    val = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
+    result = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
 
-    _compute_meta_timed!(val, metric, results)
-    colmetadata!(val, 2, "components", components; style = :note)
-    colmetadata!(val, 2, "entity", entity; style = :note)
-    return val
+    _compute_meta_timed!(result, metric, results)
+    colmetadata!(result, 2, "components", components; style = :note)
+    colmetadata!(result, 2, "entity", entity; style = :note)
+    return result
 end
 
 # TODO these are currently necessary because eval_fn is supposed to take start_time and len
@@ -348,7 +408,7 @@ function _common_compute_all(results, metrics, entities, col_names; kwargs)
 end
 
 """
-For each (metric, result, entity) tuple in zip(metrics, results, entities), call
+For each (metric, result, entity) tuple in `zip(metrics, results, entities)`, call
 [`compute`](@ref) and collect the results in a DataFrame with a single DateTime column.
 
 # Arguments
@@ -370,7 +430,7 @@ compute_all(results::IS.Results,
 ) = hcat_timed(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
 
 """
-For each (metric, result, entity) tuple in zip(metrics, results, entities), call
+For each (metric, result, entity) tuple in `zip(metrics, results, entities)`, call
 [`compute`](@ref) and collect the results in a DataFrame.
 
 # Arguments
@@ -399,6 +459,19 @@ function _make_groupby_col_name(col_names)
     return groupby_col
 end
 
+# Fetch the time_agg_fn associated with the particular column's Metric; error if no agg_fn can be determined
+function _find_time_agg_fn(df, col_name, default_agg_fn)
+    my_agg_fn = default_agg_fn
+    col_md = colmetadata(df, col_name)
+    haskey(col_md, "metric") && (my_agg_fn = get_time_agg_fn(col_md["metric"]))
+    (my_agg_fn === nothing) && throw(
+        ArgumentError(
+            "No time aggregation function found for $col_name; specify in metric or use agg_fn kwarg $(col_md)",
+        ),
+    )
+    return my_agg_fn
+end
+
 """
 Given a DataFrame like that produced by [`compute_all`](@ref), group by a function of the
 time axis, apply a reduction, and report the resulting aggregation indexed by the first
@@ -410,16 +483,18 @@ timestamp in each group.
    same group iff their timestamps produce the same result under `groupby_fn`. Note that
    `groupby_fn=month` puts January 2023 and January 2024 into the same group whereas
    `groupby_fn=(x -> (year(x), month(x)))` does not.
- - `reduce_fn = sum`: a callable that takes a vector of data and produces a scalar of data;
-   gets called for each column in each group
  - `groupby_col::Union{Nothing, AbstractString, Symbol} = nothing`: specify a column name to
    report the result of `groupby_fn` in the output DataFrame, or `nothing` to not
+ - `agg_fn = nothing`: by default, the aggregation function (sum/mean/etc.) is specified by
+   the Metric, which is read from the metadata of each column. If this metadata isn't found,
+   one can specify a default aggregation function like `sum` here; if nothing, an error will
+   be thrown.
 """
 function aggregate_time(
     df::DataFrames.AbstractDataFrame;
     groupby_fn = nothing,
-    reduce_fn = sum,
-    groupby_col::Union{Nothing, AbstractString, Symbol} = nothing)
+    groupby_col::Union{Nothing, AbstractString, Symbol} = nothing,
+    agg_fn = nothing)
 
     # Everything goes into the same group by default
     (groupby_fn === nothing) && (groupby_fn = (_ -> 0))
@@ -437,16 +512,20 @@ function aggregate_time(
         DATETIME_COL => DataFrames.ByRow(groupby_fn) => groupby_col,
     )
     grouped = DataFrames.groupby(transformed, groupby_col)
-    # Operate on all data columns and non-special metadata columns
-    not_index = DataFrames.Not(groupby_col, DATETIME_COL)
+    # For all data columns and non-special metadata columns, find the agg_fn
+    aggregations = [
+        col_name => _find_time_agg_fn(df, col_name, agg_fn) => col_name
+        for col_name in names(df) if !(col_name in (groupby_col, DATETIME_COL))
+    ]
     # Take the first DateTime in each group, reduce the other columns, preserve column names
     # TODO is it okay to always just take the first timestamp, or should there be a
     # reduce_time_fn kwarg to, for instance, allow users to specify that they want the
     # midpoint timestamp?
     combined = DataFrames.combine(grouped,
         DATETIME_COL => first => DATETIME_COL,
-        not_index .=> reduce_fn .=> not_index)
+        aggregations...)
     # Reorder the columns for convention
+    not_index = DataFrames.Not(groupby_col, DATETIME_COL)
     result = DataFrames.select(combined, DATETIME_COL, groupby_col, not_index)
 
     set_col_meta!(result, DATETIME_COL)

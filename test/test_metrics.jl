@@ -99,36 +99,45 @@ my_df3 = DataFrame(
 function test_timed_metric_helper(computed_alltime, met, data_colname)
     test_generic_metric_helper(computed_alltime, met, data_colname)
     @test names(computed_alltime) == [DATETIME_COL, data_colname]
-    @test eltype(computed_alltime[!, DATETIME_COL]) <: DateTime
+    @test eltype(computed_alltime[!, DATETIME_COL]) <: Union{Missing, DateTime}
 
     # Row tests, all time
     # TODO check that the number of rows is correct?
 end
 
 function test_generic_metric_helper(computed, met, data_colname)
-    @test metadata(computed, "title") == met.name
-    @test metadata(computed, "metric") === met
-    @test colmetadata(computed, data_colname, "metric") ==
-          metadata(computed, "metric")
+    @test get(metadata(computed), "title", nothing) == met.name
+    @test get(metadata(computed), "metric", nothing) === met
+    @test get(colmetadata(computed, data_colname), "metric", nothing) ==
+          get(metadata(computed), "metric", nothing)
     @test eltype(computed[!, data_colname]) <: Number
 end
 
-function test_component_timed_metric(met, res, ent, agg_fn = nothing)
-    kwargs = (ent isa Component || agg_fn isa Nothing) ? Dict() : Dict(:agg_fn => agg_fn)
-    computed_alltime = compute(met, res, ent; kwargs...)
+function test_component_timed_metric(met, res, ent)
+    computed_alltime = compute(met, res, ent)
     test_timed_metric_helper(computed_alltime, met, get_name(ent))
 
-    # Row tests, specified time
-    test_start_time = computed_alltime[2, DATETIME_COL]
-    test_len = 3
-    computed_sometime = compute(met, res, ent;
-        start_time = test_start_time, len = test_len, kwargs...)
-    @test computed_sometime[1, DATETIME_COL] == test_start_time
-    @test size(computed_sometime, 1) == test_len
+    the_components =
+        (ent isa Component) ? [ent] :
+        collect(get_components(ent, get_system(res)))
+    @test all(
+        get(colmetadata(computed_alltime, get_name(ent)), "components", nothing) .==
+        the_components,
+    )
+    (ent isa Entity) &&
+        @test get(colmetadata(computed_alltime, get_name(ent)), "entity", nothing) == ent
 
-    the_components = (ent isa Component) ? [ent] : get_components(ent, get_system(res))
-    @test all(colmetadata(computed_alltime, get_name(ent), "components") .== the_components)
-    (ent isa Entity) && @test colmetadata(computed_alltime, get_name(ent), "entity") == ent
+    # Row tests, specified time. Skip for test on empty entity, there is no time axis to base computed_sometime off in this case
+    if length(the_components) > 0
+        test_start_time = computed_alltime[2, DATETIME_COL]
+        test_len = 3
+        computed_sometime = compute(met, res, ent;
+            start_time = test_start_time, len = test_len)
+        @test computed_sometime[1, DATETIME_COL] == test_start_time
+        @test size(computed_sometime, 1) == test_len
+    else
+        computed_sometime = nothing
+    end
 
     return computed_alltime, computed_sometime
 end
@@ -206,7 +215,7 @@ end
 
 @testset "Test aggregate_time" begin
     test_df_approx_equal(
-        aggregate_time(my_df3),
+        aggregate_time(my_df3; agg_fn = sum),
         DataFrame(
             DATETIME_COL => first(my_dates_long),
             "Component1" => sum(my_data_long_1),
@@ -214,9 +223,10 @@ end
             "MyMeta" => sum(my_meta_long),
         ),
     )
-    @test is_col_meta(aggregate_time(my_df3), DATETIME_COL)
+    @test is_col_meta(aggregate_time(my_df3; agg_fn = sum), DATETIME_COL)
 
-    month_agg = aggregate_time(my_df3; groupby_fn = dt -> (year(dt), month(dt)))
+    month_agg =
+        aggregate_time(my_df3; groupby_fn = dt -> (year(dt), month(dt)), agg_fn = sum)
     @test size(month_agg, 1) == 3
     test_df_approx_equal(
         month_agg[1:1, :],
@@ -228,7 +238,7 @@ end
         ),
     )
 
-    day_agg = aggregate_time(my_df3; groupby_fn = Date)
+    day_agg = aggregate_time(my_df3; groupby_fn = Date, agg_fn = sum)
     @test size(day_agg, 1) == 31 + 28 + 31
     test_df_approx_equal(
         day_agg[1:1, :],
@@ -240,7 +250,7 @@ end
         ),
     )
 
-    hour_agg = aggregate_time(my_df3; groupby_fn = hour)
+    hour_agg = aggregate_time(my_df3; groupby_fn = hour, agg_fn = sum)
     @test size(hour_agg, 1) == 3
     test_df_approx_equal(
         hour_agg[1:1, :],
@@ -252,19 +262,7 @@ end
         ),
     )
 
-    for reduce_fn in (sum, length, (x -> sum(x) / length(x)), (_ -> 0))
-        test_df_approx_equal(
-            aggregate_time(my_df3; reduce_fn = reduce_fn),
-            DataFrame(
-                DATETIME_COL => first(my_dates_long),
-                "Component1" => reduce_fn(my_data_long_1),
-                "Component2" => reduce_fn(my_data_long_2),
-                "MyMeta" => reduce_fn(my_meta_long),
-            ),
-        )
-    end
-
-    day_agg_2 = aggregate_time(my_df3; groupby_fn = Date, groupby_col = "day")
+    day_agg_2 = aggregate_time(my_df3; groupby_fn = Date, groupby_col = "day", agg_fn = sum)
     @test "day" in names(day_agg_2)
     @test is_col_meta(day_agg_2, "day")
     @test day_agg_2[!, "day"] == Date.(time_vec(day_agg_2))
@@ -311,24 +309,31 @@ end
         make_entity(wind_ent, solar_ent),
         make_entity(test_entities...),
         make_entity(ThermalStandard),
+        make_entity(),
     ]
 
-    for agg_fn in (sum, x -> sum(x) / length(x))
-        for (label, res) in pairs(resultses)
-            for ent in test_entitysets
-                computed_alltime, computed_sometime =
-                    test_component_timed_metric(test_calc_active_power, res, ent, agg_fn)
+    for (label, res) in pairs(resultses)
+        for ent in test_entitysets
+            my_test_metric = test_calc_active_power
+            computed_alltime, computed_sometime =
+                test_component_timed_metric(my_test_metric, res, ent)
 
-                component_names = get_name.(get_components(ent, get_system(res)))
+            component_names = get_name.(get_components(ent, get_system(res)))
+            if length(component_names) == 0
+                @test isequal(time_vec(computed_alltime),
+                    Vector{Union{Missing, Dates.DateTime}}([missing]))
+                @test data_vec(computed_alltime) ==
+                      [get_entity_agg_fn(my_test_metric)(Vector{Float64}())]
+            else
                 (base_computed_alltimes, base_computed_sometimes) =
                     zip([comp_results[(label, cn)] for cn in component_names]...)
                 @test time_df(computed_alltime) == time_df(first(base_computed_alltimes))
                 @test data_vec(computed_alltime) ==
-                      agg_fn([data_vec(sub) for sub in base_computed_alltimes])
+                      sum([data_vec(sub) for sub in base_computed_alltimes])
                 @test time_df(computed_sometime) ==
                       time_df(first(base_computed_sometimes))
                 @test data_vec(computed_sometime) ==
-                      agg_fn([data_vec(sub) for sub in base_computed_sometimes])
+                      sum([data_vec(sub) for sub in base_computed_sometimes])
             end
         end
     end
@@ -357,7 +362,8 @@ end
         one_result = compute(metric, results_uc, entity)
         @test time_df(all_result) == time_df(one_result)
         @test all_result[!, metric_entity_to_string(metric, entity)] == data_vec(one_result)
-        @test metadata(all_result, "results") == metadata(one_result, "results")
+        @test get(metadata(all_result), "results", nothing) ==
+              get(metadata(one_result), "results", nothing)
         # Comparing the components iterators with == gives false failures
         # TODO why do we need collect here but not in test_component_timed_metric?
         @test all(
@@ -469,5 +475,53 @@ end
         [nothing, myent, myent],
         ["slack", "power", "final"],
     )
-    @test all(results4[!, "slack"].^2 .* results4[!, "power"] .== results4[!, "final"])
+    @test all(results4[!, "slack"] .^ 2 .* results4[!, "power"] .== results4[!, "final"])
+end
+
+@testset "Test entity_agg_fn" begin
+    my_entity = make_entity(ThermalStandard)
+    my_results = results_uc
+    sum_metric = test_calc_active_power
+    @test get_entity_agg_fn(sum_metric) == sum  # Should be the default
+    my_mean(x) = sum(x) / length(x)
+    mean_metric = with_entity_agg_fn(sum_metric, my_mean)
+    @test get_entity_agg_fn(mean_metric) == my_mean
+    # NOTE a more thorough approach would test the getter and "with-er" on all subtypes
+
+    results = compute_all(
+        my_results,
+        [sum_metric, mean_metric],
+        [my_entity, my_entity],
+        ["sum_col", "mean_col"],
+    )
+    @assert !all(results[!, "sum_col"] .== 0) "Cannot test with all-zero data"
+    n_components = get_components(my_entity, get_system(my_results)) |> collect |> length
+    @assert n_components > 1 "Cannot test without multiple components"
+
+    @test all(isapprox.(results[!, "mean_col"] .* n_components, results[!, "sum_col"]))
+end
+
+@testset "Test time_agg_fn" begin
+    my_entity = make_entity(ThermalStandard)
+    my_results = results_uc
+    sum_metric = test_calc_active_power
+    @test get_time_agg_fn(sum_metric) == sum  # Should be the default
+    my_mean(x) = sum(x) / length(x)
+    mean_metric = with_time_agg_fn(sum_metric, my_mean)
+    @test get_time_agg_fn(mean_metric) == my_mean
+    # NOTE a more thorough approach would test the getter and "with-er" on all subtypes
+
+    results = compute_all(
+        my_results,
+        [sum_metric, mean_metric],
+        [my_entity, my_entity],
+        ["sum_col", "mean_col"],
+    )
+    results_agg = aggregate_time(results)
+    @assert !all(results[!, "sum_col"] .== 0) "Cannot test with all-zero data"
+    n_times = size(results, 1)
+    @assert n_times > 1 "Cannot test without multiple time periods"
+
+    @test isapprox(first(results_agg[!, "sum_col"]), sum(results[!, "sum_col"]))
+    @test isapprox(first(results_agg[!, "mean_col"]), my_mean(results[!, "sum_col"]))
 end
