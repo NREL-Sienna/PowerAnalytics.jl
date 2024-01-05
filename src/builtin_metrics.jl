@@ -101,7 +101,9 @@ make_system_metric_from_entry(
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
             read_system_result(res, key, start_time, len))
 
-# TODO perhaps these built-in metrics should be in some sort of container
+# TODO perhaps these built-in metrics should be in some sort of container TODO check with a
+# domain expert, I feel like power and other metrics in 'per time' units should have
+# time_agg_fn=mean but that's not how they're treated in the existing code
 calc_active_power = make_component_metric_from_entry(
     "ActivePower",
     "Calculate the active power of the specified Entity",
@@ -132,6 +134,12 @@ calc_stored_energy = make_component_metric_from_entry(
     PSI.EnergyVariable,
 )
 
+calc_load_from_storage = compose_metrics(
+    "LoadFromStorage",
+    "Calculate the ActivePowerIn minus the ActivePowerOut of the specified (storage) Entity",
+    (-),
+    calc_active_power_in, calc_active_power_out)
+
 calc_active_power_forecast = make_component_metric_from_entry(
     "ActivePowerForecast",
     "Fetch the forecast active power of the specified Entity",
@@ -157,26 +165,59 @@ calc_system_load_forecast = SystemTimedMetric(
         compute(calc_load_forecast, res, make_entity(PSY.ElectricLoad), st, len),
 )
 
-calc_net_load_forecast = CustomTimedMetric(
+calc_system_load_from_storage = let
+    SystemTimedMetric(
+        "SystemLoadFromStorage",
+        "Fetch the LoadFromStorage of all storage in the system",
+        (res::IS.Results, st::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+            compute(calc_load_from_storage, res, make_entity(PSY.Storage), st, len),
+    )
+end
+
+# TODO: check with domain expert that this should really be ActivePowerForecast and not ActivePower
+calc_net_load_forecast = compose_metrics(
     "NetLoadForecast",
     "SystemLoadForecast minus ActivePowerForecast of the given Entity",
-    (res::IS.Results, comp::Union{Component, Entity},
-        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
-        vals = compute_all(res,
-            [calc_system_load_forecast, calc_active_power],
-            [nothing, comp],
-            ["load", "pow"])
-        res = DataFrames.transform(vals, ["load", "pow"] => (-) => get_name(comp))
-        return res[!, [DATETIME_COL, get_name(comp)]]
-    end,
+    (-),
+    calc_system_load_forecast, calc_active_power_forecast)
+
+calc_curtailment = compose_metrics(
+    "Curtailment",
+    "Calculate the ActivePowerForecast minus the ActivePower of the given Entity",
+    (-),
+    calc_active_power_forecast, calc_active_power,
 )
 
-calc_curtailment = ComponentTimedMetric(
-    "Curtailment",
-    "Calculate the curtailment (=forecast active power - actual active power) of the specified Entity",
-    (args...) ->
-        calc_active_power_forecast.eval_fn(args...) - calc_active_power.eval_fn(args...),
-)
+calc_curtailment_frac = with_time_agg_fn(
+    compose_metrics(
+        "CurtailmentFrac",
+        "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given Entity",
+        (./),
+        calc_curtailment, calc_active_power_forecast,
+    ), Statistics.mean)
+
+calc_integration = with_time_agg_fn(
+    compose_metrics(
+        "Integration",
+        "Calculate the ActivePower of the given Entity over the sum of the SystemLoadForecast and the SystemLoadFromStorage",
+        ((power, load, storage) -> power ./ (load + storage)),
+        calc_active_power, calc_system_load_forecast, calc_system_load_from_storage,
+    ), Statistics.mean)
+
+calc_capacity_factor = with_time_agg_fn(
+    ComponentTimedMetric(
+        "CapacityFactor",
+        "Calculate the capacity factor (actual production/rated production) of the specified Entity",
+        (
+            (res::IS.Results, comp::Component,
+                start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+            ) -> let
+                val = compute(calc_active_power, res, comp, start_time, len)
+                data_vec(val) .*= get_rating(comp)
+                return val
+            end
+        ),
+    ), Statistics.mean)
 
 calc_startup_cost = ComponentTimedMetric(
     "StartupCost",

@@ -24,11 +24,13 @@ export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown
     calc_active_power_out, calc_stored_energy, calc_active_power_forecast, calc_curtailment,
     calc_sum_objective_value, calc_sum_solve_time, calc_sum_bytes_alloc, calc_total_cost,
     make_calc_is_slack_up, calc_is_slack_up, calc_system_load_forecast,
-    calc_net_load_forecast
+    calc_net_load_forecast, calc_curtailment_frac, calc_load_from_storage,
+    calc_system_load_from_storage, calc_integration, calc_capacity_factor
 
 #I/O Imports
 import Dates
 import TimeSeries
+import Statistics
 import DataFrames
 import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
