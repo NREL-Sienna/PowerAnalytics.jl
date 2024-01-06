@@ -408,7 +408,7 @@ function _common_compute_all(results, metrics, entities, col_names; kwargs)
 end
 
 """
-For each (metric, result, entity) tuple in `zip(metrics, results, entities)`, call
+For each (metric, entity, col_name) tuple in `zip(metrics, entities, col_names)`, call
 [`compute`](@ref) and collect the results in a DataFrame with a single DateTime column.
 
 # Arguments
@@ -430,8 +430,8 @@ compute_all(results::IS.Results,
 ) = hcat_timed(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
 
 """
-For each (metric, result, entity) tuple in `zip(metrics, results, entities)`, call
-[`compute`](@ref) and collect the results in a DataFrame.
+For each (metric, col_name) tuple in `zip(metrics, col_names)`, call [`compute`](@ref) and
+collect the results in a DataFrame.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
@@ -449,6 +449,23 @@ compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
 ) = hcat(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
+
+ComputationTuple = Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
+"""
+For each (metric, entity, col_name) tuple in `computations`, call [`compute`](@ref) and
+collect the results in a DataFrame with a single DateTime column.
+
+# Arguments
+ - `results::IS.Results`: the results from which to fetch data
+ - `computations::(Tuple{<:T, Any, Any} where T <: Union{TimedMetric, TimelessMetric})...`:
+   a list of the computations to perform, where each element is a (metric, entity, col_name)
+   where metric is the metric to compute, entity is the entity on which to compute the
+   metric or nothing if not relevant, and col_name is the name for the output column of data
+   or nothing to use the default
+ - `kwargs...`: pass through to [`compute`](@ref)
+"""
+compute_all(results::IS.Results, computations::ComputationTuple...; kwargs...) =
+    compute_all(results, collect.(zip(computations...))...)
 
 # We need a temporary column name that doesn't overlap with the existing ones
 function _make_groupby_col_name(col_names)

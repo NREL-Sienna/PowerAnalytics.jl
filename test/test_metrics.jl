@@ -409,6 +409,25 @@ end
     )
     @test broadcasted_compute_all[!, [DATETIME_COL, "ThermalStandard"]] ==
           compute(test_calc_active_power, results_uc, make_entity(ThermalStandard))
+
+    @test compute_all(results_uc, my_metrics, my_entities, my_names) ==
+          compute_all(results_uc, collect(zip(my_metrics, my_entities, my_names))...)
+    @test compute_all(
+        results_uc,
+        [test_calc_sum_objective_value, test_calc_sum_solve_time],
+        nothing,
+        ["obje", "solv"],
+    ) == compute_all(
+        results_uc,
+        (test_calc_sum_objective_value, nothing, "obje"),
+        (test_calc_sum_solve_time, nothing, "solv"),
+    )
+
+    @test_throws MethodError compute_all(  # Can't mix TimedMetrics and TimelessMetrics
+        results_uc,
+        [(test_calc_active_power, make_entity(ThermalStandard), "therm"),
+            (test_calc_sum_objective_value, nothing, "obje")],
+    )
 end
 
 @testset "Test compose_metrics" begin
