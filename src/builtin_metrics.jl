@@ -266,6 +266,7 @@ calc_integration = ComponentTimedMetric(
     end,
 )
 
+# TODO: check with domain expert that this should really be using ActivePowerForecast and not ActivePower
 calc_capacity_factor = ComponentTimedMetric(
     "CapacityFactor",
     "Calculate the capacity factor (actual production/rated production) of the specified Entity",
@@ -273,11 +274,13 @@ calc_capacity_factor = ComponentTimedMetric(
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
         ) -> let
-            val = compute(calc_active_power, res, comp, start_time, len)
-            data_vec(val) .*= PSY.get_rating(comp)
-            return val
+            result = compute(calc_active_power_forecast, res, comp, start_time, len)
+            rating = PSY.get_rating(comp)
+            data_vec(result) ./= rating
+            set_agg_meta!(result, repeat([rating], length(data_vec(result))))
+            return result
         end
-    ); time_agg_fn = mean,
+    ); entity_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
 )
 
 calc_startup_cost = ComponentTimedMetric(
