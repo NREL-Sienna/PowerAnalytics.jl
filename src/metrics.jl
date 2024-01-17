@@ -31,16 +31,31 @@ struct ComponentTimedMetric <: EntityTimedMetric
     eval_fn::Any
     entity_agg_fn::Any
     time_agg_fn::Any
+    entity_meta_agg_fn::Any
+    time_meta_agg_fn::Any
+    eval_zero::Any
 end
 
+# TODO test entity_meta_agg_fn, time_meta_agg_fn, eval_zero if keeping them
 ComponentTimedMetric(
     name::String,
     description::String,
     eval_fn::Function;
     entity_agg_fn = sum,
     time_agg_fn = sum,
-) =
-    ComponentTimedMetric(name, description, eval_fn, entity_agg_fn, time_agg_fn)
+    entity_meta_agg_fn = sum,
+    time_meta_agg_fn = sum,
+    eval_zero = nothing,
+) = ComponentTimedMetric(
+    name,
+    description,
+    eval_fn,
+    entity_agg_fn,
+    time_agg_fn,
+    entity_meta_agg_fn,
+    time_meta_agg_fn,
+    eval_zero,
+)
 
 # TODO test CustomTimedMetric
 """
@@ -59,10 +74,17 @@ struct CustomTimedMetric <: EntityTimedMetric
     description::String
     eval_fn::Any
     time_agg_fn::Any
+    time_meta_agg_fn::Any
 end
 
-CustomTimedMetric(name::String, description::String, eval_fn::Function; time_agg_fn = sum) =
-    CustomTimedMetric(name, description, eval_fn, time_agg_fn)
+CustomTimedMetric(
+    name::String,
+    description::String,
+    eval_fn::Function;
+    time_agg_fn = sum,
+    time_meta_agg_fn = sum,
+) =
+    CustomTimedMetric(name, description, eval_fn, time_agg_fn, time_meta_agg_fn)
 
 """
 Time series Metrics defined on Systems..
@@ -80,10 +102,17 @@ struct SystemTimedMetric <: TimedMetric
     description::String
     eval_fn::Any
     time_agg_fn::Any
+    time_meta_agg_fn::Any
 end
 
-SystemTimedMetric(name::String, description::String, eval_fn::Function; time_agg_fn = sum) =
-    SystemTimedMetric(name, description, eval_fn, time_agg_fn)
+SystemTimedMetric(
+    name::String,
+    description::String,
+    eval_fn::Function;
+    time_agg_fn = sum,
+    time_meta_agg_fn = sum,
+) =
+    SystemTimedMetric(name, description, eval_fn, time_agg_fn, time_meta_agg_fn)
 
 "Timeless Metrics with a single value per Results struct"
 struct ResultsTimelessMetric <: TimelessMetric
@@ -116,6 +145,12 @@ const SYSTEM_COL::String = "System"
 "Name of a column that represents whole-of-Results data"
 const RESULTS_COL::String = "Results"
 
+"""
+Column metadata key whose value, if any, is additional information to be passed to
+aggregation functions. Values of `nothing` are equivalent to absence of the entry.
+"""
+const AGG_META_KEY::String = "agg_meta"
+
 # Override these if you define Metric subtypes with different implementations
 get_name(m::Metric) = m.name
 get_description(m::Metric) = m.description
@@ -130,6 +165,21 @@ get_entity_agg_fn(m::ComponentTimedMetric) = m.entity_agg_fn
 with_entity_agg_fn(m::ComponentTimedMetric, entity_agg_fn) =
     ComponentTimedMetric(m.name, m.description, m.eval_fn; entity_agg_fn = entity_agg_fn)
 
+get_time_meta_agg_fn(m::TimedMetric) = m.time_meta_agg_fn
+"Returns a Metric identical to the input except with the given time_meta_agg_fn"
+with_time_meta_agg_fn(m::T, time_meta_agg_fn) where {T <: EntityTimedMetric} =
+    T(m.name, m.description, m.eval_fn; time_meta_agg_fn = time_meta_agg_fn)
+
+get_entity_meta_agg_fn(m::ComponentTimedMetric) = m.entity_meta_agg_fn
+"Returns a Metric identical to the input except with the given entity_meta_agg_fn"
+with_entity_meta_agg_fn(m::ComponentTimedMetric, entity_meta_agg_fn) =
+    ComponentTimedMetric(
+        m.name,
+        m.description,
+        m.eval_fn;
+        entity_meta_agg_fn = entity_meta_agg_fn,
+    )
+
 "Canonical way to represent a (Metric, Entity) or (Metric, Component) pair as a string."
 metric_entity_to_string(m::Metric, e::Union{Entity, Component}) =
     get_name(m) * NAME_DELIMETER * get_name(e)
@@ -140,6 +190,35 @@ is_col_meta(df, colname) = get(colmetadata(df, colname), META_COL_KEY, false)
 "Mark a column as metadata"
 set_col_meta!(df, colname, val = true) =
     colmetadata!(df, colname, META_COL_KEY, val; style = :note)
+
+"Get the column's aggregation metadata; return `nothing` if there is none."
+get_agg_meta(df, colname) = get(colmetadata(df, colname), AGG_META_KEY, nothing)
+
+"Get the single data column's aggregation metadata; error on multiple data columns."
+function get_agg_meta(df)
+    my_data_cols = data_cols(df)
+    (length(my_data_cols) == 1) && return get_agg_meta(df, first(my_data_cols))
+    throw(
+        ArgumentError(
+            "DataFrame has $(size(the_data, 2)) columns of data, must specify a column name",
+        ),
+    )
+end
+
+"Set the column's aggregation metadata."
+set_agg_meta!(df, colname, val) =
+    colmetadata!(df, colname, AGG_META_KEY, val; style = :note)
+
+"Set the single data column's aggregation metadata; error on multiple data columns."
+function set_agg_meta!(df, val)
+    my_data_cols = data_cols(df)
+    (length(my_data_cols) == 1) && return set_agg_meta!(df, first(my_data_cols), val)
+    throw(
+        ArgumentError(
+            "DataFrame has $(size(the_data, 2)) columns of data, must specify a column name",
+        ),
+    )
+end
 
 # TODO test that mutating the selection mutates the original
 "Select the DateTime column of the DataFrame as a one-column DataFrame without copying."
@@ -350,19 +429,31 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
     len::Union{Int, Nothing} = nothing)
     # TODO incorporate allow_missing
     agg_fn = get_entity_agg_fn(metric)
+    meta_agg_fn = get_entity_meta_agg_fn(metric)
     components = get_components(entity, PowerSimulations.get_system(results))
     vals = [
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
     ]
     if length(vals) == 0
-        time_col = Vector{Union{Missing, Dates.DateTime}}([missing])
-        data_col = agg_fn(Vector{Float64}())
+        if metric.eval_zero !== nothing
+            result = metric.eval_zero(results, start_time, len)
+        else
+            time_col = Vector{Union{Missing, Dates.DateTime}}([missing])
+            data_col = agg_fn(Vector{Float64}())
+            new_agg_meta = nothing
+            result = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
+        end
     else
         time_col = _extract_common_time(vals...)
-        data_col = agg_fn([data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))])
+        data_vecs = [data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
+        agg_metas = get_agg_meta.(vals)
+        is_agg_meta = !all(agg_metas .=== nothing)
+        data_col = is_agg_meta ? agg_fn(data_vecs, agg_metas) : agg_fn(data_vecs)
+        new_agg_meta = is_agg_meta ? meta_agg_fn(agg_metas) : nothing
+        result = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
+        (new_agg_meta === nothing) || set_agg_meta!(result, new_agg_meta)
     end
-    result = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
 
     _compute_meta_timed!(result, metric, results)
     colmetadata!(result, 2, "components", components; style = :note)
@@ -467,13 +558,15 @@ collect the results in a DataFrame with a single DateTime column.
 compute_all(results::IS.Results, computations::ComputationTuple...; kwargs...) =
     compute_all(results, collect.(zip(computations...))...)
 
-# We need a temporary column name that doesn't overlap with the existing ones
-function _make_groupby_col_name(col_names)
-    groupby_col = "grouped"
-    while groupby_col in col_names  # Worst case length(col_names) iterations
-        groupby_col *= "!"
+# Sometimes, to construct new column names, we need to construct strings that don't appear
+# as/in any other column names
+function _make_unique_col_name(col_names;
+    allow_substring = false, initial_try = "newcol", suffix = "!")
+    col_name = initial_try
+    while allow_substring ? (col_name in col_names) : any(occursin.(col_name, col_names))
+        col_name *= suffix
     end
-    return groupby_col
+    return col_name
 end
 
 # Fetch the time_agg_fn associated with the particular column's Metric; error if no agg_fn can be determined
@@ -487,6 +580,20 @@ function _find_time_agg_fn(df, col_name, default_agg_fn)
         ),
     )
     return my_agg_fn
+end
+
+# Construct a pipeline that can be passed to DataFrames.combine that represents the aggregation of the given column
+function _construct_aggregation(df, agg_meta_colnames, col_name, default_agg_fn)
+    agg_fn = _find_time_agg_fn(df, col_name, default_agg_fn)
+    if haskey(agg_meta_colnames, col_name)
+        return [col_name, agg_meta_colnames[col_name]] => agg_fn => col_name
+    end
+    return col_name => agg_fn => col_name
+end
+
+function _construct_meta_aggregation(df, col_name, meta_colname)
+    agg_fn = get_time_meta_agg_fn(colmetadata(df, col_name)["metric"])
+    return meta_colname => agg_fn => meta_colname
 end
 
 """
@@ -512,37 +619,81 @@ function aggregate_time(
     groupby_fn = nothing,
     groupby_col::Union{Nothing, AbstractString, Symbol} = nothing,
     agg_fn = nothing)
+    keep_groupby_col = (groupby_col !== nothing)
+    if groupby_fn === nothing && keep_groupby_col
+        throw(ArgumentError("Cannot keep the groupby column if not specifying groupby_fn"))
+    end
 
     # Everything goes into the same group by default
     (groupby_fn === nothing) && (groupby_fn = (_ -> 0))
 
-    keep_groupby_col = (groupby_col !== nothing)
+    # Validate or create groupby column name
     if keep_groupby_col
         (groupby_col in names(df)) &&
-            throw("groupby_col cannot be an existing column name of df")
+            throw(ArgumentError("groupby_col cannot be an existing column name of df"))
     else
-        groupby_col = _make_groupby_col_name(names(df))
+        groupby_col = _make_unique_col_name(
+            names(df);
+            allow_substring = true,
+            initial_try = "grouped",
+        )
     end
 
+    # Find all aggregation metadata
+    # TODO should metadata columns be allowed to have aggregation metadata? Probably.
+    agg_metas = Dict(varname => get_agg_meta(df, varname) for varname in data_cols(df))
+
+    # Create column names for non-nothing aggregation metadata
+    existing_cols = vcat(names(df), groupby_col)
+    agg_meta_colnames = Dict(
+        varname =>
+            _make_unique_col_name(existing_cols; initial_try = varname * "_meta")
+        for varname in data_cols(df) if agg_metas[varname] !== nothing)
+    cols_with_agg_meta = collect(keys(agg_meta_colnames))
+
+    # TODO currently we can only handle Vector aggregation metadata (eventually we'll
+    # probably need two optional aggregation metadata fields, one for per-column data and
+    # one for per-element data)
+    @assert all(typeof.([agg_metas[cn] for cn in cols_with_agg_meta]) .<: Vector)
+    @assert all(
+        length(agg_metas[orig_name]) == length(df[!, orig_name])
+        for orig_name in cols_with_agg_meta
+    )
+
+    # Add the groupby column and aggregation metadata columns
     transformed = DataFrames.transform(
         df,
         DATETIME_COL => DataFrames.ByRow(groupby_fn) => groupby_col,
     )
+    for orig_name in cols_with_agg_meta
+        transformed[!, agg_meta_colnames[orig_name]] = agg_metas[orig_name]
+    end
+
     grouped = DataFrames.groupby(transformed, groupby_col)
-    # For all data columns and non-special metadata columns, find the agg_fn
+    # For all data columns and non-special metadata columns, find the agg_fn and handle aggregation metadata
     aggregations = [
-        col_name => _find_time_agg_fn(df, col_name, agg_fn) => col_name
+        _construct_aggregation(df, agg_meta_colnames, col_name, agg_fn)
         for col_name in names(df) if !(col_name in (groupby_col, DATETIME_COL))
     ]
-    # Take the first DateTime in each group, reduce the other columns, preserve column names
+    meta_aggregations = [
+        _construct_meta_aggregation(df, orig_name, agg_meta_colnames[orig_name])
+        for orig_name in cols_with_agg_meta
+    ]
+    # Take the first DateTime in each group, reduce the other columns as specified in aggregations, preserve column names
     # TODO is it okay to always just take the first timestamp, or should there be a
     # reduce_time_fn kwarg to, for instance, allow users to specify that they want the
     # midpoint timestamp?
     combined = DataFrames.combine(grouped,
         DATETIME_COL => first => DATETIME_COL,
-        aggregations...)
-    # Reorder the columns for convention
-    not_index = DataFrames.Not(groupby_col, DATETIME_COL)
+        aggregations..., meta_aggregations...)
+
+    # Replace the aggregation metadata
+    for orig_name in cols_with_agg_meta
+        set_agg_meta!(combined, orig_name, combined[!, agg_meta_colnames[orig_name]])
+    end
+
+    # Drop agg_meta columns, reorder the columns for convention
+    not_index = DataFrames.Not(groupby_col, DATETIME_COL, values(agg_meta_colnames)...)
     result = DataFrames.select(combined, DATETIME_COL, groupby_col, not_index)
 
     set_col_meta!(result, DATETIME_COL)
