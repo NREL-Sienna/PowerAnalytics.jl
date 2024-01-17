@@ -62,6 +62,28 @@ test_calc_sum_solve_time = ResultsTimelessMetric(
     (res::IS.Results) -> sum(PSI.read_optimizer_stats(res)[!, "solve_time"]),
 )
 
+thermal_vals = [1, 2, 3]
+thermal_weights = [1, 1, 3]
+other_vals = [4, 5, 6]
+other_weights = [2, 1, 1]
+test_calc_dummy_meta = ComponentTimedMetric(
+    "DummyMeta",
+    "Return some simple numbers with some simple metadata",
+    (res::IS.Results, comp::Component,
+        start_time::Union{Nothing, Dates.DateTime},
+        len::Union{Int, Nothing}) -> let
+        (start_time !== nothing && len !== nothing) &&
+            error("Not implemented for non-nothing `start_time`, `len`")
+        dates = collect(DateTime(2023, 1, 1):Hour(8):DateTime(2023, 1, 1, 16))
+        values = (typeof(comp) == ThermalStandard) ? thermal_vals : other_vals
+        agg_meta = (typeof(comp) == ThermalStandard) ? thermal_weights : other_weights
+        result = DataFrame(DATETIME_COL => dates, get_name(comp) => values)
+        set_agg_meta!(result, agg_meta)
+    end;
+    entity_agg_fn = weighted_mean,
+    time_agg_fn = weighted_mean,
+)
+
 my_dates = [DateTime(2023), DateTime(2024)]
 my_data1 = [3.14, 2.71]
 my_data2 = [1.61, 1.41]
@@ -84,6 +106,11 @@ missing_df = DataFrame(
     "MissingComponent" => 0.0)
 colmetadata!(missing_df, DATETIME_COL, META_COL_KEY, true; style = :note)
 
+my_df_agg_meta = copy(my_df2)
+my_agg_meta = [[1, 2], [3, 4]]
+colmetadata!(my_df_agg_meta, "Component1", AGG_META_KEY, my_agg_meta[1]; style = :note)
+colmetadata!(my_df_agg_meta, "Component2", AGG_META_KEY, my_agg_meta[2]; style = :note)
+
 my_dates_long = collect(DateTime(2023, 1, 1):Hour(8):DateTime(2023, 3, 31, 16))
 my_data_long_1 = collect(range(0, 100, length(my_dates_long)))
 my_data_long_2 = collect(range(24, 0, length(my_dates_long))) .+ 0.5 / length(my_dates_long)
@@ -94,6 +121,11 @@ my_df3 = DataFrame(
     "Component2" => my_data_long_2,
     "MyMeta" => my_meta_long,
 )
+
+wind_ent = make_entity(RenewableDispatch, "WindBusA")
+solar_ent = make_entity(RenewableDispatch, "SolarBusC")
+thermal_ent = make_entity(ThermalStandard, "Brighton")
+test_entities = [wind_ent, solar_ent, thermal_ent]
 
 # HELPER FUNCTIONS
 function test_timed_metric_helper(computed_alltime, met, data_colname)
@@ -281,10 +313,6 @@ end
     end
 end
 
-wind_ent = make_entity(RenewableDispatch, "WindBusA")
-solar_ent = make_entity(RenewableDispatch, "SolarBusC")
-thermal_ent = make_entity(ThermalStandard, "Brighton")
-test_entities = [wind_ent, solar_ent, thermal_ent]
 @testset "Test ComponentTimedMetric on EntityElements" begin
     for (label, res) in pairs(resultses)
         for ent in test_entities
@@ -497,7 +525,22 @@ end
     @test all(results4[!, "slack"] .^ 2 .* results4[!, "power"] .== results4[!, "final"])
 end
 
-@testset "Test entity_agg_fn" begin
+@testset "Test agg_meta basics" begin
+    @test get_agg_meta(my_df_agg_meta, "Component1") == my_agg_meta[1]
+    @test get_agg_meta(my_df_agg_meta, "Component2") == my_agg_meta[2]
+    new_df = copy(my_df2)
+    set_agg_meta!(new_df, "Component1", my_agg_meta[1])
+    set_agg_meta!(new_df, "Component2", my_agg_meta[2])
+    @test get_agg_meta(new_df, "Component1") == my_agg_meta[1]
+    @test get_agg_meta(new_df, "Component2") == my_agg_meta[2]
+
+    newer_df = copy(my_df1)
+    @test get_agg_meta(newer_df) === nothing
+    set_agg_meta!(newer_df, my_meta)
+    @test get_agg_meta(newer_df) == my_meta
+end
+
+@testset "Test entity_agg_fn and corresponding `compute` aggregation behavior" begin
     my_entity = make_entity(ThermalStandard)
     my_results = results_uc
     sum_metric = test_calc_active_power
@@ -518,16 +561,30 @@ end
     @assert n_components > 1 "Cannot test without multiple components"
 
     @test all(isapprox.(results[!, "mean_col"] .* n_components, results[!, "sum_col"]))
+
+    results2 = compute_all(
+        my_results,
+        repeat([test_calc_dummy_meta], 3),
+        [thermal_ent, wind_ent, make_entity(thermal_ent, wind_ent)],
+        ["thermal", "wind", "combo"])
+    @test isapprox(
+        data_mat(results2),
+        [thermal_vals other_vals weighted_mean(
+            [thermal_vals, other_vals],
+            [thermal_weights, other_weights],
+        )],
+    )
+    @test get_agg_meta.(Ref(results2), data_cols(results2)) ==
+          [thermal_weights, other_weights, sum([thermal_weights, other_weights])]
 end
 
-@testset "Test time_agg_fn" begin
+@testset "Test time_agg_fn and corresponding `aggregate_time` aggregation behavior" begin
     my_entity = make_entity(ThermalStandard)
     my_results = results_uc
     sum_metric = test_calc_active_power
     @test get_time_agg_fn(sum_metric) == sum  # Should be the default
-    my_mean(x) = sum(x) / length(x)
-    mean_metric = with_time_agg_fn(sum_metric, my_mean)
-    @test get_time_agg_fn(mean_metric) == my_mean
+    mean_metric = with_time_agg_fn(sum_metric, mean)
+    @test get_time_agg_fn(mean_metric) == mean
     # NOTE a more thorough approach would test the getter and "with-er" on all subtypes
 
     results = compute_all(
@@ -542,5 +599,18 @@ end
     @assert n_times > 1 "Cannot test without multiple time periods"
 
     @test isapprox(first(results_agg[!, "sum_col"]), sum(results[!, "sum_col"]))
-    @test isapprox(first(results_agg[!, "mean_col"]), my_mean(results[!, "sum_col"]))
+    @test isapprox(first(results_agg[!, "mean_col"]), mean(results[!, "sum_col"]))
+
+    results2 = compute_all(
+        my_results,
+        repeat([test_calc_dummy_meta], 3),
+        [thermal_ent, wind_ent, make_entity(thermal_ent, wind_ent)],
+        ["thermal", "wind", "combo"])
+    results2_agg = aggregate_time(results2)
+    answer1 = weighted_mean(thermal_vals, thermal_weights)
+    answer2 = weighted_mean(other_vals, other_weights)
+    @test results2_agg[!, "thermal"] == [answer1]
+    @test results2_agg[!, "wind"] == [answer2]
+    @test results2_agg[!, "combo"] ==
+          [weighted_mean([answer1, answer2], [sum(thermal_weights), sum(other_weights)])]
 end

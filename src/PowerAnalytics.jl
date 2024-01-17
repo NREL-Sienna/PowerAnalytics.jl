@@ -12,10 +12,11 @@ export NAME_DELIMETER, subtype_to_string, component_to_qualified_string
 export make_entity, default_name, get_name, get_subentities
 export Metric, TimedMetric, TimelessMetric, EntityTimedMetric, ComponentTimedMetric,
     SystemTimedMetric, ResultsTimelessMetric, CustomTimedMetric
-export DATETIME_COL, META_COL_KEY, SYSTEM_COL, RESULTS_COL
+export DATETIME_COL, META_COL_KEY, SYSTEM_COL, RESULTS_COL, AGG_META_KEY
 export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, data_df,
     data_vec, data_mat, get_description, get_entity_agg_fn, get_time_agg_fn,
-    with_entity_agg_fn, with_time_agg_fn, metric_entity_to_string
+    with_entity_agg_fn, with_time_agg_fn, metric_entity_to_string, get_agg_meta,
+    set_agg_meta!
 export compute, compute_all, hcat_timed, aggregate_time, compose_metrics
 export read_serialized_system,
     get_populated_decision_problem_results, create_problem_results_dict
@@ -26,11 +27,13 @@ export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown
     make_calc_is_slack_up, calc_is_slack_up, calc_system_load_forecast,
     calc_net_load_forecast, calc_curtailment_frac, calc_load_from_storage,
     calc_system_load_from_storage, calc_integration, calc_capacity_factor
+export mean, weighted_mean, unweighted_sum
 
 #I/O Imports
 import Dates
 import TimeSeries
 import Statistics
+import Statistics: mean
 import DataFrames
 import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML

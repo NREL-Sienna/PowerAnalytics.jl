@@ -101,9 +101,31 @@ make_system_metric_from_entry(
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
             read_system_result(res, key, start_time, len))
 
-# TODO perhaps these built-in metrics should be in some sort of container TODO check with a
-# domain expert, I feel like power and other metrics in 'per time' units should have
-# time_agg_fn=mean but that's not how they're treated in the existing code
+"Compute the mean of `values` weighted by the corresponding entries of `weights`."
+function weighted_mean(values, weights)  # Made quite finnicky by the need to broadcast in two dimensions (or am I just new to this?)
+    new_values = @. broadcast(ifelse, (.==)(weights, 0), 0.0, values)  # Allow 0 weight to cancel out NaN value
+    return sum((.*).(new_values, weights)) ./ sum(weights)
+end
+
+weighted_mean(empty) =
+    if length(empty) == 0 || all(.!(empty .== empty))  # Zero length or all NaNs
+        weighted_mean(empty, empty)
+    else
+        throw(
+            ArgumentError(
+                "weighted_mean needs two arguments unless the first argument has zero length or is all NaN",
+            ),
+        )
+    end
+
+"A version of `sum` that ignores a second argument, for use where aggregation metadata is at play"
+unweighted_sum(x) = sum(x)
+unweighted_sum(x, y) = sum(x)
+
+# BEGIN BUILT-IN METRICS DEFINITIONS
+# TODO perhaps these built-in metrics should be in some sort of container
+# TODO check with a domain expert, I feel like power and other metrics in 'per time' units
+# should have time_agg_fn=mean but that's not how they're treated in the existing code
 calc_active_power = make_component_metric_from_entry(
     "ActivePower",
     "Calculate the active power of the specified Entity",
@@ -188,36 +210,75 @@ calc_curtailment = compose_metrics(
     calc_active_power_forecast, calc_active_power,
 )
 
-calc_curtailment_frac = with_time_agg_fn(
-    compose_metrics(
-        "CurtailmentFrac",
-        "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given Entity",
-        (./),
-        calc_curtailment, calc_active_power_forecast,
-    ), Statistics.mean)
+calc_curtailment_frac = ComponentTimedMetric(
+    "CurtailmentFrac",
+    "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given Entity",
+    (
+        (res::IS.Results, comp::Component,
+            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+        ) -> let
+            result = compute(calc_curtailment, res, comp, start_time, len)
+            power = collect(
+                data_vec(
+                    compute(calc_active_power_forecast, res, comp, start_time, len),
+                ),
+            )
+            data_vec(result) ./= power
+            set_agg_meta!(result, power)
+            return result
+        end
+    ); entity_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
+)
 
-calc_integration = with_time_agg_fn(
-    compose_metrics(
-        "Integration",
-        "Calculate the ActivePower of the given Entity over the sum of the SystemLoadForecast and the SystemLoadFromStorage",
-        ((power, load, storage) -> power ./ (load + storage)),
-        calc_active_power, calc_system_load_forecast, calc_system_load_from_storage,
-    ), Statistics.mean)
+# Helper function for calc_integration
+_integration_denoms(res, start_time, len) =
+    compute(calc_system_load_forecast, res, start_time, len),
+    compute(calc_system_load_from_storage, res, start_time, len)
 
-calc_capacity_factor = with_time_agg_fn(
-    ComponentTimedMetric(
-        "CapacityFactor",
-        "Calculate the capacity factor (actual production/rated production) of the specified Entity",
-        (
-            (res::IS.Results, comp::Component,
-                start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
-            ) -> let
-                val = compute(calc_active_power, res, comp, start_time, len)
-                data_vec(val) .*= get_rating(comp)
-                return val
-            end
-        ),
-    ), Statistics.mean)
+calc_integration = ComponentTimedMetric(
+    "Integration",
+    "Calculate the ActivePower of the given Entity over the sum of the SystemLoadForecast and the SystemLoadFromStorage",
+    (
+        (res::IS.Results, comp::Component,
+            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+        ) -> let
+            result = compute(calc_active_power, res, comp, start_time, len)
+            # TODO does not check date alignment, maybe use hcat_timed
+            denom = (.+)(
+                (_integration_denoms(res, start_time, len) .|> data_vec .|> collect)...,
+            )
+            data_vec(result) ./= denom
+            set_agg_meta!(result, denom)
+            return result
+        end
+    ); entity_agg_fn = unweighted_sum, time_agg_fn = weighted_mean,
+    entity_meta_agg_fn = mean,
+    # We use a custom eval_zero to put the weight in there even when there are no components
+    eval_zero = (res::IS.Results,
+        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+    ) -> let
+        denoms = _integration_denoms(res, start_time, len)
+        # TODO does not check date alignment, maybe use hcat_timed
+        time_col = time_vec(first(denoms))
+        data_col = repeat([0.0], length(time_col))
+        result = DataFrame(DATETIME_COL => time_col, "" => data_col)
+        set_agg_meta!(result, (.+)((denoms .|> data_vec .|> collect)...))
+    end,
+)
+
+calc_capacity_factor = ComponentTimedMetric(
+    "CapacityFactor",
+    "Calculate the capacity factor (actual production/rated production) of the specified Entity",
+    (
+        (res::IS.Results, comp::Component,
+            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+        ) -> let
+            val = compute(calc_active_power, res, comp, start_time, len)
+            data_vec(val) .*= PSY.get_rating(comp)
+            return val
+        end
+    ); time_agg_fn = mean,
+)
 
 calc_startup_cost = ComponentTimedMetric(
     "StartupCost",
@@ -275,7 +336,7 @@ calc_discharge_cycles = ComponentTimedMetric(
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.ActivePowerOutVariable, comp, start_time, len)
-            soc_limits = get_state_of_charge_limits(comp)
+            soc_limits = PSY.get_state_of_charge_limits(comp)
             # TODO verify this algorithm with a domain expert
             soc_range = soc_limits.max
             # soc_range = soc_limits.max - soc_limits.min
