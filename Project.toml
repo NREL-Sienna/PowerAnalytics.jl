@@ -1,6 +1,6 @@
 name = "PowerAnalytics"
 uuid = "56ce1300-00bc-47e4-ba8c-b166ccc19f51"
-authors = ["cbarrows <clayton.barrows@nrel.gov>"]
+authors = ["Gabriel Konar-Steenberg <gabriel.konarsteenberg@nrel.gov>", "cbarrows <clayton.barrows@nrel.gov>"]
 version = "0.8.1"
 
 [deps]
