@@ -378,6 +378,47 @@ end
     end
 end
 
+@testset "Test compute_set" begin
+    combo_entity = make_entity(test_entities...)
+    mymet = test_calc_active_power
+    for (label, res) in pairs(resultses)
+        computed_alltime = compute_set(mymet, res, combo_entity)
+        cols = data_cols(computed_alltime)
+        ents = colmetadata.(Ref(computed_alltime), cols, "entity")
+        @test all(ents .== test_entities)  # One column for each subentity in the input
+        @test all(cols .== get_name.(ents))  # Named properly
+
+        # TODO bit of code duplication between here and test_component_timed_metric
+        test_start_time = computed_alltime[2, DATETIME_COL]
+        test_len = 3
+        computed_sometime = compute_set(mymet, res, combo_entity;
+            start_time = test_start_time, len = test_len)
+        @test computed_sometime[1, DATETIME_COL] == test_start_time
+        @test size(computed_sometime, 1) == test_len
+
+        # DateTime plus data column slices of compute_set() should be identical to results of compute()
+        for (col_name, this_entity) in zip(cols, ents)
+            test_timed_metric_helper(
+                computed_alltime[!, [DATETIME_COL, col_name]],
+                mymet,
+                col_name,
+            )
+            this_components = collect(get_components(this_entity, get_system(res)))
+            @test all(
+                get(colmetadata(computed_alltime, col_name), "components", nothing) .==
+                this_components,
+            )
+
+            base_computed_alltime, base_computed_sometime =
+                comp_results[(label, get_name(first(this_components)))]
+            @test time_df(computed_alltime) == time_df(base_computed_alltime)
+            @test computed_alltime[!, col_name] == data_vec(base_computed_alltime)
+            @test time_df(computed_sometime) == time_df(base_computed_sometime)
+            @test computed_sometime[!, col_name] == data_vec(base_computed_sometime)
+        end
+    end
+end
+
 @testset "Test compute_all" begin
     my_metrics = [test_calc_active_power, test_calc_active_power,
         test_calc_production_cost, test_calc_production_cost]
