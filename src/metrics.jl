@@ -473,6 +473,26 @@ compute(met, res, start_time, len) =
     compute(met, res; start_time = start_time, len = len)
 
 # TODO function compute_set
+"""
+Compute the given metric on the sub-entities of the given entity within the given set of
+results, returning a DataFrame with a DateTime column and a data column for each sub-entity.
+Should be the same as calling compute() on each sub-entity and concatenating.
+
+# Arguments
+ - `metric::EntityTimedMetric`: the metric to compute
+ - `results::IS.Results`: the results from which to fetch data
+ - `entity::Entity`: the entity on whose subentities to compute the metric
+ - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+   time series should begin
+ - `len::Union{Int, Nothing} = nothing`: the number of points in the resulting time series
+"""
+function compute_set(metric::EntityTimedMetric, results::IS.Results, entity::Entity;
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing)
+    subents = get_subentities(entity, PowerSimulations.get_system(results))
+    subcomputations = [compute(metric, results, sub; start_time, len) for sub in subents]
+    return hcat_timed(subcomputations...)
+end
 
 # The core of compute_all, shared between the timed and timeless versions
 function _common_compute_all(results, metrics, entities, col_names; kwargs)

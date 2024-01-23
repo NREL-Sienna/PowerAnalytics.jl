@@ -17,7 +17,7 @@ export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, d
     data_vec, data_mat, get_description, get_entity_agg_fn, get_time_agg_fn,
     with_entity_agg_fn, with_time_agg_fn, metric_entity_to_string, get_agg_meta,
     set_agg_meta!
-export compute, compute_all, hcat_timed, aggregate_time, compose_metrics
+export compute, compute_set, compute_all, hcat_timed, aggregate_time, compose_metrics
 export read_serialized_system,
     get_populated_decision_problem_results, create_problem_results_dict
 export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
