@@ -124,8 +124,9 @@ unweighted_sum(x, y) = sum(x)
 
 # BEGIN BUILT-IN METRICS DEFINITIONS
 # TODO perhaps these built-in metrics should be in some sort of container
-# TODO check with a domain expert, I feel like power and other metrics in 'per time' units
-# should have time_agg_fn=mean but that's not how they're treated in the existing code
+
+# NOTE ActivePowerVariable is in units of megawatts per simulation time period, so it's
+# actually energy and it makes sense to sum it up.
 calc_active_power = make_component_metric_from_entry(
     "ActivePower",
     "Calculate the active power of the specified Entity",
@@ -196,10 +197,10 @@ calc_system_load_from_storage = let
     )
 end
 
-# TODO: check with domain expert that this should really be ActivePowerForecast and not ActivePower
 calc_net_load_forecast = compose_metrics(
     "NetLoadForecast",
     "SystemLoadForecast minus ActivePowerForecast of the given Entity",
+    # (intentionally done with forecast to inform how storage should be used, among other reasons)
     (-),
     calc_system_load_forecast, calc_active_power_forecast)
 
@@ -266,10 +267,10 @@ calc_integration = ComponentTimedMetric(
     end,
 )
 
-# TODO: check with domain expert that this should really be using ActivePowerForecast and not ActivePower
 calc_capacity_factor = ComponentTimedMetric(
     "CapacityFactor",
     "Calculate the capacity factor (actual production/rated production) of the specified Entity",
+    # (intentionally done with forecast to serve as sanity check -- solar capacity factor shouldn't exceed 20%, etc.)
     (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
@@ -335,14 +336,15 @@ calc_total_cost = ComponentTimedMetric(
 calc_discharge_cycles = ComponentTimedMetric(
     "DischargeCycles",
     "Calculate the number of discharge cycles a storage device has gone through in the time period",
+    # NOTE: here, we define one "cycle" as a discharge from the maximum state of charge to
+    # the minimum state of charge. A simpler algorithm might define a cycle as a discharge
+    # from the maximum state of charge to zero; the algorithm given here is more rigorous.
     (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.ActivePowerOutVariable, comp, start_time, len)
             soc_limits = PSY.get_state_of_charge_limits(comp)
-            # TODO verify this algorithm with a domain expert
-            soc_range = soc_limits.max
-            # soc_range = soc_limits.max - soc_limits.min
+            soc_range = soc_limits.max - soc_limits.min
             data_vec(val) ./= soc_range
             return val
         end
