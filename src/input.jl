@@ -1,7 +1,12 @@
 # TODO should this be defined in PSI (or not at all)?
 get_system_uuid(results::PSI.SimulationProblemResults) = results.system_uuid
 
-"Read from disk the System associated with the given SimulationProblemResults"
+"""
+Read from disk the `System` associated with the given `SimulationProblemResults`
+
+# Arguments
+ - `results::PSI.SimulationProblemResults`: the results whose system to load
+"""
 function read_serialized_system(results::PSI.SimulationProblemResults)
     sys_filename = "system-$(get_system_uuid(results)).json"
     sys_path = joinpath(
@@ -15,16 +20,17 @@ end
 
 # TODO should this just replace PSI.get_decision_problem_results?
 """
-Wrapper around PSI.get_decision_problem_results that can also set the system using
-read_serialized_system and populate the units system.
+Wrapper around [`PSI.get_decision_problem_results`](@ref) that can also set the system using
+[`read_serialized_system`](@ref) and populate the units system.
 
 # Arguments
  - `sim_results::PSI.SimulationResults`: the simulation results to read from
  - `problem::String`: the name of the problem (e.g., "UC", "ED")
- - `populate_system::Bool`: whether to set the results' system using read_serialized_system
+ - `populate_system::Bool = true`: whether to set the results' system using
+ [`read_serialized_system`](@ref)
  - `populate_units::Union{IS.UnitSystem, String, Nothing} = IS.UnitSystem.NATURAL_UNITS`:
    the units system with which to populate the results' system, if any (requires
-   populate_system=true)
+   `populate_system=true`)
 """
 function get_populated_decision_problem_results(
     sim_results::PSI.SimulationResults,
@@ -42,8 +48,8 @@ end
 """
 Accept a directory that contains several results subdirectories (that each contain
 `results`, `problems`, etc. sub-subdirectories) and construct a sorted dictionary from
-String to SimulationProblemResults where the keys are the subdirectory names and the values
-are loaded results datasets with (by default) attached systems.
+`String` to `SimulationProblemResults` where the keys are the subdirectory names and the
+values are loaded results datasets.
 
 # Arguments
  - `results_dir::AbstractString`: the directory where results subdirectories can be found
