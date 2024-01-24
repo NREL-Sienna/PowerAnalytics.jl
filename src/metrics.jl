@@ -59,7 +59,7 @@ ComponentTimedMetric(
 
 # TODO test CustomTimedMetric
 """
-EntityTimedMetrics implemented without drilling down to the base Components, just call the eval_fn directly.
+EntityTimedMetrics implemented without drilling down to the base Components, just call the `eval_fn` directly.
 
 # Arguments
  - `name::String`: the name of the Metric
@@ -87,14 +87,14 @@ CustomTimedMetric(
     CustomTimedMetric(name, description, eval_fn, time_agg_fn, time_meta_agg_fn)
 
 """
-Time series Metrics defined on Systems..
+Time series Metrics defined on Systems.
 
 # Arguments
  - `name::String`: the name of the Metric
  - `description::String`: a description of the Metric
  - `eval_fn`: a callable with signature
    `(::IS.Results, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
-   DataFrame representing the results for that Component
+   DataFrame representing the results
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
 """
 struct SystemTimedMetric <: TimedMetric
@@ -114,7 +114,15 @@ SystemTimedMetric(
 ) =
     SystemTimedMetric(name, description, eval_fn, time_agg_fn, time_meta_agg_fn)
 
-"Timeless Metrics with a single value per Results struct"
+"""
+Timeless Metrics with a single value per `IS.Results` instance
+
+# Arguments
+    - `name::String`: the name of the Metric
+    - `description::String`: a description of the Metric
+    - `eval_fn`: a callable with signature `(::IS.Results,)` that returns a DataFrame
+      representing the results
+"""
 struct ResultsTimelessMetric <: TimelessMetric
     name::String
     description::String
