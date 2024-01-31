@@ -585,7 +585,7 @@ collect the results in a DataFrame with a single DateTime column.
    - `kwargs...`: pass through to each [`compute`](@ref) call
 """
 compute_all(results::IS.Results, computations::ComputationTuple...; kwargs...) =
-    compute_all(results, collect.(zip(computations...))...)
+    compute_all(results, collect.(zip(computations...))...; kwargs...)
 
 # Sometimes, to construct new column names, we need to construct strings that don't appear
 # as/in any other column names
