@@ -320,7 +320,7 @@ function get_generation_data(
     aux_variable_keys =
         get_generation_aux_variable_keys(results; aux_variable_keys = aux_variable_keys)
 
-    variables = PSI.read_variables_with_keys(
+    variables = PSI.read_results_with_keys(
         results,
         injection_keys;
         start_time = initial_time,
@@ -328,7 +328,7 @@ function get_generation_data(
     )
     filter_results!(variables, filter_func, results)
 
-    parameters = PSI.read_parameters_with_keys(
+    parameters = PSI.read_results_with_keys(
         results,
         parameter_keys;
         start_time = initial_time,
@@ -336,7 +336,7 @@ function get_generation_data(
     )
     filter_results!(parameters, filter_func, results)
 
-    aux_variables = PSI.read_aux_variables_with_keys(
+    aux_variables = PSI.read_results_with_keys(
         results,
         aux_variable_keys;
         start_time = initial_time,
@@ -370,7 +370,7 @@ function get_load_data(
     variable_keys = get_load_variable_keys(results; variable_keys = variable_keys)
     parameter_keys = get_load_parameter_keys(results; parameter_keys = parameter_keys)
 
-    variables = PSI.read_variables_with_keys(
+    variables = PSI.read_results_with_keys(
         results,
         variable_keys;
         start_time = initial_time,
@@ -378,7 +378,7 @@ function get_load_data(
     )
     filter_results!(variables, filter_func, results)
 
-    parameters = PSI.read_parameters_with_keys(
+    parameters = PSI.read_results_with_keys(
         results,
         parameter_keys;
         start_time = initial_time,
@@ -386,7 +386,7 @@ function get_load_data(
     )
     filter_results!(parameters, filter_func, results)
 
-    aux_variables = PSI.read_aux_variables_with_keys(
+    aux_variables = PSI.read_results_with_keys(
         results,
         aux_variable_keys;
         start_time = initial_time,
@@ -481,7 +481,7 @@ function get_service_data(
 
     variable_keys = get_service_variable_keys(results; variable_keys = variable_keys)
 
-    variables = PSI.read_variables_with_keys(
+    variables = PSI.read_results_with_keys(
         results,
         variable_keys;
         start_time = initial_time,
