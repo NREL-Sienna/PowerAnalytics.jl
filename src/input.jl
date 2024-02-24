@@ -1,5 +1,4 @@
 
-
 """
 Accept a directory that contains several results subdirectories (that each contain
 `results`, `problems`, etc. sub-subdirectories) and construct a sorted dictionary from
@@ -18,7 +17,7 @@ function create_problem_results_dict(
     results_dir::AbstractString,
     problem::String,
     scenarios::Union{Vector{<:AbstractString}, Nothing} = nothing;
-    populate_system::Bool=false,
+    populate_system::Bool = false,
     kwargs...,
 )
     if scenarios === nothing
@@ -27,6 +26,6 @@ function create_problem_results_dict(
     return SortedDict(
         scenario => PSI.get_decision_problem_results(
             PSI.SimulationResults(joinpath(results_dir, scenario)),
-            problem; populate_system=populate_system, kwargs...) for scenario in scenarios
+            problem; populate_system = populate_system, kwargs...) for scenario in scenarios
     )
 end
