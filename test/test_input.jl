@@ -4,8 +4,6 @@ stock_results_prob = run_test_prob()
 sim_results = SimulationResults(TEST_RESULT_DIR, TEST_SIM_NAME)
 decision_problem_names = ("UC", "ED")
 my_results_sets = get_decision_problem_results.(Ref(sim_results), decision_problem_names)
-populated_results_sets =
-    get_populated_decision_problem_results.(Ref(sim_results), decision_problem_names)
 
 # TODO is there a better way?
 function test_system_equivalence(sys1::System, sys2::System)
@@ -14,17 +12,13 @@ function test_system_equivalence(sys1::System, sys2::System)
           sort(get_name.(get_components(Component, sys2)))
 end
 
-@testset "Test per-results functions" begin
-    for (populated_results, my_results, stock_results) in
-        zip(populated_results_sets, my_results_sets, stock_decision_results_sets)
+@testset "Test results function" begin
+    for (my_results, stock_results) in
+        zip(my_results_sets, stock_decision_results_sets)
         test_system_equivalence(
-            read_serialized_system(my_results),
+            get_system!(my_results),
             get_system(stock_results),
         )
-        test_system_equivalence(get_system(populated_results), get_system(stock_results))
-        # NOTE: why does get_units_base return a string and not an enum value?
-        @test get_units_base(get_system(populated_results)) ==
-              string(IS.UnitSystem.NATURAL_UNITS)
     end
 end
 
@@ -64,7 +58,7 @@ end
         scenarios = create_problem_results_dict(TEST_RESULT_DIR, problem, scenario_names)
         @test Set(keys(scenarios)) == Set(scenario_names)
         test_system_equivalence(
-            get_system(scenarios[TEST_SIM_NAME]),
+            get_system!(scenarios[TEST_SIM_NAME]),
             get_system(stock_results),
         )
     end
