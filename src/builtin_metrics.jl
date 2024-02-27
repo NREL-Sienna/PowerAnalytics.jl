@@ -185,7 +185,7 @@ calc_system_load_forecast = SystemTimedMetric(
     "SystemLoadForecast",
     "Fetch the forecast active load of all the ElectricLoad Components in the system",
     (res::IS.Results, st::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
-        compute(calc_load_forecast, res, make_entity(PSY.ElectricLoad), st, len),
+        compute(calc_load_forecast, res, load_entity, st, len),
 )
 
 calc_system_load_from_storage = let
@@ -193,7 +193,7 @@ calc_system_load_from_storage = let
         "SystemLoadFromStorage",
         "Fetch the LoadFromStorage of all storage in the system",
         (res::IS.Results, st::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
-            compute(calc_load_from_storage, res, make_entity(PSY.Storage), st, len),
+            compute(calc_load_from_storage, res, storage_entity, st, len),
     )
 end
 
