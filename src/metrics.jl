@@ -8,11 +8,11 @@ abstract type TimedMetric <: Metric end
 "Scalar-in-time `Metrics`."
 abstract type TimelessMetric <: Metric end
 
-"Time series `Metrics` defined on `Entities`."
-abstract type EntityTimedMetric <: TimedMetric end
+"Time series `Metrics` defined on `ComponentSelector`s."
+abstract type ComponentSelectorTimedMetric <: TimedMetric end
 
 """
-`EntityTimedMetrics` implemented by evaluating a function on each `Component`.
+`ComponentSelectorTimedMetrics` implemented by evaluating a function on each `Component`.
 
 # Arguments
  - `name::String`: the name of the `Metric`
@@ -20,56 +20,57 @@ abstract type EntityTimedMetric <: TimedMetric end
  - `eval_fn`: a callable with signature
    `(::IS.Results, ::Component, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})`
    that returns a DataFrame representing the results for that `Component`
- - `entity_agg_fn`: optional, a callable to aggregate results between `Component`s/`Entity`s,
-   defaults to `sum`
+ - `component_agg_fn`: optional, a callable to aggregate results between
+   `Component`s/`ComponentSelector`s, defaults to `sum`
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
     
 """
-struct ComponentTimedMetric <: EntityTimedMetric
+struct ComponentTimedMetric <: ComponentSelectorTimedMetric
     name::String
     description::String
     eval_fn::Any
-    entity_agg_fn::Any
+    component_agg_fn::Any
     time_agg_fn::Any
-    entity_meta_agg_fn::Any
+    component_meta_agg_fn::Any
     time_meta_agg_fn::Any
     eval_zero::Any
 end
 
-# TODO test entity_meta_agg_fn, time_meta_agg_fn, eval_zero if keeping them
+# TODO test component_meta_agg_fn, time_meta_agg_fn, eval_zero if keeping them
 ComponentTimedMetric(
     name::String,
     description::String,
     eval_fn::Function;
-    entity_agg_fn = sum,
+    component_agg_fn = sum,
     time_agg_fn = sum,
-    entity_meta_agg_fn = sum,
+    component_meta_agg_fn = sum,
     time_meta_agg_fn = sum,
     eval_zero = nothing,
 ) = ComponentTimedMetric(
     name,
     description,
     eval_fn,
-    entity_agg_fn,
+    component_agg_fn,
     time_agg_fn,
-    entity_meta_agg_fn,
+    component_meta_agg_fn,
     time_meta_agg_fn,
     eval_zero,
 )
 
 # TODO test CustomTimedMetric
 """
-`EntityTimedMetrics` implemented without drilling down to the base `Component`s, just call the `eval_fn` directly.
+`ComponentSelectorTimedMetrics` implemented without drilling down to the base `Component`s,
+just call the `eval_fn` directly.
 
 # Arguments
  - `name::String`: the name of the `Metric`
  - `description::String`: a description of the `Metric`
- - `eval_fn`: a callable with signature
-   `(::IS.Results, ::Union{Entity, Component}, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})`
-   that returns a DataFrame representing the results for that `Component`
+ - `eval_fn`: a callable with signature `(::IS.Results, ::Union{ComponentSelector,
+   Component}, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
+   DataFrame representing the results for that `Component`
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
 """
-struct CustomTimedMetric <: EntityTimedMetric
+struct CustomTimedMetric <: ComponentSelectorTimedMetric
     name::String
     description::String
     eval_fn::Any
@@ -130,7 +131,8 @@ struct ResultsTimelessMetric <: TimelessMetric
 end
 
 """
-The metric does not have a result for the `Component`/`Entity`/etc. on which it is being called.
+The metric does not have a result for the `Component`/`ComponentSelector`/etc. on which it
+is being called.
 """
 struct NoResultError <: Exception
     msg::AbstractString
@@ -165,31 +167,39 @@ get_description(m::Metric) = m.description
 get_time_agg_fn(m::TimedMetric) = m.time_agg_fn
 # TODO is there a naming convention for this kind of function?
 "Returns a `Metric` identical to the input except with the given `time_agg_fn`"
-with_time_agg_fn(m::T, time_agg_fn) where {T <: EntityTimedMetric} =
+with_time_agg_fn(m::T, time_agg_fn) where {T <: ComponentSelectorTimedMetric} =
     T(m.name, m.description, m.eval_fn; time_agg_fn = time_agg_fn)
 
-get_entity_agg_fn(m::ComponentTimedMetric) = m.entity_agg_fn
-"Returns a `Metric` identical to the input except with the given `entity_agg_fn`"
-with_entity_agg_fn(m::ComponentTimedMetric, entity_agg_fn) =
-    ComponentTimedMetric(m.name, m.description, m.eval_fn; entity_agg_fn = entity_agg_fn)
-
-get_time_meta_agg_fn(m::TimedMetric) = m.time_meta_agg_fn
-"Returns a `Metric` identical to the input except with the given `time_meta_agg_fn`"
-with_time_meta_agg_fn(m::T, time_meta_agg_fn) where {T <: EntityTimedMetric} =
-    T(m.name, m.description, m.eval_fn; time_meta_agg_fn = time_meta_agg_fn)
-
-get_entity_meta_agg_fn(m::ComponentTimedMetric) = m.entity_meta_agg_fn
-"Returns a `Metric` identical to the input except with the given `entity_meta_agg_fn`"
-with_entity_meta_agg_fn(m::ComponentTimedMetric, entity_meta_agg_fn) =
+get_component_agg_fn(m::ComponentTimedMetric) = m.component_agg_fn
+"Returns a `Metric` identical to the input except with the given `component_agg_fn`"
+with_component_agg_fn(m::ComponentTimedMetric, component_agg_fn) =
     ComponentTimedMetric(
         m.name,
         m.description,
         m.eval_fn;
-        entity_meta_agg_fn = entity_meta_agg_fn,
+        component_agg_fn = component_agg_fn,
     )
 
-"Canonical way to represent a `(Metric, Entity)` or `(Metric, Component)` pair as a string."
-metric_entity_to_string(m::Metric, e::Union{Entity, Component}) =
+get_time_meta_agg_fn(m::TimedMetric) = m.time_meta_agg_fn
+"Returns a `Metric` identical to the input except with the given `time_meta_agg_fn`"
+with_time_meta_agg_fn(m::T, time_meta_agg_fn) where {T <: ComponentSelectorTimedMetric} =
+    T(m.name, m.description, m.eval_fn; time_meta_agg_fn = time_meta_agg_fn)
+
+get_component_meta_agg_fn(m::ComponentTimedMetric) = m.component_meta_agg_fn
+"Returns a `Metric` identical to the input except with the given `component_meta_agg_fn`"
+with_component_meta_agg_fn(m::ComponentTimedMetric, component_meta_agg_fn) =
+    ComponentTimedMetric(
+        m.name,
+        m.description,
+        m.eval_fn;
+        component_meta_agg_fn = component_meta_agg_fn,
+    )
+
+"""
+Canonical way to represent a `(Metric, ComponentSelector)` or `(Metric, Component)` pair as
+a string.
+"""
+metric_selector_to_string(m::Metric, e::Union{ComponentSelector, Component}) =
     get_name(m) * NAME_DELIMETER * get_name(e)
 
 "Check whether a column is metadata"
@@ -236,7 +246,10 @@ time_df(df::DataFrames.AbstractDataFrame) =
 "Select the `DateTime` column of the `DataFrame` as a `Vector` without copying."
 time_vec(df::DataFrames.AbstractDataFrame) = df[!, DATETIME_COL]
 
-"Select the names of the data columns of the `DataFrame`, i.e., those that are not `DateTime` and not metadata."
+"""
+Select the names of the data columns of the `DataFrame`, i.e., those that are not `DateTime`
+and not metadata.
+"""
 data_cols(df::DataFrames.AbstractDataFrame) =
     filter(
         (
@@ -286,8 +299,9 @@ function _compute_meta_generic!(val, metric, results)
 end
 
 # Helper function to call eval_fn and set the appropriate metadata
-function _compute_entity_timed_helper(metric::EntityTimedMetric, results::IS.Results,
-    comp::Union{Component, Entity};
+function _compute_selector_timed_helper(metric::ComponentSelectorTimedMetric,
+    results::IS.Results,
+    comp::Union{Component, ComponentSelector};
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
     val = metric.eval_fn(results, comp, start_time, len)
@@ -311,7 +325,7 @@ Compute the given metric on the given component within the given set of results,
 compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing) =
-    _compute_entity_timed_helper(metric, results, comp; start_time, len)
+    _compute_selector_timed_helper(metric, results, comp; start_time, len)
 
 """
 Compute the given metric on the given component within the given set of results, returning a
@@ -325,10 +339,11 @@ Compute the given metric on the given component within the given set of results,
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
-compute(metric::CustomTimedMetric, results::IS.Results, comp::Union{Component, Entity};
+compute(metric::CustomTimedMetric, results::IS.Results,
+    comp::Union{Component, ComponentSelector};
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing) =
-    _compute_entity_timed_helper(metric, results, comp; start_time, len)
+    _compute_selector_timed_helper(metric, results, comp; start_time, len)
 
 """
 Compute the given metric on the `System` associated with the given set of results, returning
@@ -365,19 +380,19 @@ end
 
 """
 Compute the given metric on the given set of results, returning a `DataFrame` with a single
-cell; takes a `Nothing` where the `EntityTimedMetric` method of this function would take a
-`Component`/`Entity` for convenience
+cell; takes a `Nothing` where the `ComponentSelectorTimedMetric` method of this function would take a
+`Component`/`ComponentSelector` for convenience
 """
-compute(metric::ResultsTimelessMetric, results::IS.Results, entity::Nothing) =
+compute(metric::ResultsTimelessMetric, results::IS.Results, selector::Nothing) =
     compute(metric, results)
 
 """
 Compute the given metric on the `System` associated with the given set of results, returning
 a `DataFrame` with a `DateTime` column and a data column; takes a `Nothing` where the
-`EntityTimedMetric` method of this function would take a `Component`/`Entity` for
+`ComponentSelectorTimedMetric` method of this function would take a `Component`/`ComponentSelector` for
 convenience
 """
-compute(metric::SystemTimedMetric, results::IS.Results, entity::Nothing;
+compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing) = compute(metric, results;
     start_time = start_time, len = len)
@@ -421,25 +436,26 @@ function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
 end
 
 """
-Compute the given metric on the given entity within the given set of results, aggregating
-across all the components in the entity if necessary and returning a `DataFrame` with a
-`DateTime` column and a data column labeled with the entity's name.
+Compute the given `Metric` on the given `ComponentSelector` within the given set of results, aggregating
+across all the components in the `ComponentSelector` if necessary and returning a `DataFrame` with a
+`DateTime` column and a data column labeled with the `ComponentSelector`'s name.
 
 # Arguments
  - `metric::ComponentTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
- - `entity::Entity`: the entity on which to compute the metric
+ - `selector::ComponentSelector`: the `ComponentSelector` on which to compute the metric
  - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
-function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Entity;
+function compute(metric::ComponentTimedMetric, results::IS.Results,
+    selector::ComponentSelector;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
     # TODO incorporate allow_missing
-    agg_fn = get_entity_agg_fn(metric)
-    meta_agg_fn = get_entity_meta_agg_fn(metric)
-    components = get_components(entity, PowerSimulations.get_system(results))
+    agg_fn = get_component_agg_fn(metric)
+    meta_agg_fn = get_component_meta_agg_fn(metric)
+    components = get_components(selector, PowerSimulations.get_system(results))
     vals = [
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
@@ -451,7 +467,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
             time_col = Vector{Union{Missing, Dates.DateTime}}([missing])
             data_col = agg_fn(Vector{Float64}())
             new_agg_meta = nothing
-            result = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
+            result = DataFrame(DATETIME_COL => time_col, get_name(selector) => data_col)
         end
     else
         time_col = _extract_common_time(vals...)
@@ -460,13 +476,13 @@ function compute(metric::ComponentTimedMetric, results::IS.Results, entity::Enti
         is_agg_meta = !all(agg_metas .=== nothing)
         data_col = is_agg_meta ? agg_fn(data_vecs, agg_metas) : agg_fn(data_vecs)
         new_agg_meta = is_agg_meta ? meta_agg_fn(agg_metas) : nothing
-        result = DataFrame(DATETIME_COL => time_col, get_name(entity) => data_col)
+        result = DataFrame(DATETIME_COL => time_col, get_name(selector) => data_col)
         (new_agg_meta === nothing) || set_agg_meta!(result, new_agg_meta)
     end
 
     _compute_meta_timed!(result, metric, results)
     colmetadata!(result, 2, "components", components; style = :note)
-    colmetadata!(result, 2, "entity", entity; style = :note)
+    colmetadata!(result, 2, "ComponentSelector", selector; style = :note)
     return result
 end
 
@@ -483,34 +499,37 @@ compute(met, res, start_time, len) =
 
 # TODO function compute_set
 """
-Compute the given metric on the subentities of the given `Entity` within the given set of
-results, returning a `DataFrame` with a `DateTime` column and a data column for each
-sub-entity. Should be the same as calling `compute` on each sub-entity and concatenating.
+Compute the given metric on the subselectors of the given `ComponentSelector` within the
+given set of results, returning a `DataFrame` with a `DateTime` column and a data column for
+each subselector. Should be the same as calling `compute` on each subselector and
+concatenating.
 
 # Arguments
- - `metric::EntityTimedMetric`: the metric to compute
+ - `metric::ComponentSelectorTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
- - `entity::Entity`: the entity on whose subentities to compute the metric
+ - `selector::ComponentSelector`: the `ComponentSelector` on whose subselectors to compute
+   the metric
  - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
-function compute_set(metric::EntityTimedMetric, results::IS.Results, entity::Entity;
+function compute_set(metric::ComponentSelectorTimedMetric, results::IS.Results,
+    selector::ComponentSelector;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
-    subents = get_subentities(entity, PowerSimulations.get_system(results))
+    subents = get_subselectors(selector, PowerSimulations.get_system(results))
     subcomputations = [compute(metric, results, sub; start_time, len) for sub in subents]
     return hcat_timed(subcomputations...)
 end
 
 # The core of compute_all, shared between the timed and timeless versions
-function _common_compute_all(results, metrics, entities, col_names; kwargs)
-    (entities === nothing) && (entities = fill(nothing, length(metrics)))
-    (entities isa Vector) || (entities = repeat([entities], length(metrics)))
+function _common_compute_all(results, metrics, selectors, col_names; kwargs)
+    (selectors === nothing) && (selectors = fill(nothing, length(metrics)))
+    (selectors isa Vector) || (selectors = repeat([selectors], length(metrics)))
     (col_names === nothing) && (col_names = fill(nothing, length(metrics)))
 
-    length(entities) == length(metrics) || throw(
-        ArgumentError("Got $(length(metrics)) metrics but $(length(entities)) entities"))
+    length(selectors) == length(metrics) || throw(
+        ArgumentError("Got $(length(metrics)) metrics but $(length(selectors)) selectors"))
     length(col_names) == length(metrics) || throw(
         ArgumentError("Got $(length(metrics)) metrics but $(length(col_names)) names"))
 
@@ -518,36 +537,38 @@ function _common_compute_all(results, metrics, entities, col_names; kwargs)
     # construct our own name
     return [
         let
-            computed = compute(metric, results, entity; kwargs...)
+            computed = compute(metric, results, selector; kwargs...)
             old_name = first(data_cols(computed))
-            new_name = (name === nothing) ? metric_entity_to_string(metric, entity) : name
+            new_name =
+                (name === nothing) ? metric_selector_to_string(metric, selector) : name
             DataFrames.rename(computed, old_name => new_name)
         end
-        for (metric, entity, name) in zip(metrics, entities, col_names)
+        for (metric, selector, name) in zip(metrics, selectors, col_names)
     ]
 end
 
 """
-For each `(metric, entity, col_name)` tuple in `zip(metrics, entities, col_names)`, call
+For each `(metric, selector, col_name)` tuple in `zip(metrics, selectors, col_names)`, call
 [`compute`](@ref) and collect the results in a `DataFrame` with a single `DateTime` column.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
  - `metrics::Vector{<:TimedMetric}`: the metrics to compute
- - `entities`: either a scalar or vector of `Nothing`/`Component`/`Entity`: the entities on
-   which to compute the metrics, or nothing for system/results metrics; broadcast if scalar
+ - `selectors`: either a scalar or vector of `Nothing`/`Component`/`ComponentSelector`: the
+   selectors on which to compute the metrics, or nothing for system/results metrics;
+   broadcast if scalar
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
    of names for the columns of ouput data. Entries of `nothing` default to the result of
-   [`metric_entity_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
-   `nothing`
+   [`metric_selector_to_string`](@ref); `names = nothing` is equivalent to an entire vector
+   of `nothing`
  - `kwargs...`: pass through to each [`compute`](@ref) call
 """
 compute_all(results::IS.Results,
     metrics::Vector{<:TimedMetric},
-    entities::Union{Nothing, Component, Entity, Vector} = nothing,
+    selectors::Union{Nothing, Component, ComponentSelector, Vector} = nothing,
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
-) = hcat_timed(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
+) = hcat_timed(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
 
 """
 For each (metric, col_name) tuple in `zip(metrics, col_names)`, call [`compute`](@ref) and
@@ -556,32 +577,33 @@ collect the results in a DataFrame.
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
  - `metrics::Vector{<:TimelessMetric}`: the metrics to compute
- - `entities`: either a scalar or vector of `Nothing`/`Component`/`Entity`: the entities on
-   which to compute the metrics, or nothing for system/results metrics; broadcast if scalar
+ - `selectors`: either a scalar or vector of `Nothing`/`Component`/`ComponentSelector`: the
+   selectors on which to compute the metrics, or nothing for system/results metrics;
+   broadcast if scalar
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
    of names for the columns of ouput data. Entries of `nothing` default to the result of
-   [`metric_entity_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
+   [`metric_selector_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
    `nothing`
    - `kwargs...`: pass through to each [`compute`](@ref) call
 """
 compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
-    entities::Union{Nothing, Component, Entity, Vector} = nothing,
+    selectors::Union{Nothing, Component, ComponentSelector, Vector} = nothing,
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
-) = hcat(_common_compute_all(results, metrics, entities, col_names; kwargs)...)
+) = hcat(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
 
 ComputationTuple = Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
 """
-For each (metric, entity, col_name) tuple in `computations`, call [`compute`](@ref) and
+For each (metric, selector, col_name) tuple in `computations`, call [`compute`](@ref) and
 collect the results in a DataFrame with a single DateTime column.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
  - `computations::(Tuple{<:T, Any, Any} where T <: Union{TimedMetric, TimelessMetric})...`:
-   a list of the computations to perform, where each element is a (metric, entity, col_name)
-   where metric is the metric to compute, entity is the entity on which to compute the
-   metric or nothing if not relevant, and col_name is the name for the output column of data
-   or nothing to use the default
+   a list of the computations to perform, where each element is a (metric, selector,
+   col_name) where metric is the metric to compute, selector is the ComponentSelector on
+   which to compute the metric or nothing if not relevant, and col_name is the name for the
+   output column of data or nothing to use the default
    - `kwargs...`: pass through to each [`compute`](@ref) call
 """
 compute_all(results::IS.Results, computations::ComputationTuple...; kwargs...) =
@@ -751,8 +773,8 @@ own result.
    a single value that will be the result of this `Metric`. "Value" means a vector (not a
    `DataFrame`) in the case of `TimedMetrics` and a scalar for `TimelessMetrics`.
  - `metrics`: the input `Metrics`. It is currently not possible to combine `TimedMetrics`
-   with `TimelessMetrics`, though it is possible to combine `EntityTimedMetrics` with
-   `SystemTimedMetrics`.
+   with `TimelessMetrics`, though it is possible to combine `ComponentSelectorTimedMetrics`
+   with `SystemTimedMetrics`.
 """
 function compose_metrics end  # For the unified docstring
 
@@ -760,9 +782,9 @@ compose_metrics(
     name::String,
     description::String,
     reduce_fn,
-    metrics::EntityTimedMetric...,
+    metrics::ComponentSelectorTimedMetric...,
 ) = CustomTimedMetric(name, description,
-    (res::IS.Results, ent::Union{Component, Entity},
+    (res::IS.Results, ent::Union{Component, ComponentSelector},
         start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
         _common_compose_metrics(
             res,
@@ -811,24 +833,26 @@ compose_metrics(
         ),
 )
 
-# Create an EntityTimedMetric that wraps a SystemTimedMetric, disregarding the entity
-entity_metric_from_system_metric(in_metric::SystemTimedMetric) = CustomTimedMetric(
-    get_name(in_metric),
-    get_description(in_metric),
-    (res::IS.Results, comp::Union{Component, Entity},
-        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
-        compute(in_metric, res, start_time, len))
+# Create a ComponentSelectorTimedMetric that wraps a SystemTimedMetric, disregarding the ComponentSelector
+component_selector_metric_from_system_metric(in_metric::SystemTimedMetric) =
+    CustomTimedMetric(
+        get_name(in_metric),
+        get_description(in_metric),
+        (res::IS.Results, comp::Union{Component, ComponentSelector},
+            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+            compute(in_metric, res, start_time, len))
 
-# This one only gets triggered when we have at least one EntityTimedMetric *and* at least
-# one SystemTimedMetric, in which case the behavior is to treat the SystemTimedMetrics as if
-# they applied to the entity
+# This one only gets triggered when we have at least one ComponentSelectorTimedMetric *and*
+# at least one SystemTimedMetric, in which case the behavior is to treat the
+# SystemTimedMetrics as if they applied to the selector
 function compose_metrics(
     name::String,
     description::String,
     reduce_fn,
-    metrics::Union{EntityTimedMetric, SystemTimedMetric}...)
+    metrics::Union{ComponentSelectorTimedMetric, SystemTimedMetric}...)
     wrapped_metrics = [
-        (m isa SystemTimedMetric) ? entity_metric_from_system_metric(m) : m for
+        (m isa SystemTimedMetric) ? component_selector_metric_from_system_metric(m) : m
+        for
         m in metrics
     ]
     return compose_metrics(name, description, reduce_fn, wrapped_metrics...)
