@@ -7,19 +7,20 @@ export get_service_data
 export categorize_data
 export no_datetime
 
-export Entity, EntityElement, EntitySet
+export ComponentSelector, ComponentSelectorElement, ComponentSelectorSet
 export NAME_DELIMETER, subtype_to_string, component_to_qualified_string
-export make_entity, default_name, get_name, get_subentities
-export Metric, TimedMetric, TimelessMetric, EntityTimedMetric, ComponentTimedMetric,
+export select_components, default_name, get_name, get_subselectors
+export Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric,
+    ComponentTimedMetric,
     SystemTimedMetric, ResultsTimelessMetric, CustomTimedMetric
 export DATETIME_COL, META_COL_KEY, SYSTEM_COL, RESULTS_COL, AGG_META_KEY
 export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, data_df,
-    data_vec, data_mat, get_description, get_entity_agg_fn, get_time_agg_fn,
-    with_entity_agg_fn, with_time_agg_fn, metric_entity_to_string, get_agg_meta,
+    data_vec, data_mat, get_description, get_component_agg_fn, get_time_agg_fn,
+    with_component_agg_fn, with_time_agg_fn, metric_selector_to_string, get_agg_meta,
     set_agg_meta!
 export compute, compute_set, compute_all, hcat_timed, aggregate_time, compose_metrics
 export create_problem_results_dict
-export load_entity, storage_entity, generator_entities_by_fuel
+export load_component_selector, storage_component_selector, generator_selectors_by_fuel
 export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
     calc_discharge_cycles, calc_system_slack_up, calc_load_forecast, calc_active_power_in,
     calc_active_power_out, calc_stored_energy, calc_active_power_forecast, calc_curtailment,

@@ -1,13 +1,13 @@
 # TODO add a kwarg and testing for filtering on is_available
 
-"The basic type for all Entities."
-abstract type Entity end
+"The basic type for all ComponentSelectors."
+abstract type ComponentSelector end
 
-"Entities that are not composed of other Entities."
-abstract type EntityElement <: Entity end
+"ComponentSelectors that are not composed of other ComponentSelectors."
+abstract type ComponentSelectorElement <: ComponentSelector end
 
-"Entities that are composed of other Entities."
-abstract type EntitySet <: Entity end
+"ComponentSelectors that are composed of other ComponentSelectors."
+abstract type ComponentSelectorSet <: ComponentSelector end
 
 # TODO perhaps put this elsewhere; it is also referenced in metrics.jl
 "Delimeter to use when constructing fully-qualified names."
@@ -26,27 +26,28 @@ component_to_qualified_string(component::Component) =
 
 # Generic implementations/generic docstrings for simple functions with many methods
 """
-Get the default name for the Entity, constructed automatically from what the Entity
-contains. Particularly with complex Entities, this may not always be very concise or
-informative, so in these cases constructing the Entity with a custom name is recommended.
+Get the default name for the ComponentSelector, constructed automatically from what the
+ComponentSelector contains. Particularly with complex ComponentSelectors, this may not
+always be very concise or informative, so in these cases constructing the ComponentSelector
+with a custom name is recommended.
 """
 function default_name end
 
 """
-Get the name of the Entity. This is either the default name or a custom name passed in at
+Get the name of the ComponentSelector. This is either the default name or a custom name passed in at
 creation time.
 """
-# Override this if you define an Entity subtype with no name field
-get_name(e::Entity) = (e.name !== nothing) ? e.name : default_name(e)
+# Override this if you define a ComponentSelector subtype with no name field
+get_name(e::ComponentSelector) = (e.name !== nothing) ? e.name : default_name(e)
 
 """
-Get the components of the System that make up the Entity.
+Get the components of the System that make up the ComponentSelector.
 """
 function get_components end
 
-# ComponentEntity
-"Entity that wraps a single Component."
-struct ComponentEntity <: EntityElement
+# SingleComponentSelector
+"ComponentSelector that wraps a single Component."
+struct SingleComponentSelector <: ComponentSelectorElement
     component_subtype::Type{<:Component}
     component_name::AbstractString
     name::Union{String, Nothing}
@@ -54,57 +55,57 @@ end
 
 # Construction
 """
-Make an EntityElement pointing to a Component with the given subtype and name. Optionally
-provide a name for the EntityElement.
+Make a ComponentSelector pointing to a Component with the given subtype and name. Optionally
+provide a name for the ComponentSelector.
 """
-make_entity(
+select_components(
     component_subtype::Type{<:Component},
     component_name::AbstractString,
     name::Union{String, Nothing} = nothing,
-) = ComponentEntity(component_subtype, component_name, name)
+) = SingleComponentSelector(component_subtype, component_name, name)
 """
-Construct an EntityElement from a Component reference, pointing to Components in any System
-with the given Component's subtype and name.
+Construct a ComponentSelector from a Component reference, pointing to Components in any
+System with the given Component's subtype and name.
 """
-make_entity(component_ref::Component, name::Union{String, Nothing} = nothing) =
-    make_entity(typeof(component_ref), get_name(component_ref), name)
+select_components(component_ref::Component, name::Union{String, Nothing} = nothing) =
+    select_components(typeof(component_ref), get_name(component_ref), name)
 
 # Naming
-default_name(e::ComponentEntity) =
+default_name(e::SingleComponentSelector) =
     component_to_qualified_string(e.component_subtype, e.component_name)
 
 # Contents
-function get_components(e::ComponentEntity, sys::PSY.System)::Vector{Component}
+function get_components(e::SingleComponentSelector, sys::PSY.System)::Vector{Component}
     com = get_component(e.component_subtype, sys, e.component_name)
     return (com === nothing || !get_available(com)) ? [] : [com]
 end
 
-# ListEntitySet
-"EntitySet represented by a list of other Entities."
-struct ListEntitySet <: EntitySet
+# ListComponentSelector
+"ComponentSelectorSet represented by a list of other ComponentSelectors."
+struct ListComponentSelector <: ComponentSelectorSet
     # Using tuples internally for immutability => `==` is automatically well-behaved
-    content::Tuple{Vararg{Entity}}
+    content::Tuple{Vararg{ComponentSelector}}
     name::Union{String, Nothing}
 end
 
 # Construction
 """
-Make an EntitySet pointing to a list of sub-entities. Optionally provide a name for the
-EntitySet.
+Make a ComponentSelector pointing to a list of subselectors. Optionally provide a name for
+the ComponentSelector.
 """
 # name needs to be a kwarg to disambiguate from content
-make_entity(content::Entity...; name::Union{String, Nothing} = nothing) =
-    ListEntitySet(content, name)
+select_components(content::ComponentSelector...; name::Union{String, Nothing} = nothing) =
+    ListComponentSelector(content, name)
 
 # Naming
-default_name(e::ListEntitySet) = "[$(join(get_name.(e.content), ", "))]"
+default_name(e::ListComponentSelector) = "[$(join(get_name.(e.content), ", "))]"
 
 # Contents
-function get_subentities(e::ListEntitySet, sys::PSY.System)
+function get_subselectors(e::ListComponentSelector, sys::PSY.System)
     return e.content
 end
 
-function get_components(e::ListEntitySet, sys::PSY.System)
+function get_components(e::ListComponentSelector, sys::PSY.System)
     sub_components = Iterators.map(x -> get_components(x, sys), e.content)
     return Iterators.filter(
         get_available,
@@ -112,38 +113,41 @@ function get_components(e::ListEntitySet, sys::PSY.System)
     )
 end
 
-# SubtypeEntitySet
-"EntitySet represented by a subtype of Component."
-struct SubtypeEntitySet <: EntitySet
+# SubtypeComponentSelector
+"ComponentSelectorSet represented by a subtype of Component."
+struct SubtypeComponentSelector <: ComponentSelectorSet
     component_subtype::Type{<:Component}
     name::Union{String, Nothing}
 end
 
 # Construction
 """
-Make a SubtypeEntitySet from a subtype of Component. Optionally provide a name for the
-EntitySet.
+Make a ComponentSelector from a subtype of Component. Optionally provide a name for the
+ComponentSelectorSet.
 """
-# name needs to be a kwarg to disambiguate from ComponentEntity's make_entity
-make_entity(component_subtype::Type{<:Component}; name::Union{String, Nothing} = nothing) =
-    SubtypeEntitySet(component_subtype, name)
+# name needs to be a kwarg to disambiguate from SingleComponentSelector's select_components
+select_components(
+    component_subtype::Type{<:Component};
+    name::Union{String, Nothing} = nothing,
+) =
+    SubtypeComponentSelector(component_subtype, name)
 
 # Naming
-default_name(e::SubtypeEntitySet) = subtype_to_string(e.component_subtype)
+default_name(e::SubtypeComponentSelector) = subtype_to_string(e.component_subtype)
 
 # Contents
-function get_subentities(e::SubtypeEntitySet, sys::PSY.System)
-    # Lazily construct ComponentEntitys from the Components
-    return Iterators.map(make_entity, get_components(e, sys))
+function get_subselectors(e::SubtypeComponentSelector, sys::PSY.System)
+    # Lazily construct SingleComponentSelectors from the Components
+    return Iterators.map(select_components, get_components(e, sys))
 end
 
-function get_components(e::SubtypeEntitySet, sys::PSY.System)
+function get_components(e::SubtypeComponentSelector, sys::PSY.System)
     return Iterators.filter(get_available, get_components(e.component_subtype, sys))
 end
 
-# TopologyEntitySet
-"EntitySet represented by an AggregationTopology and a subtype of Component."
-struct TopologyEntitySet <: EntitySet
+# TopologyComponentSelector
+"ComponentSelectorSet represented by an AggregationTopology and a subtype of Component."
+struct TopologyComponentSelector <: ComponentSelectorSet
     topology_subtype::Type{<:PSY.AggregationTopology}
     topology_name::AbstractString
     component_subtype::Type{<:Component}
@@ -152,15 +156,15 @@ end
 
 # Construction
 """
-Make a TopologyEntitySet from an AggregationTopology and a subtype of Component. Optionally
-provide a name for the EntitySet.
+Make a ComponentSelector from an AggregationTopology and a subtype of Component. Optionally
+provide a name for the ComponentSelector.
 """
-make_entity(
+select_components(
     topology_subtype::Type{<:PSY.AggregationTopology},
     topology_name::AbstractString,
     component_subtype::Type{<:Component},
     name::Union{String, Nothing} = nothing,
-) = TopologyEntitySet(
+) = TopologyComponentSelector(
     topology_subtype,
     topology_name,
     component_subtype,
@@ -168,16 +172,16 @@ make_entity(
 )
 
 # Naming
-default_name(e::TopologyEntitySet) =
+default_name(e::TopologyComponentSelector) =
     component_to_qualified_string(e.topology_subtype, e.topology_name) * NAME_DELIMETER *
     subtype_to_string(e.component_subtype)
 
 # Contents
-function get_subentities(e::TopologyEntitySet, sys::PSY.System)
-    return Iterators.map(make_entity, get_components(e, sys))
+function get_subselectors(e::TopologyComponentSelector, sys::PSY.System)
+    return Iterators.map(select_components, get_components(e, sys))
 end
 
-function get_components(e::TopologyEntitySet, sys::PSY.System)
+function get_components(e::TopologyComponentSelector, sys::PSY.System)
     agg_topology = get_component(e.topology_subtype, sys, e.topology_name)
     return Iterators.filter(
         get_available,
@@ -189,9 +193,9 @@ function get_components(e::TopologyEntitySet, sys::PSY.System)
     )
 end
 
-# FilterEntitySet
-"EntitySet represented by a filter function and a subtype of Component."
-struct FilterEntitySet <: EntitySet
+# FilterComponentSelector
+"ComponentSelectorSet represented by a filter function and a subtype of Component."
+struct FilterComponentSelector <: ComponentSelectorSet
     filter_fn::Function
     component_subtype::Type{<:Component}
     name::Union{String, Nothing}
@@ -199,11 +203,11 @@ end
 
 # Construction
 """
-Make a FilterEntitySet from a filter function and a subtype of Component. Optionally provide
-a name for the EntitySet. The filter function must accept instances of component_subtype as
-a sole argument and return a Bool.
+Make a ComponentSelector from a filter function and a subtype of Component. Optionally
+provide a name for the ComponentSelector. The filter function must accept instances of
+component_subtype as a sole argument and return a Bool.
 """
-function make_entity(
+function select_components(
     filter_fn::Function,
     component_subtype::Type{<:Component},
     name::Union{String, Nothing} = nothing,
@@ -219,19 +223,19 @@ function make_entity(
     # can in fact be called on the given subtype (e.g., filter_fn = (x -> x+1 == 0) should
     # fail). Core.compiler.return_type does not seem to be stable enough to rely on. The
     # IsDef.jl library looks interesting.
-    return FilterEntitySet(filter_fn, component_subtype, name)
+    return FilterComponentSelector(filter_fn, component_subtype, name)
 end
 
 # Naming
-default_name(e::FilterEntitySet) =
+default_name(e::FilterComponentSelector) =
     string(e.filter_fn) * NAME_DELIMETER * subtype_to_string(e.component_subtype)
 
 # Contents
-function get_subentities(e::FilterEntitySet, sys::PSY.System)
-    return Iterators.map(make_entity, get_components(e, sys))
+function get_subselectors(e::FilterComponentSelector, sys::PSY.System)
+    return Iterators.map(select_components, get_components(e, sys))
 end
 
-function get_components(e::FilterEntitySet, sys::PSY.System)
+function get_components(e::FilterComponentSelector, sys::PSY.System)
     return Iterators.filter(
         get_available,
         get_components(e.filter_fn, e.component_subtype, sys),

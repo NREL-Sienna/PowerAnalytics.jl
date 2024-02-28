@@ -1,8 +1,8 @@
-"An Entity representing all the electric load in a System"
-load_entity = make_entity(PSY.ElectricLoad)
+"A ComponentSelector representing all the electric load in a System"
+load_component_selector = select_components(PSY.ElectricLoad)
 
-"An Entity representing all the storage in a System"
-storage_entity = make_entity(PSY.Storage)
+"A ComponentSelector representing all the storage in a System"
+storage_component_selector = select_components(PSY.Storage)
 
 FUEL_TYPES_DATA_FILE =
     joinpath(dirname(dirname(pathof(PowerAnalytics))), "deps", "generator_mapping.yaml")
@@ -23,7 +23,7 @@ function parse_fuel_category(category_spec::Dict)
     return gen_type, pm, fc
 end
 
-function make_fuel_entity(category_spec::Dict)
+function make_fuel_component_selector(category_spec::Dict)
     parse_results = parse_fuel_category(category_spec)
     (gen_type, prime_mover, fuel_category) = parse_results
 
@@ -41,22 +41,22 @@ function make_fuel_entity(category_spec::Dict)
     end
 
     # Create a nice name that is guaranteed to never collide with fully-qualified component names
-    entity_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
+    selector_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
         NAME_DELIMETER)
 
-    return make_entity(filter_closure, gen_type, entity_name)
+    return select_components(filter_closure, gen_type, selector_name)
 end
 
 # Based on old PowerAnalytics' get_generator_mapping
 function load_generator_fuel_mappings(filename = FUEL_TYPES_DATA_FILE)
     in_data = open(YAML.load, filename)
-    mappings = OrderedDict{String, Entity}()
+    mappings = OrderedDict{String, ComponentSelector}()
     for top_level in in_data |> keys |> collect |> sort
-        sub_entities = make_fuel_entity.(in_data[top_level])
-        mappings[top_level] = make_entity(sub_entities...; name = top_level)
+        subselectors = make_fuel_component_selector.(in_data[top_level])
+        mappings[top_level] = select_components(subselectors...; name = top_level)
     end
     return mappings
 end
 
-"A dictionary of nested entities representing all the generators in a System categorized by fuel type"
-generator_entities_by_fuel = load_generator_fuel_mappings()
+"A dictionary of nested `ComponentSelector`s representing all the generators in a System categorized by fuel type"
+generator_selectors_by_fuel = load_generator_fuel_mappings()
