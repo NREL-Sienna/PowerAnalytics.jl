@@ -299,7 +299,7 @@ function _compute_meta_generic!(val, metric, results)
 end
 
 # Helper function to call eval_fn and set the appropriate metadata
-function _compute_selector_timed_helper(metric::ComponentSelectorTimedMetric,
+function _compute_component_timed_helper(metric::ComponentSelectorTimedMetric,
     results::IS.Results,
     comp::Union{Component, ComponentSelector};
     start_time::Union{Nothing, Dates.DateTime} = nothing,
@@ -325,7 +325,7 @@ Compute the given metric on the given component within the given set of results,
 compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing) =
-    _compute_selector_timed_helper(metric, results, comp; start_time, len)
+    _compute_component_timed_helper(metric, results, comp; start_time, len)
 
 """
 Compute the given metric on the given component within the given set of results, returning a
@@ -343,7 +343,7 @@ compute(metric::CustomTimedMetric, results::IS.Results,
     comp::Union{Component, ComponentSelector};
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing) =
-    _compute_selector_timed_helper(metric, results, comp; start_time, len)
+    _compute_component_timed_helper(metric, results, comp; start_time, len)
 
 """
 Compute the given metric on the `System` associated with the given set of results, returning
