@@ -34,26 +34,55 @@ make_key(entry::Type{<:PSI.AuxVariableType}, component::Type{<:Component}) =
 make_key(entry::Type{<:PSI.InitialConditionType}, component::Type{<:Component}) =
     PSI.ICKey(entry, component)
 
+"Sort a vector of key tuples into variables, parameters, etc. like PSI.load_results! wants"
+make_entry_kwargs(key_tuples::Vector{<:Tuple}) = [
+    (key_name => filter(((this_key, _),) -> this_key <: key_type, key_tuples))
+    for (key_name, key_type) in [
+        (:variables, PSI.VariableType),
+        (:duals, PSI.ConstraintType),
+        (:parameters, PSI.ParameterType),
+        (:aux_variables, PSI.AuxVariableType),
+        (:expressions, PSI.ExpressionType),
+    ]
+]
+
 # TODO caching needs to happen here
 # TODO test
 "Given an EntryType and a Component, fetch a single column of results"
 function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component,
     start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
-    key = make_key(entry, typeof(comp))
-    res = first(
-        values(PSI.read_results_with_keys(
-                res,
-                [key];
-                start_time = start_time,
-                len = len,
-            )),
+    cache_len = isnothing(len) ? length(PSI.get_timestamps(res)) : len
+    key_pair = (entry, typeof(comp))
+    PSI.load_results!(
+        res,
+        cache_len;
+        initial_time = start_time,
+        make_entry_kwargs([key_pair])...,
     )
-    get_name(comp) in names(res) ||
-        throw(
-            NoResultError(
-                "$(get_name(comp)) not in the results for $(PSI.encode_key_as_string(key))",
+    key = make_key(key_pair...)
+    res = try
+        first(
+            values(
+                PSI.read_results_with_keys(
+                    res,
+                    [key];
+                    start_time = start_time,
+                    len = len,
+                    cols = [get_name(comp)],
+                ),
             ),
         )
+    catch e
+        if e isa KeyError && e.key == get_name(comp)
+            throw(
+                NoResultError(
+                    "$(get_name(comp)) not in the results for $(PSI.encode_key_as_string(key))",
+                ),
+            )
+        else
+            rethrow(e)
+        end
+    end
     return res[!, [DATETIME_COL, get_name(comp)]]
 end
 
