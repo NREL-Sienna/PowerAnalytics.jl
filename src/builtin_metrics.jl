@@ -46,7 +46,6 @@ make_entry_kwargs(key_tuples::Vector{<:Tuple}) = [
     ]
 ]
 
-# TODO caching needs to happen here
 # TODO test
 "Given an EntryType and a Component, fetch a single column of results"
 function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component,
