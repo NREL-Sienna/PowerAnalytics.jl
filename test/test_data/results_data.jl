@@ -1,5 +1,5 @@
 function add_re!(sys)
-    re = RenewableDispatch(
+    re1 = RenewableDispatch(
         "WindBusA",
         true,
         get_component(ACBus, sys, "bus5"),
@@ -9,11 +9,27 @@ function add_re!(sys)
         PrimeMovers.WT,
         (min = 0.0, max = 0.0),
         1.0,
-        TwoPartCost(0.220, 0.0),
-        100.0,
+        TwoPartCost(LinearFunctionData(0.220), 0.0),
+        10.0,
     )
-    add_component!(sys, re)
-    copy_time_series!(re, get_component(PowerLoad, sys, "bus2"))
+    add_component!(sys, re1)
+    copy_time_series!(re1, get_component(PowerLoad, sys, "bus2"))
+
+    re2 = RenewableDispatch(
+        "SolarBusC",
+        true,
+        get_component(ACBus, sys, "bus1"),
+        0.0,
+        0.0,
+        1.200,
+        PrimeMovers.PVe,
+        (min = 0.0, max = 0.0),
+        1.0,
+        TwoPartCost(LinearFunctionData(0.220), 0.0),
+        2.0,
+    )
+    add_component!(sys, re2)
+    copy_time_series!(re2, get_component(PowerLoad, sys, "bus3"))
 
     fx = RenewableFix(
         "RoofTopSolar",
@@ -61,9 +77,8 @@ function add_re!(sys)
     add_component!(sys, batt)
 end
 
-function run_test_sim(result_dir::String)
+function run_test_sim(result_dir::String, sim_name::String)
     mkpath(result_dir)
-    sim_name = "results_sim"
     sim_path = joinpath(result_dir, sim_name)
 
     results = _try_load_simulation_results(sim_path)
