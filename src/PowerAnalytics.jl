@@ -54,10 +54,10 @@ include("definitions.jl")
 include("get_data.jl")
 include("fuel_results.jl")
 
-include("entities.jl")
+include("component_selector.jl")
 include("metrics.jl")
 include("input.jl")
-include("builtin_entities.jl")
+include("builtin_component_selectors.jl")
 include("builtin_metrics.jl")
 
 greet() = print("Hello World!")
