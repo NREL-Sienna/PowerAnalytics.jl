@@ -46,6 +46,8 @@ import InfrastructureSystems: get_name
 import PowerSimulations
 import InteractiveUtils
 
+# TODO add ComponentSelector imports
+
 const PSY = PowerSystems
 const IS = InfrastructureSystems
 const PSI = PowerSimulations
@@ -54,7 +56,6 @@ include("definitions.jl")
 include("get_data.jl")
 include("fuel_results.jl")
 
-include("component_selector.jl")
 include("metrics.jl")
 include("input.jl")
 include("builtin_component_selectors.jl")
