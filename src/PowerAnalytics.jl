@@ -8,7 +8,6 @@ export categorize_data
 export no_datetime
 
 export ComponentSelector, ComponentSelectorElement, ComponentSelectorSet
-export NAME_DELIMETER, subtype_to_string, component_to_qualified_string
 export select_components, default_name, get_name, get_subselectors
 export Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric,
     ComponentTimedMetric,
@@ -40,13 +39,33 @@ import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
 import DataStructures: OrderedDict, SortedDict
 import PowerSystems
-import PowerSystems: Component, get_component, get_components, get_available
+import PowerSystems: 
+    Component, 
+    get_component, 
+    get_components, 
+    get_available,
+    ComponentSelector, 
+    ComponentSelectorElement,
+    ComponentSelectorSet,
+    SingleComponentSelector,
+    ListComponentSelector,
+    SubtypeComponentSelector,
+    FilterComponentSelector,
+    TopologyComponentSelector,
+    subtype_to_string,
+    component_to_qualified_string,
+    select_components,
+    get_components,
+    get_subselectors,
+    NAME_DELIMETER
+
 import InfrastructureSystems
 import InfrastructureSystems: get_name
 import PowerSimulations
 import InteractiveUtils
 
 # TODO add ComponentSelector imports
+
 
 const PSY = PowerSystems
 const IS = InfrastructureSystems
