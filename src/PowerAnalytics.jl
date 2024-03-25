@@ -39,12 +39,12 @@ import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
 import DataStructures: OrderedDict, SortedDict
 import PowerSystems
-import PowerSystems: 
-    Component, 
-    get_component, 
-    get_components, 
+import PowerSystems:
+    Component,
+    get_component,
+    get_components,
     get_available,
-    ComponentSelector, 
+    ComponentSelector,
     ComponentSelectorElement,
     ComponentSelectorSet,
     SingleComponentSelector,
@@ -65,7 +65,6 @@ import PowerSimulations
 import InteractiveUtils
 
 # TODO add ComponentSelector imports
-
 
 const PSY = PowerSystems
 const IS = InfrastructureSystems
