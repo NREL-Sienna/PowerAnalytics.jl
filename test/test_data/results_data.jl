@@ -9,7 +9,7 @@ function add_re!(sys)
         PrimeMovers.WT,
         (min = 0.0, max = 0.0),
         1.0,
-        TwoPartCost(0.220, 0.0),
+        RenewableGenerationCost(CostCurve(LinearCurve(0.220))),
         100.0,
     )
     add_component!(sys, re)
@@ -31,9 +31,10 @@ function add_re!(sys)
 
     for g in get_components(HydroEnergyReservoir, sys)
         tpc = get_operation_cost(g)
-        smc = StorageManagementCost(;
-            variable = get_variable(tpc),
-            fixed = get_fixed(tpc),
+        smc = StorageCost(;
+            charge_variable_cost = PSY.get_variable(tpc),
+            discharge_variable_cost = PSY.get_variable(tpc),
+            fixed = PSY.get_fixed(tpc),
             start_up = 0.0,
             shut_down = 0.0,
             energy_shortage_cost = 10.0,
@@ -42,21 +43,22 @@ function add_re!(sys)
         set_operation_cost!(g, smc)
     end
 
-    batt = GenericBattery(
-        "test_batt",
-        true,
-        get_component(ACBus, sys, "bus4"),
-        PrimeMovers.BA,
-        0.0,
-        (min = 0.0, max = 1.0),
-        1.0,
-        0.0,
-        (min = 0.0, max = 1.0),
-        (min = 0.0, max = 1.0),
-        (in = 1.0, out = 1.0),
-        0.0,
-        nothing,
-        10.0,
+    batt = EnergyReservoirStorage(;
+        name = "test_batt",
+        available = true,
+        bus = get_component(ACBus, sys, "bus4"),
+        prime_mover_type = PrimeMovers.BA,
+        storage_technology_type = StorageTech.OTHER_CHEM,
+        initial_energy = 0.0,
+        state_of_charge_limits = (min = 0.0, max = 1.0),
+        rating = 1.0,
+        active_power = 0.0,
+        input_active_power_limits = (min = 0.0, max = 1.0),
+        output_active_power_limits = (min = 0.0, max = 1.0),
+        efficiency = (in = 1.0, out = 1.0),
+        reactive_power = 0.0,
+        reactive_power_limits = nothing,
+        base_power = 10.0,
     )
     add_component!(sys, batt)
 end
@@ -100,13 +102,17 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
     set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
-    set_device_model!(template_hydro_st_uc, GenericBattery, StorageDispatchWithReserves)
+    set_device_model!(
+        template_hydro_st_uc,
+        EnergyReservoirStorage,
+        StorageDispatchWithReserves,
+    )
     set_device_model!(
         template_hydro_st_uc,
         HydroEnergyReservoir,
         HydroDispatchReservoirStorage,
     )
-    set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)
+    set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)  # TODO this is causing some sort of failure
 
     template_hydro_st_ed = ProblemTemplate(
         NetworkModel(
@@ -120,7 +126,11 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_ed, RenewableFix, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
-    set_device_model!(template_hydro_st_ed, GenericBattery, StorageDispatchWithReserves)
+    set_device_model!(
+        template_hydro_st_ed,
+        EnergyReservoirStorage,
+        StorageDispatchWithReserves,
+    )
     set_device_model!(
         template_hydro_st_ed,
         HydroEnergyReservoir,

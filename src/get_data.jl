@@ -419,8 +419,7 @@ function _get_loads(system::PSY.System, sys::PSY.System)
 end
 
 get_base_power(system::PSY.System) = PSY.get_base_power(system)
-get_base_power(results::PSI.SimulationProblemResults) = IS.get_base_power(results)
-get_base_power(results::PSI.ProblemResults) = results.base_power
+get_base_power(results::IS.Results) = IS.get_base_power(results)
 
 function get_load_data(
     system::PSY.System;
