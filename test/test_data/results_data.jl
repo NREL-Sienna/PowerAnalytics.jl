@@ -102,6 +102,8 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
     set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
+    # TODO uncomment when PSI is fixed
+    #=
     set_device_model!(
         template_hydro_st_uc,
         EnergyReservoirStorage,
@@ -112,7 +114,8 @@ function _execute_simulation(base_path, sim_name)
         HydroEnergyReservoir,
         HydroDispatchReservoirStorage,
     )
-    set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)  # TODO this is causing some sort of failure
+    =#
+    set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)
 
     template_hydro_st_ed = ProblemTemplate(
         NetworkModel(
@@ -126,6 +129,8 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_ed, RenewableFix, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
+    # TODO uncomment when PSI is fixed
+    #=
     set_device_model!(
         template_hydro_st_ed,
         EnergyReservoirStorage,
@@ -136,7 +141,7 @@ function _execute_simulation(base_path, sim_name)
         HydroEnergyReservoir,
         HydroDispatchReservoirStorage,
     )
-
+    =#
     models = SimulationModels(;
         decision_models = [
             DecisionModel(
@@ -243,10 +248,9 @@ function run_test_prob()
         template_hydro_st_uc,
         c_sys5_hy_uc;
         optimizer = GLPK_optimizer,
-        horizon = 12,
     )
     build!(prob; output_dir = mktempdir())
     solve!(prob)
-    res = ProblemResults(prob)
+    res = OptimizationProblemResults(prob)
     return res
 end
