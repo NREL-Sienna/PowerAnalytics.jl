@@ -440,30 +440,53 @@ function get_load_data(
     initial_time = get(kwargs, :initial_time, PSY.get_forecast_initial_timestamp(system))
     parameters = Dict{Symbol, DataFrames.DataFrame}()
     PSY.set_units_base_system!(system, "SYSTEM_BASE")
+    resolution = nothing
+    len = nothing
     for agg in aggregation_components
         loads = _get_loads(system, agg)
         length(loads) == 0 && continue
         colname = aggregation == PSY.System ? "System" : PSY.get_name(agg)
         load_values = DataFrames.DataFrame()
         for load in loads
+            # TODO awaiting methods in PSY to make this simpler
+            keys = filter(
+                key ->
+                    PSY.get_time_series_type(key) == PSY.Deterministic &&
+                        PSY.get_name(key) == "max_active_power",
+                PSY.get_time_series_keys(load),
+            )
+            @assert length(keys) == 1
+            my_resolution = first(keys).resolution
+            if isnothing(resolution)
+                resolution = my_resolution
+                len = (horizon isa Dates.Period) ? Int64(horizon / resolution) : horizon
+            else
+                (resolution != my_resolution) &&
+                    throw(error("Load time series have mismatched resolutions"))
+            end
+
             f = PSY.get_time_series_values( # TODO: this isn't applying the scaling factors
                 PSY.Deterministic,
                 load,
                 "max_active_power";
                 start_time = initial_time,
-                len = horizon,
+                len = len,
             )
             load_values[:, PSY.get_name(load)] = f
         end
         parameters[Symbol(colname)] = load_values
     end
-    time_range = collect(
-        range(
-            initial_time;
-            step = PSY.get_time_series_resolution(system),
-            length = horizon,
-        ),
-    )
+    time_range = if isnothing(len)
+        Dates.DateTime[]
+    else
+        collect(
+            range(
+                initial_time;
+                step = resolution,
+                length = len,
+            ),
+        )
+    end
 
     return PowerData(parameters, time_range)
 end
