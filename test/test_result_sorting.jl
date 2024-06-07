@@ -3,7 +3,7 @@ problem_results = run_test_prob()
 
 @testset "test filter results" begin
     gen = PA.get_generation_data(results_uc; curtailment = false)
-    @test length(gen.data) == 4  # TODO will be 7 when storage and hydro are reenabled
+    @test length(gen.data) == 6  # TODO will be 7 when storage and hydro are reenabled
     @test length(gen.time) == 48
 
     gen = PA.get_generation_data(
@@ -65,7 +65,7 @@ problem_results = run_test_prob()
     # TODO: make tests for subsetting data
     sub_gen =
         get_generation_data(results_uc; filter_func = x -> get_name(get_bus(x)) == "bus1")
-    @test length(sub_gen.data) == 5  # TODO will be 8 when storage and hydro are reenabled
+    @test length(sub_gen.data) == 7  # TODO will be 8 when storage and hydro are reenabled
 end
 
 @testset "test curtailment calculations" begin
@@ -94,10 +94,10 @@ end
     )
 
     fuel = categorize_data(gen.data, cat)
-    @test length(fuel) == 7  # TODO will be 8 when storage and hydro are reenabled
+    @test length(fuel) == 8
 
     fuel_agg = PA.combine_categories(fuel)
-    @test size(fuel_agg) == (48, 7)  # TODO will be (48, 8) when storage and hydro are reenabled
+    @test size(fuel_agg) == (48, 8)
 end
 
 @testset "Test system data getters" begin
