@@ -8,8 +8,7 @@ export categorize_data
 export no_datetime
 
 export ComponentSelector, ComponentSelectorElement, ComponentSelectorSet
-export NAME_DELIMETER, subtype_to_string, component_to_qualified_string
-export select_components, default_name, get_name, get_subselectors
+export select_components, get_name, get_subselectors
 export Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric,
     ComponentTimedMetric,
     SystemTimedMetric, ResultsTimelessMetric, CustomTimedMetric
@@ -40,9 +39,15 @@ import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
 import DataStructures: OrderedDict, SortedDict
 import PowerSystems
-import PowerSystems: Component, get_component, get_components, get_available
+import PowerSystems:
+    Component,
+    ComponentSelector, ComponentSelectorElement, ComponentSelectorSet,
+    select_components, get_name, get_subselectors,
+    get_component, get_components,
+    get_available,
+    NAME_DELIMETER
+
 import InfrastructureSystems
-import InfrastructureSystems: get_name
 import PowerSimulations
 import InteractiveUtils
 
@@ -54,7 +59,6 @@ include("definitions.jl")
 include("get_data.jl")
 include("fuel_results.jl")
 
-include("component_selector.jl")
 include("metrics.jl")
 include("input.jl")
 include("builtin_component_selectors.jl")
