@@ -248,6 +248,7 @@ function run_test_prob()
         template_hydro_st_uc,
         c_sys5_hy_uc;
         optimizer = GLPK_optimizer,
+        horizon = Hour(12),
     )
     build!(prob; output_dir = mktempdir())
     solve!(prob)
