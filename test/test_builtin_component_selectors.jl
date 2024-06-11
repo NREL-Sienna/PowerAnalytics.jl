@@ -6,7 +6,7 @@ name_and_type = component -> (typeof(component), get_name(component))
     @test Set(name_and_type.(get_components(load_component_selector, test_sys))) ==
           Set([(PowerLoad, "Bus2"), (PowerLoad, "Bus4"), (StandardLoad, "Bus3")])
     @test Set(name_and_type.(get_components(storage_component_selector, test_sys2))) ==
-          Set([(GenericBattery, "Bat")])
+          Set([(EnergyReservoirStorage, "Bat")])
 end
 
 @testset "Test generator_selectors_by_fuel" begin
