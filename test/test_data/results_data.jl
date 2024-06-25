@@ -15,7 +15,7 @@ function add_re!(sys)
     add_component!(sys, re)
     copy_time_series!(re, get_component(PowerLoad, sys, "bus2"))
 
-    fx = RenewableFix(
+    fx = RenewableNonDispatch(
         "RoofTopSolar",
         true,
         get_component(ACBus, sys, "bus5"),
@@ -49,8 +49,9 @@ function add_re!(sys)
         bus = get_component(ACBus, sys, "bus4"),
         prime_mover_type = PrimeMovers.BA,
         storage_technology_type = StorageTech.OTHER_CHEM,
-        initial_energy = 0.0,
-        state_of_charge_limits = (min = 0.0, max = 1.0),
+        storage_capacity = 1.0,
+        storage_level_limits = (min = 0.0, max = 1.0),
+        initial_storage_capacity_level = 0.0,
         rating = 1.0,
         active_power = 0.0,
         input_active_power_limits = (min = 0.0, max = 1.0),
@@ -99,7 +100,7 @@ function _execute_simulation(base_path, sim_name)
         ProblemTemplate(NetworkModel(CopperPlatePowerModel; use_slacks = false))
     set_device_model!(template_hydro_st_uc, ThermalStandard, ThermalBasicUnitCommitment)
     set_device_model!(template_hydro_st_uc, PowerLoad, StaticPowerLoad)
-    set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
+    set_device_model!(template_hydro_st_uc, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
     # TODO uncomment when PSI is fixed
@@ -126,7 +127,7 @@ function _execute_simulation(base_path, sim_name)
     )
     set_device_model!(template_hydro_st_ed, ThermalStandard, ThermalBasicDispatch)
     set_device_model!(template_hydro_st_ed, PowerLoad, StaticPowerLoad)
-    set_device_model!(template_hydro_st_ed, RenewableFix, FixedOutput)
+    set_device_model!(template_hydro_st_ed, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
     # TODO uncomment when PSI is fixed
