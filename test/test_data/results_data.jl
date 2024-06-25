@@ -37,7 +37,7 @@ function add_re!(sys)
         PrimeMovers.PVe,
         (min = 0.0, max = 0.0),
         1.0,
-        TwoPartCost(0.220, 0.0),
+        RenewableGenerationCost(CostCurve(LinearCurve(0.220))),
         2.0,
     )
     add_component!(sys, re2)
