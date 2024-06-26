@@ -313,6 +313,7 @@ end
 """
 Compute the given metric on the given component within the given set of results, returning a
 `DataFrame` with a `DateTime` column and a data column labeled with the component's name.
+Exclude components marked as not available.
 
 # Arguments
  - `metric::ComponentTimedMetric`: the metric to compute
@@ -330,6 +331,7 @@ compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component;
 """
 Compute the given metric on the given component within the given set of results, returning a
 `DataFrame` with a `DateTime` column and a data column labeled with the component's name.
+Exclude components marked as not available.
 
 # Arguments
  - `metric::CustomTimedMetric`: the metric to compute
@@ -347,7 +349,8 @@ compute(metric::CustomTimedMetric, results::IS.Results,
 
 """
 Compute the given metric on the `System` associated with the given set of results, returning
-a `DataFrame` with a `DateTime` column and a data column.
+a `DataFrame` with a `DateTime` column and a data column. Exclude components marked as not
+available.
 
 # Arguments
  - `metric::SystemTimedMetric`: the metric to compute
@@ -366,7 +369,7 @@ end
 
 """
 Compute the given metric on the given set of results, returning a DataFrame with a single
-cell.
+cell. Exclude components marked as not available.
 
 # Arguments
  - `metric::ResultsTimelessMetric`: the metric to compute
@@ -380,8 +383,9 @@ end
 
 """
 Compute the given metric on the given set of results, returning a `DataFrame` with a single
-cell; takes a `Nothing` where the `ComponentSelectorTimedMetric` method of this function would take a
-`Component`/`ComponentSelector` for convenience
+cell; takes a `Nothing` where the `ComponentSelectorTimedMetric` method of this function
+would take a `Component`/`ComponentSelector` for convenience. Exclude components marked as
+not available.
 """
 compute(metric::ResultsTimelessMetric, results::IS.Results, selector::Nothing) =
     compute(metric, results)
@@ -389,8 +393,8 @@ compute(metric::ResultsTimelessMetric, results::IS.Results, selector::Nothing) =
 """
 Compute the given metric on the `System` associated with the given set of results, returning
 a `DataFrame` with a `DateTime` column and a data column; takes a `Nothing` where the
-`ComponentSelectorTimedMetric` method of this function would take a `Component`/`ComponentSelector` for
-convenience
+`ComponentSelectorTimedMetric` method of this function would take a
+`Component`/`ComponentSelector` for convenience. Exclude components marked as not available.
 """
 compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
@@ -436,9 +440,10 @@ function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
 end
 
 """
-Compute the given `Metric` on the given `ComponentSelector` within the given set of results, aggregating
-across all the components in the `ComponentSelector` if necessary and returning a `DataFrame` with a
-`DateTime` column and a data column labeled with the `ComponentSelector`'s name.
+Compute the given `Metric` on the given `ComponentSelector` within the given set of results,
+aggregating across all the components in the `ComponentSelector` if necessary and returning
+a `DataFrame` with a `DateTime` column and a data column labeled with the
+`ComponentSelector`'s name. Exclude components marked as not available.
 
 # Arguments
  - `metric::ComponentTimedMetric`: the metric to compute
@@ -455,7 +460,11 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
     # TODO incorporate allow_missing
     agg_fn = get_component_agg_fn(metric)
     meta_agg_fn = get_component_meta_agg_fn(metric)
-    components = get_components(selector, PowerSimulations.get_system(results))
+    components = get_components(
+        selector,
+        PowerSimulations.get_system(results);
+        filterby = get_available,
+    )
     vals = [
         compute(metric, results, com; start_time = start_time, len = len) for
         com in components
@@ -502,7 +511,7 @@ compute(met, res, start_time, len) =
 Compute the given metric on the subselectors of the given `ComponentSelector` within the
 given set of results, returning a `DataFrame` with a `DateTime` column and a data column for
 each subselector. Should be the same as calling `compute` on each subselector and
-concatenating.
+concatenating. Exclude components marked as not available.
 
 # Arguments
  - `metric::ComponentSelectorTimedMetric`: the metric to compute
