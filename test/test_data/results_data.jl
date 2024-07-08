@@ -1,3 +1,15 @@
+# Will be superseded by https://github.com/NREL-Sienna/PowerSystems.jl/issues/1143
+function linear_fuel_to_linear_cost(fc::FuelCurve{LinearCurve})
+    fuel_cost = get_fuel_cost(fc)
+    !(fuel_cost isa Float64) && throw(ArgumentError("fuel_cost must be a scalar"))
+    old_vc = get_value_curve(fc)
+    new_vc = LinearCurve(
+        get_proportional_term(old_vc) * fuel_cost,
+        get_constant_term(old_vc) * fuel_cost,
+    )
+    return CostCurve(new_vc, get_power_units(fc), get_vom_cost(fc))
+end
+
 function add_re!(sys)
     re = RenewableDispatch(
         "WindBusA",
@@ -31,9 +43,11 @@ function add_re!(sys)
 
     for g in get_components(HydroEnergyReservoir, sys)
         tpc = get_operation_cost(g)
+        cc = get_variable(tpc)
+        (cc isa FuelCurve) && (cc = linear_fuel_to_linear_cost(cc))
         smc = StorageCost(;
-            charge_variable_cost = PSY.get_variable(tpc),
-            discharge_variable_cost = PSY.get_variable(tpc),
+            charge_variable_cost = cc,
+            discharge_variable_cost = cc,
             fixed = PSY.get_fixed(tpc),
             start_up = 0.0,
             shut_down = 0.0,
