@@ -1,3 +1,15 @@
+# Will be superseded by https://github.com/NREL-Sienna/PowerSystems.jl/issues/1143
+function linear_fuel_to_linear_cost(fc::FuelCurve{LinearCurve})
+    fuel_cost = get_fuel_cost(fc)
+    !(fuel_cost isa Float64) && throw(ArgumentError("fuel_cost must be a scalar"))
+    old_vc = get_value_curve(fc)
+    new_vc = LinearCurve(
+        get_proportional_term(old_vc) * fuel_cost,
+        get_constant_term(old_vc) * fuel_cost,
+    )
+    return CostCurve(new_vc, get_power_units(fc), get_vom_cost(fc))
+end
+
 function add_re!(sys)
     re = RenewableDispatch(
         "WindBusA",
@@ -9,13 +21,13 @@ function add_re!(sys)
         PrimeMovers.WT,
         (min = 0.0, max = 0.0),
         1.0,
-        TwoPartCost(0.220, 0.0),
+        RenewableGenerationCost(CostCurve(LinearCurve(0.220))),
         100.0,
     )
     add_component!(sys, re)
     copy_time_series!(re, get_component(PowerLoad, sys, "bus2"))
 
-    fx = RenewableFix(
+    fx = RenewableNonDispatch(
         "RoofTopSolar",
         true,
         get_component(ACBus, sys, "bus5"),
@@ -31,9 +43,12 @@ function add_re!(sys)
 
     for g in get_components(HydroEnergyReservoir, sys)
         tpc = get_operation_cost(g)
-        smc = StorageManagementCost(;
-            variable = get_variable(tpc),
-            fixed = get_fixed(tpc),
+        cc = get_variable(tpc)
+        (cc isa FuelCurve) && (cc = linear_fuel_to_linear_cost(cc))
+        smc = StorageCost(;
+            charge_variable_cost = cc,
+            discharge_variable_cost = cc,
+            fixed = PSY.get_fixed(tpc),
             start_up = 0.0,
             shut_down = 0.0,
             energy_shortage_cost = 10.0,
@@ -42,21 +57,23 @@ function add_re!(sys)
         set_operation_cost!(g, smc)
     end
 
-    batt = GenericBattery(
-        "test_batt",
-        true,
-        get_component(ACBus, sys, "bus4"),
-        PrimeMovers.BA,
-        0.0,
-        (min = 0.0, max = 1.0),
-        1.0,
-        0.0,
-        (min = 0.0, max = 1.0),
-        (min = 0.0, max = 1.0),
-        (in = 1.0, out = 1.0),
-        0.0,
-        nothing,
-        10.0,
+    batt = EnergyReservoirStorage(;
+        name = "test_batt",
+        available = true,
+        bus = get_component(ACBus, sys, "bus4"),
+        prime_mover_type = PrimeMovers.BA,
+        storage_technology_type = StorageTech.OTHER_CHEM,
+        storage_capacity = 1.0,
+        storage_level_limits = (min = 0.0, max = 1.0),
+        initial_storage_capacity_level = 0.0,
+        rating = 1.0,
+        active_power = 0.0,
+        input_active_power_limits = (min = 0.0, max = 1.0),
+        output_active_power_limits = (min = 0.0, max = 1.0),
+        efficiency = (in = 1.0, out = 1.0),
+        reactive_power = 0.0,
+        reactive_power_limits = nothing,
+        base_power = 10.0,
     )
     add_component!(sys, batt)
 end
@@ -97,10 +114,14 @@ function _execute_simulation(base_path, sim_name)
         ProblemTemplate(NetworkModel(CopperPlatePowerModel; use_slacks = false))
     set_device_model!(template_hydro_st_uc, ThermalStandard, ThermalBasicUnitCommitment)
     set_device_model!(template_hydro_st_uc, PowerLoad, StaticPowerLoad)
-    set_device_model!(template_hydro_st_uc, RenewableFix, FixedOutput)
+    set_device_model!(template_hydro_st_uc, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
-    set_device_model!(template_hydro_st_uc, GenericBattery, StorageDispatchWithReserves)
+    set_device_model!(
+        template_hydro_st_uc,
+        EnergyReservoirStorage,
+        StorageDispatchWithReserves,
+    )
     set_device_model!(
         template_hydro_st_uc,
         HydroEnergyReservoir,
@@ -117,16 +138,19 @@ function _execute_simulation(base_path, sim_name)
     )
     set_device_model!(template_hydro_st_ed, ThermalStandard, ThermalBasicDispatch)
     set_device_model!(template_hydro_st_ed, PowerLoad, StaticPowerLoad)
-    set_device_model!(template_hydro_st_ed, RenewableFix, FixedOutput)
+    set_device_model!(template_hydro_st_ed, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
-    set_device_model!(template_hydro_st_ed, GenericBattery, StorageDispatchWithReserves)
+    set_device_model!(
+        template_hydro_st_ed,
+        EnergyReservoirStorage,
+        StorageDispatchWithReserves,
+    )
     set_device_model!(
         template_hydro_st_ed,
         HydroEnergyReservoir,
         HydroDispatchReservoirStorage,
     )
-
     models = SimulationModels(;
         decision_models = [
             DecisionModel(
@@ -233,10 +257,10 @@ function run_test_prob()
         template_hydro_st_uc,
         c_sys5_hy_uc;
         optimizer = GLPK_optimizer,
-        horizon = 12,
+        horizon = Hour(12),
     )
     build!(prob; output_dir = mktempdir())
     solve!(prob)
-    res = ProblemResults(prob)
+    res = OptimizationProblemResults(prob)
     return res
 end
