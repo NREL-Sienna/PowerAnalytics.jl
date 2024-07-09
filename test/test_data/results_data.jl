@@ -117,19 +117,16 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_uc, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_uc, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
-    # TODO uncomment when PSI is fixed
     set_device_model!(
         template_hydro_st_uc,
         EnergyReservoirStorage,
         StorageDispatchWithReserves,
     )
-    #=
     set_device_model!(
         template_hydro_st_uc,
         HydroEnergyReservoir,
         HydroDispatchReservoirStorage,
     )
-    =#
     set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)
 
     template_hydro_st_ed = ProblemTemplate(
@@ -144,19 +141,16 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_ed, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
-    # TODO uncomment when PSI is fixed
     set_device_model!(
         template_hydro_st_ed,
         EnergyReservoirStorage,
         StorageDispatchWithReserves,
     )
-    #=
     set_device_model!(
         template_hydro_st_ed,
         HydroEnergyReservoir,
         HydroDispatchReservoirStorage,
     )
-    =#
     models = SimulationModels(;
         decision_models = [
             DecisionModel(
