@@ -371,8 +371,9 @@ calc_discharge_cycles = ComponentTimedMetric(
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.ActivePowerOutVariable, comp, start_time, len)
-            soc_limits = PSY.get_state_of_charge_limits(comp)
-            soc_range = soc_limits.max - soc_limits.min
+            soc_limits = PSY.get_storage_level_limits(comp)
+            soc_range =
+                PSY.get_storage_capacity(comp) * (soc_limits.max - soc_limits.min)
             data_vec(val) ./= soc_range
             return val
         end

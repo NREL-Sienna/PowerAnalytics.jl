@@ -526,7 +526,11 @@ function compute_set(metric::ComponentSelectorTimedMetric, results::IS.Results,
     selector::ComponentSelector;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
-    subents = get_subselectors(selector, PowerSimulations.get_system(results))
+    subents = get_subselectors(
+        selector,
+        PowerSimulations.get_system(results);
+        filterby = get_available,
+    )
     subcomputations = [compute(metric, results, sub; start_time, len) for sub in subents]
     return hcat_timed(subcomputations...)
 end
