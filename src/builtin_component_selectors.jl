@@ -44,7 +44,7 @@ function make_fuel_component_selector(category_spec::Dict)
     selector_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
         NAME_DELIMETER)
 
-    return select_components(filter_closure, gen_type, selector_name)
+    return select_components(gen_type, filter_closure; name = selector_name)
 end
 
 # Based on old PowerAnalytics' get_generator_mapping
