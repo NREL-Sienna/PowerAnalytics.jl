@@ -526,7 +526,7 @@ function compute_set(metric::ComponentSelectorTimedMetric, results::IS.Results,
     selector::ComponentSelector;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing)
-    subents = get_subselectors(
+    subents = PSY.get_groups(
         selector,
         PowerSimulations.get_system(results);
         filterby = get_available,
@@ -870,3 +870,11 @@ function compose_metrics(
     ]
     return compose_metrics(name, description, reduce_fn, wrapped_metrics...)
 end
+
+# Functor interface
+
+(metric::ComponentSelectorTimedMetric)(selector::ComponentSelector,
+    results::IS.Results;
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing) =
+    compute_set(metric, results, selector; start_time = start_time, len = len)
