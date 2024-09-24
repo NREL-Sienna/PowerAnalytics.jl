@@ -348,12 +348,12 @@ calc_total_cost = ComponentTimedMetric(
         startup = try
             data_vec(compute(calc_startup_cost, args...))
         catch
-            repeat(0.0, size(production, 1))
+            repeat([0.0], size(production, 1))
         end
         shutdown = try
             data_vec(compute(calc_shutdown_cost, args...))
         catch
-            repeat(0.0, size(production, 1))
+            repeat([0.0], size(production, 1))
         end
         # NOTE if I ever make my own type for timed dataframes, should do custom setindex! to make this less painful
         production[!, first(data_cols(production))] += startup + shutdown
