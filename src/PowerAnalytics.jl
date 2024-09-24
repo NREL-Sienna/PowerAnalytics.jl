@@ -8,7 +8,7 @@ export categorize_data
 export no_datetime
 
 export ComponentSelector, ComponentSelectorElement, ComponentSelectorSet
-export select_components, get_name, get_subselectors
+export make_selector, get_name, get_subselectors
 export Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric,
     ComponentTimedMetric,
     SystemTimedMetric, ResultsTimelessMetric, CustomTimedMetric
@@ -42,7 +42,7 @@ import PowerSystems
 import PowerSystems:
     Component,
     ComponentSelector, ComponentSelectorElement, ComponentSelectorSet,
-    select_components, get_name, get_subselectors,
+    make_selector, get_name, get_subselectors,
     get_component, get_components,
     get_available,
     NAME_DELIMETER

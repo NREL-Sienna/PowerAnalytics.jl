@@ -1,8 +1,8 @@
 "A ComponentSelector representing all the electric load in a System"
-load_component_selector = select_components(PSY.ElectricLoad)
+load_component_selector = make_selector(PSY.ElectricLoad)
 
 "A ComponentSelector representing all the storage in a System"
-storage_component_selector = select_components(PSY.Storage)
+storage_component_selector = make_selector(PSY.Storage)
 
 FUEL_TYPES_DATA_FILE =
     joinpath(dirname(dirname(pathof(PowerAnalytics))), "deps", "generator_mapping.yaml")
@@ -44,7 +44,7 @@ function make_fuel_component_selector(category_spec::Dict)
     selector_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
         NAME_DELIMETER)
 
-    return select_components(gen_type, filter_closure; name = selector_name)
+    return make_selector(gen_type, filter_closure; name = selector_name)
 end
 
 # Based on old PowerAnalytics' get_generator_mapping
@@ -53,7 +53,7 @@ function load_generator_fuel_mappings(filename = FUEL_TYPES_DATA_FILE)
     mappings = OrderedDict{String, ComponentSelector}()
     for top_level in in_data |> keys |> collect |> sort
         subselectors = make_fuel_component_selector.(in_data[top_level])
-        mappings[top_level] = select_components(subselectors...; name = top_level)
+        mappings[top_level] = make_selector(subselectors...; name = top_level)
     end
     return mappings
 end

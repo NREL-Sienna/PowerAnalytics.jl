@@ -122,9 +122,9 @@ my_df3 = DataFrame(
     "MyMeta" => my_meta_long,
 )
 
-wind_ent = select_components(RenewableDispatch, "WindBusA")
-solar_ent = select_components(RenewableDispatch, "SolarBusC")
-thermal_ent = select_components(ThermalStandard, "Brighton")
+wind_ent = make_selector(RenewableDispatch, "WindBusA")
+solar_ent = make_selector(RenewableDispatch, "SolarBusC")
+thermal_ent = make_selector(ThermalStandard, "Brighton")
 test_selectors = [wind_ent, solar_ent, thermal_ent]
 
 # HELPER FUNCTIONS
@@ -215,7 +215,7 @@ end
 @testset "Test metrics helper functions" begin
     @test metric_selector_to_string(
         test_calc_active_power,
-        select_components(ThermalStandard),
+        make_selector(ThermalStandard),
     ) ==
           "ActivePower__ThermalStandard"
 
@@ -341,10 +341,10 @@ end
 
 @testset "Test ComponentTimedMetric on ComponentSelectorSets" begin
     test_selector_sets = [
-        select_components(wind_ent, solar_ent),
-        select_components(test_selectors...),
-        select_components(ThermalStandard),
-        select_components(),
+        make_selector(wind_ent, solar_ent),
+        make_selector(test_selectors...),
+        make_selector(ThermalStandard),
+        make_selector(),
     ]
 
     for (label, res) in pairs(resultses)
@@ -386,7 +386,7 @@ end
 end
 
 @testset "Test compute_set" begin
-    combo_selector = select_components(test_selectors...)
+    combo_selector = make_selector(test_selectors...)
     mymet = test_calc_active_power
     for (label, res) in pairs(resultses)
         computed_alltime = compute_set(mymet, res, combo_selector)
@@ -431,8 +431,8 @@ end
         test_calc_production_cost, test_calc_production_cost]
     my_component = first(get_components(RenewableDispatch, get_system(results_uc)))
     my_selectors =
-        [select_components(ThermalStandard), select_components(RenewableDispatch),
-            select_components(ThermalStandard), my_component]
+        [make_selector(ThermalStandard), make_selector(RenewableDispatch),
+            make_selector(ThermalStandard), my_component]
     all_result = compute_all(results_uc, my_metrics, my_selectors)
 
     for (metric, selector) in zip(my_metrics, my_selectors)
@@ -486,11 +486,11 @@ end
     broadcasted_compute_all = compute_all(
         results_uc,
         [test_calc_active_power, test_calc_active_power],
-        select_components(ThermalStandard),
+        make_selector(ThermalStandard),
         ["discard", "ThermalStandard"],
     )
     @test broadcasted_compute_all[!, [DATETIME_COL, "ThermalStandard"]] ==
-          compute(test_calc_active_power, results_uc, select_components(ThermalStandard))
+          compute(test_calc_active_power, results_uc, make_selector(ThermalStandard))
 
     @test compute_all(results_uc, my_metrics, my_selectors, my_names) ==
           compute_all(results_uc, collect(zip(my_metrics, my_selectors, my_names))...)
@@ -507,13 +507,13 @@ end
 
     @test_throws MethodError compute_all(  # Can't mix TimedMetrics and TimelessMetrics
         results_uc,
-        [(test_calc_active_power, select_components(ThermalStandard), "therm"),
+        [(test_calc_active_power, make_selector(ThermalStandard), "therm"),
             (test_calc_sum_objective_value, nothing, "obje")],
     )
 end
 
 @testset "Test compose_metrics" begin
-    myent = select_components(ThermalStandard)
+    myent = make_selector(ThermalStandard)
     mymet1 = compose_metrics(
         "ThriceActivePower",
         "Computes ActivePower*3",
@@ -595,7 +595,7 @@ end
 end
 
 @testset "Test component_agg_fn and corresponding `compute` aggregation behavior" begin
-    my_selector = select_components(ThermalStandard)
+    my_selector = make_selector(ThermalStandard)
     my_results = results_uc
     sum_metric = test_calc_active_power
     @test get_component_agg_fn(sum_metric) == sum  # Should be the default
@@ -619,7 +619,7 @@ end
     results2 = compute_all(
         my_results,
         repeat([test_calc_dummy_meta], 3),
-        [thermal_ent, wind_ent, select_components(thermal_ent, wind_ent)],
+        [thermal_ent, wind_ent, make_selector(thermal_ent, wind_ent)],
         ["thermal", "wind", "combo"])
     @test isapprox(
         data_mat(results2),
@@ -633,7 +633,7 @@ end
 end
 
 @testset "Test time_agg_fn and corresponding `aggregate_time` aggregation behavior" begin
-    my_selector = select_components(ThermalStandard)
+    my_selector = make_selector(ThermalStandard)
     my_results = results_uc
     sum_metric = test_calc_active_power
     @test get_time_agg_fn(sum_metric) == sum  # Should be the default
@@ -658,7 +658,7 @@ end
     results2 = compute_all(
         my_results,
         repeat([test_calc_dummy_meta], 3),
-        [thermal_ent, wind_ent, select_components(thermal_ent, wind_ent)],
+        [thermal_ent, wind_ent, make_selector(thermal_ent, wind_ent)],
         ["thermal", "wind", "combo"])
     results2_agg = aggregate_time(results2)
     answer1 = weighted_mean(thermal_vals, thermal_weights)
