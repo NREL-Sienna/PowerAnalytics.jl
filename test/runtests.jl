@@ -23,7 +23,11 @@ macro includetests(testarg...)
             tests = map(f -> string(f, ".jl"), tests)
         end
         println()
+        if !isempty(DISABLED_TEST_FILES)
+            @warn("Some tests are disabled $DISABLED_TEST_FILES")
+        end
         for test in tests
+            test in DISABLED_TEST_FILES && continue
             print(splitext(test)[1], ": ")
             include(joinpath(TEST_DIR, test))
             println()

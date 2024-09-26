@@ -32,6 +32,13 @@ const TEST_DUPLICATE_RESULTS_NAME = "temp_duplicate_results"
 import PowerSystemCaseBuilder
 const PSB = PowerSystemCaseBuilder
 
+const DISABLED_TEST_FILES = [  # Can generate with ls -1 test | grep "test_.*.jl"
+# "test_builtin_component_selectors.jl",
+# "test_input.jl",
+# "test_metrics.jl",
+# "test_result_sorting.jl",
+]
+
 LOG_LEVELS = Dict(
     "Debug" => Logging.Debug,
     "Info" => Logging.Info,
