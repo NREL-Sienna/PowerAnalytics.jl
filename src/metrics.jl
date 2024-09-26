@@ -200,7 +200,7 @@ Canonical way to represent a `(Metric, ComponentSelector)` or `(Metric, Componen
 a string.
 """
 metric_selector_to_string(m::Metric, e::Union{ComponentSelector, Component}) =
-    get_name(m) * NAME_DELIMETER * get_name(e)
+    get_name(m) * COMPONENT_NAME_DELIMETER * get_name(e)
 
 "Check whether a column is metadata"
 is_col_meta(df, colname) = get(colmetadata(df, colname), META_COL_KEY, false)

@@ -7,7 +7,7 @@ export get_service_data
 export categorize_data
 export no_datetime
 
-export ComponentSelector, ComponentSelectorElement, ComponentSelectorSet
+export ComponentSelector, SingularComponentSelector, PluralComponentSelector
 export make_selector, get_name, get_subselectors
 export Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric,
     ComponentTimedMetric,
@@ -41,11 +41,11 @@ import DataStructures: OrderedDict, SortedDict
 import PowerSystems
 import PowerSystems:
     Component,
-    ComponentSelector, ComponentSelectorElement, ComponentSelectorSet,
-    make_selector, get_name, get_subselectors,
+    ComponentSelector,
+    make_selector, get_name, get_groups,
     get_component, get_components,
     get_available,
-    NAME_DELIMETER
+    COMPONENT_NAME_DELIMETER
 
 import InfrastructureSystems
 import PowerSimulations

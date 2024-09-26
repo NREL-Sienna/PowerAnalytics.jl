@@ -320,13 +320,13 @@ end
     end
 end
 
-@testset "Test ComponentTimedMetric on ComponentSelectorElements" begin
+@testset "Test ComponentTimedMetric on SingularComponentSelectors" begin
     for (label, res) in pairs(resultses)
         for ent in test_selectors
             computed_alltime, computed_sometime =
                 test_component_timed_metric(test_calc_active_power, res, ent)
 
-            # ComponentSelectorElement results should be the same as Component results
+            # SingularComponentSelector results should be the same as Component results
             component_name = get_name(first(get_components(ent, get_system(res))))
             base_computed_alltime, base_computed_sometime =
                 comp_results[(label, component_name)]
@@ -339,7 +339,7 @@ end
     end
 end
 
-@testset "Test ComponentTimedMetric on ComponentSelectorSets" begin
+@testset "Test ComponentTimedMetric on PluralComponentSelectors" begin
     test_selector_sets = [
         make_selector(wind_ent, solar_ent),
         make_selector(test_selectors...),
