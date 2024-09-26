@@ -8,6 +8,7 @@ import InfrastructureSystems
 import InfrastructureSystems: Deterministic, Probabilistic, Scenarios, Forecast
 using PowerSystems
 using PowerAnalytics
+using PowerAnalytics.Selectors
 using PowerSimulations
 using GLPK
 using TimeSeries

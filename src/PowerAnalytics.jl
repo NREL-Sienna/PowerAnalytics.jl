@@ -19,7 +19,7 @@ export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, d
     set_agg_meta!
 export compute, compute_set, compute_all, hcat_timed, aggregate_time, compose_metrics
 export create_problem_results_dict
-export load_component_selector, storage_component_selector, generator_selectors_by_fuel
+export parse_generator_mapping
 export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
     calc_discharge_cycles, calc_system_slack_up, calc_load_forecast, calc_active_power_in,
     calc_active_power_out, calc_stored_energy, calc_active_power_forecast, calc_curtailment,
@@ -37,7 +37,7 @@ import Statistics: mean
 import DataFrames
 import DataFrames: DataFrame, metadata, metadata!, colmetadata, colmetadata!
 import YAML
-import DataStructures: OrderedDict, SortedDict
+import DataStructures: SortedDict
 import PowerSystems
 import PowerSystems:
     Component,
@@ -63,6 +63,9 @@ include("metrics.jl")
 include("input.jl")
 include("builtin_component_selectors.jl")
 include("builtin_metrics.jl")
+
+# Submodules
+using .Selectors
 
 greet() = print("Hello World!")
 

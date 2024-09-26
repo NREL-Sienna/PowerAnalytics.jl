@@ -1,10 +1,4 @@
-"A ComponentSelector representing all the electric load in a System"
-load_component_selector = make_selector(PSY.ElectricLoad)
-
-"A ComponentSelector representing all the storage in a System"
-storage_component_selector = make_selector(PSY.Storage)
-
-FUEL_TYPES_DATA_FILE =
+const FUEL_TYPES_DATA_FILE =
     joinpath(dirname(dirname(pathof(PowerAnalytics))), "deps", "generator_mapping.yaml")
 
 # Parse the strings in generator_mapping.yaml into types and enum items
@@ -48,15 +42,51 @@ function make_fuel_component_selector(category_spec::Dict)
 end
 
 # Based on old PowerAnalytics' get_generator_mapping
-function load_generator_fuel_mappings(filename = FUEL_TYPES_DATA_FILE)
+function parse_generator_mapping(filename)
+    # NOTE the YAML library does not support ordered loading
     in_data = open(YAML.load, filename)
-    mappings = OrderedDict{String, ComponentSelector}()
-    for top_level in in_data |> keys |> collect |> sort
+    mappings = Dict{String, ComponentSelector}()
+    for top_level in in_data |> keys |> collect
         subselectors = make_fuel_component_selector.(in_data[top_level])
         mappings[top_level] = make_selector(subselectors...; name = top_level)
     end
     return mappings
 end
 
-"A dictionary of nested `ComponentSelector`s representing all the generators in a System categorized by fuel type"
-generator_selectors_by_fuel = load_generator_fuel_mappings()
+# SELECTORS MODULE
+"`PowerAnalytics` built-in `ComponentSelector`s. Use `names` to list what is available."
+module Selectors
+import
+    ..make_selector,
+    ..PSY,
+    ..parse_generator_mapping,
+    ..ComponentSelector,
+    ..FUEL_TYPES_DATA_FILE
+export
+    all_loads,
+    all_storage,
+    generators_of_category,
+    generators_by_category
+
+"A ComponentSelector representing all the electric load in a System"
+all_loads::ComponentSelector = make_selector(PSY.ElectricLoad)
+
+"A ComponentSelector representing all the storage in a System"
+all_storage::ComponentSelector = make_selector(PSY.Storage)
+
+"""
+A dictionary of `ComponentSelector`s, each of which corresponds to one of the generator
+reporting categories in `generator_mapping.yaml`. Use `generators_by_reporting_category`
+if instead a single selector grouped by all the categories is desired.
+"""
+generators_of_category::AbstractDict{String, ComponentSelector} =
+    parse_generator_mapping(FUEL_TYPES_DATA_FILE)
+
+"""
+A single `ComponentSelector` representing the generators in a `System` grouped by the
+reporting categories in `generator_mapping.yaml`. Use `generators_of_reporting_category`
+if instead an individual category is desired.
+"""
+generators_by_category::ComponentSelector =
+    make_selector(values(generators_of_category)...)
+end
