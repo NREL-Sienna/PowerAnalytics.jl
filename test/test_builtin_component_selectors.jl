@@ -2,26 +2,30 @@ test_sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
 test_sys2 = PSB.build_system(PSB.PSITestSystems, "c_sys5_bat")
 name_and_type = component -> (typeof(component), get_name(component))
 
-@testset "Test load_component_selector and storage_component_selector" begin
-    @test Set(name_and_type.(get_components(load_component_selector, test_sys))) ==
+@testset "Test `all_loads` and `all_storage`" begin
+    @test Set(name_and_type.(get_components(all_loads, test_sys))) ==
           Set([(PowerLoad, "Bus2"), (PowerLoad, "Bus4"), (StandardLoad, "Bus3")])
-    @test Set(name_and_type.(get_components(storage_component_selector, test_sys2))) ==
+    @test Set(name_and_type.(get_components(all_storage, test_sys2))) ==
           Set([(EnergyReservoirStorage, "Bat")])
 end
 
-@testset "Test generator_selectors_by_fuel" begin
+@testset "Test `generators_of_category` and `generators_by_category`" begin
     @test isfile(PA.FUEL_TYPES_DATA_FILE)
-    @test Set(keys(generator_selectors_by_fuel)) ==
+    @test Set(keys(generators_of_category)) ==
           Set(["Biopower", "CSP", "Coal", "Geothermal", "Hydropower", "NG-CC", "NG-CT",
         "NG-Steam", "Natural gas", "Nuclear", "Other", "PV", "Petroleum", "Storage",
         "Wind"])
     @test Set(
-        name_and_type.(get_components(generator_selectors_by_fuel["Wind"], test_sys)),
+        name_and_type.(get_components(generators_of_category["Wind"], test_sys)),
     ) == Set([(RenewableDispatch, "WindBusB"), (RenewableDispatch, "WindBusC"),
         (RenewableDispatch, "WindBusA")])
     @test Set(
-        name_and_type.(get_components(generator_selectors_by_fuel["Coal"], test_sys)),
+        name_and_type.(get_components(generators_of_category["Coal"], test_sys)),
     ) == Set([(ThermalStandard, "Park City"), (ThermalStandard, "Sundance"),
         (ThermalStandard, "Alta"), (ThermalStandard, "Solitude"),
         (ThermalStandard, "Brighton")])
+    @test Set(get_groups(generators_by_category, test_sys)) ==
+          Set(values(generators_of_category))
+    @test Set(keys(parse_generator_mapping(PA.FUEL_TYPES_DATA_FILE))) ==
+          Set(keys(generators_of_category))
 end
