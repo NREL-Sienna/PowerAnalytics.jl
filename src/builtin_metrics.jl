@@ -1,109 +1,4 @@
-# TODO: put make_key in PowerSimulations and refactor existing code to use it
-# TODO test
-
-"The various key entry types that can work with a System"
-const SystemEntryType = Union{
-    PSI.VariableType,
-    PSI.ExpressionType,
-}
-
-"The various key entry types that can be used to make a PSI.OptimizationContainerKey"
-const EntryType = Union{
-    SystemEntryType,
-    PSI.ParameterType,
-    PSI.AuxVariableType,
-    PSI.InitialConditionType,
-}
-
-"Create a PSI.OptimizationContainerKey from the given key entry type and component.
-
-# Arguments
- - `entry::Type{<:EntryType}`: the key entry
- - `component` (`::Type{<:Union{Component, PSY.System}}` or `::Type{<:Component}` depending
-   on the key type): the component type
-"
-function make_key end
-make_key(entry::Type{<:PSI.VariableType}, component::Type{<:Union{Component, PSY.System}}) =
-    PSI.VariableKey(entry, component)
-make_key(entry::Type{<:PSI.ExpressionType}, comp::Type{<:Union{Component, PSY.System}}) =
-    PSI.ExpressionKey(entry, comp)
-make_key(entry::Type{<:PSI.ParameterType}, component::Type{<:Component}) =
-    PSI.ParameterKey(entry, component)
-make_key(entry::Type{<:PSI.AuxVariableType}, component::Type{<:Component}) =
-    PSI.AuxVarKey(entry, component)
-make_key(entry::Type{<:PSI.InitialConditionType}, component::Type{<:Component}) =
-    PSI.ICKey(entry, component)
-
-"Sort a vector of key tuples into variables, parameters, etc. like PSI.load_results! wants"
-make_entry_kwargs(key_tuples::Vector{<:Tuple}) = [
-    (key_name => filter(((this_key, _),) -> this_key <: key_type, key_tuples))
-    for (key_name, key_type) in [
-        (:variables, PSI.VariableType),
-        (:duals, PSI.ConstraintType),
-        (:parameters, PSI.ParameterType),
-        (:aux_variables, PSI.AuxVariableType),
-        (:expressions, PSI.ExpressionType),
-    ]
-]
-
-# TODO test
-"Given an EntryType and a Component, fetch a single column of results"
-function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component,
-    start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
-    cache_len = isnothing(len) ? length(PSI.get_timestamps(res)) : len
-    key_pair = (entry, typeof(comp))
-    PSI.load_results!(
-        res,
-        cache_len;
-        initial_time = start_time,
-        make_entry_kwargs([key_pair])...,
-    )
-    key = make_key(key_pair...)
-    res = try
-        first(
-            values(
-                PSI.read_results_with_keys(
-                    res,
-                    [key];
-                    start_time = start_time,
-                    len = len,
-                    cols = [get_name(comp)],
-                ),
-            ),
-        )
-    catch e
-        if e isa KeyError && e.key == get_name(comp)
-            throw(
-                NoResultError(
-                    "$(get_name(comp)) not in the results for $(PSI.encode_key_as_string(key))",
-                ),
-            )
-        else
-            rethrow(e)
-        end
-    end
-    return res[!, [DATETIME_COL, get_name(comp)]]
-end
-
-# TODO caching here too
-"Given an EntryType that applies to the System, fetch a single column of results"
-function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType},
-    start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
-    key = make_key(entry, PSY.System)
-    res = first(
-        values(PSI.read_results_with_keys(
-                res,
-                [key];
-                start_time = start_time,
-                len = len,
-            )),
-    )
-    @assert size(res, 2) == 2 "Expected a time column and a data column in the results for $(PSI.encode_key_as_string(key)), got $(size(res, 2)) columns"
-    @assert DATETIME_COL in names(res) "Expected a column named $DATETIME_COL in the results for $(PSI.encode_key_as_string(key)), got $(names(res))"
-    # Whatever the non-time column is, rename it to something standard
-    res = DataFrames.rename(res, findfirst(!=(DATETIME_COL), names(res)) => SYSTEM_COL)
-    return res[!, [DATETIME_COL, SYSTEM_COL]]
-end
+# TODO test all of this
 
 # TODO test
 "Convenience function to convert an EntryType to a function and make a ComponentTimedMetric from it"
@@ -247,7 +142,7 @@ calc_curtailment = compose_metrics(
 calc_curtailment_frac = ComponentTimedMetric(;
     name = "CurtailmentFrac",
     eval_fn = (
-        (res::IS.Results, comp::Component; kwargs...,
+        (res::IS.Results, comp::Component; kwargs...
         ) -> let
             result = compute(calc_curtailment, res, comp; kwargs...)
             power = collect(
@@ -271,7 +166,7 @@ _integration_denoms(res; kwargs...) =
 calc_integration = ComponentTimedMetric(;
     name = "Integration",
     eval_fn = (
-        (res::IS.Results, comp::Component; kwargs...,
+        (res::IS.Results, comp::Component; kwargs...
         ) -> let
             result = compute(calc_active_power, res, comp; kwargs...)
             # TODO does not check date alignment, maybe use hcat_timed
