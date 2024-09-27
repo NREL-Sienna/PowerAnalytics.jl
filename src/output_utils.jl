@@ -1,16 +1,9 @@
-# TODO move this to PowerSimulations to replace its hardcoding of :DateTime
-"Name of the column that represents the time axis in computed DataFrames"
-const DATETIME_COL::String = "DateTime"
-
 """
 Column metadata key whose value signifies whether the column is metadata. Metadata columns
 are excluded from `data_cols` and similar and can be used to represent things like a time
 aggregation.
 """
 const META_COL_KEY::String = "meta_col"
-
-"Name of a column that represents whole-of-`System` data"
-const SYSTEM_COL::String = "System"
 
 "Name of a column that represents whole-of-`Results` data"
 const RESULTS_COL::String = "Results"
@@ -130,4 +123,148 @@ function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
     time_col = _extract_common_time(vals...; ex_fn = time_df)
     broadcasted_vals = [data_df(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
     return hcat(time_col, broadcasted_vals...)
+end
+
+# Sometimes, to construct new column names, we need to construct strings that don't appear
+# as/in any other column names
+function _make_unique_col_name(col_names;
+    allow_substring = false, initial_try = "newcol", suffix = "!")
+    col_name = initial_try
+    while allow_substring ? (col_name in col_names) : any(occursin.(col_name, col_names))
+        col_name *= suffix
+    end
+    return col_name
+end
+
+# Fetch the time_agg_fn associated with the particular column's Metric; error if no agg_fn can be determined
+function _find_time_agg_fn(df, col_name, default_agg_fn)
+    my_agg_fn = default_agg_fn
+    col_md = colmetadata(df, col_name)
+    haskey(col_md, "metric") && (my_agg_fn = get_time_agg_fn(col_md["metric"]))
+    (my_agg_fn === nothing) && throw(
+        ArgumentError(
+            "No time aggregation function found for $col_name; specify in metric or use agg_fn kwarg $(col_md)",
+        ),
+    )
+    return my_agg_fn
+end
+
+# Construct a pipeline that can be passed to DataFrames.combine that represents the aggregation of the given column
+function _construct_aggregation(df, agg_meta_colnames, col_name, default_agg_fn)
+    agg_fn = _find_time_agg_fn(df, col_name, default_agg_fn)
+    if haskey(agg_meta_colnames, col_name)
+        return [col_name, agg_meta_colnames[col_name]] => agg_fn => col_name
+    end
+    return col_name => agg_fn => col_name
+end
+
+function _construct_meta_aggregation(df, col_name, meta_colname)
+    agg_fn = get_time_meta_agg_fn(colmetadata(df, col_name)["metric"])
+    return meta_colname => agg_fn => meta_colname
+end
+
+"""
+Given a DataFrame like that produced by [`compute_all`](@ref), group by a function of the
+time axis, apply a reduction, and report the resulting aggregation indexed by the first
+timestamp in each group.
+
+# Arguments
+ - `df::DataFrames.AbstractDataFrame`: the DataFrame to operate upon
+ - `groupby_fn = nothing`: a callable that can be passed a DateTime; two rows will be in the
+   same group iff their timestamps produce the same result under `groupby_fn`. Note that
+   `groupby_fn = month` puts January 2023 and January 2024 into the same group whereas
+   `groupby_fn=(x -> (year(x), month(x)))` does not.
+ - `groupby_col::Union{Nothing, AbstractString, Symbol} = nothing`: specify a column name to
+   report the result of `groupby_fn` in the output DataFrame, or `nothing` to not
+ - `agg_fn = nothing`: by default, the aggregation function (`sum`/`mean`/etc.) is specified
+   by the Metric, which is read from the metadata of each column. If this metadata isn't
+   found, one can specify a default aggregation function like `sum` here; if nothing, an
+   error will be thrown.
+"""
+function aggregate_time(
+    df::DataFrames.AbstractDataFrame;
+    groupby_fn = nothing,
+    groupby_col::Union{Nothing, AbstractString, Symbol} = nothing,
+    agg_fn = nothing)
+    keep_groupby_col = (groupby_col !== nothing)
+    if groupby_fn === nothing && keep_groupby_col
+        throw(ArgumentError("Cannot keep the groupby column if not specifying groupby_fn"))
+    end
+
+    # Everything goes into the same group by default
+    (groupby_fn === nothing) && (groupby_fn = (_ -> 0))
+
+    # Validate or create groupby column name
+    if keep_groupby_col
+        (groupby_col in names(df)) &&
+            throw(ArgumentError("groupby_col cannot be an existing column name of df"))
+    else
+        groupby_col = _make_unique_col_name(
+            names(df);
+            allow_substring = true,
+            initial_try = "grouped",
+        )
+    end
+
+    # Find all aggregation metadata
+    # TODO should metadata columns be allowed to have aggregation metadata? Probably.
+    agg_metas = Dict(varname => get_agg_meta(df, varname) for varname in data_cols(df))
+
+    # Create column names for non-nothing aggregation metadata
+    existing_cols = vcat(names(df), groupby_col)
+    agg_meta_colnames = Dict(
+        varname =>
+            _make_unique_col_name(existing_cols; initial_try = varname * "_meta")
+        for varname in data_cols(df) if agg_metas[varname] !== nothing)
+    cols_with_agg_meta = collect(keys(agg_meta_colnames))
+
+    # TODO currently we can only handle Vector aggregation metadata (eventually we'll
+    # probably need two optional aggregation metadata fields, one for per-column data and
+    # one for per-element data)
+    @assert all(typeof.([agg_metas[cn] for cn in cols_with_agg_meta]) .<: Vector)
+    @assert all(
+        length(agg_metas[orig_name]) == length(df[!, orig_name])
+        for orig_name in cols_with_agg_meta
+    )
+
+    # Add the groupby column and aggregation metadata columns
+    transformed = DataFrames.transform(
+        df,
+        DATETIME_COL => DataFrames.ByRow(groupby_fn) => groupby_col,
+    )
+    for orig_name in cols_with_agg_meta
+        transformed[!, agg_meta_colnames[orig_name]] = agg_metas[orig_name]
+    end
+
+    grouped = DataFrames.groupby(transformed, groupby_col)
+    # For all data columns and non-special metadata columns, find the agg_fn and handle aggregation metadata
+    aggregations = [
+        _construct_aggregation(df, agg_meta_colnames, col_name, agg_fn)
+        for col_name in names(df) if !(col_name in (groupby_col, DATETIME_COL))
+    ]
+    meta_aggregations = [
+        _construct_meta_aggregation(df, orig_name, agg_meta_colnames[orig_name])
+        for orig_name in cols_with_agg_meta
+    ]
+    # Take the first DateTime in each group, reduce the other columns as specified in aggregations, preserve column names
+    # TODO is it okay to always just take the first timestamp, or should there be a
+    # reduce_time_fn kwarg to, for instance, allow users to specify that they want the
+    # midpoint timestamp?
+    combined = DataFrames.combine(grouped,
+        DATETIME_COL => first => DATETIME_COL,
+        aggregations..., meta_aggregations...)
+
+    # Replace the aggregation metadata
+    for orig_name in cols_with_agg_meta
+        set_agg_meta!(combined, orig_name, combined[!, agg_meta_colnames[orig_name]])
+    end
+
+    # Drop agg_meta columns, reorder the columns for convention
+    not_index = DataFrames.Not(groupby_col, DATETIME_COL, values(agg_meta_colnames)...)
+    result = DataFrames.select(combined, DATETIME_COL, groupby_col, not_index)
+
+    set_col_meta!(result, DATETIME_COL)
+    set_col_meta!(result, groupby_col)
+    keep_groupby_col || (result = DataFrames.select(result, DataFrames.Not(groupby_col)))
+    return result
 end
