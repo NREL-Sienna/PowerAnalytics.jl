@@ -1,3 +1,4 @@
+# TYPE DEFINITIONS
 # TODO there is probably a more principled way of structuring this Metric type hierarchy -- maybe parameterization?
 "The basic type for all `Metrics`."
 abstract type Metric end
@@ -11,6 +12,7 @@ abstract type TimelessMetric <: Metric end
 "Time series `Metrics` defined on `ComponentSelector`s."
 abstract type ComponentSelectorTimedMetric <: TimedMetric end
 
+# STRUCT DEFINITIONS
 """
 `ComponentSelectorTimedMetrics` implemented by evaluating a function on each `Component`.
 
@@ -25,37 +27,17 @@ abstract type ComponentSelectorTimedMetric <: TimedMetric end
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
     
 """
-struct ComponentTimedMetric <: ComponentSelectorTimedMetric
+@kwdef struct ComponentTimedMetric <: ComponentSelectorTimedMetric
     name::String
     description::String
-    eval_fn::Any
-    component_agg_fn::Any
-    time_agg_fn::Any
-    component_meta_agg_fn::Any
-    time_meta_agg_fn::Any
-    eval_zero::Any
+    eval_fn::Function
+    component_agg_fn::Function = sum
+    time_agg_fn::Function = sum
+    component_meta_agg_fn::Function = sum
+    time_meta_agg_fn::Function = sum
+    eval_zero::Union{Nothing, Function} = nothing
 end
-
 # TODO test component_meta_agg_fn, time_meta_agg_fn, eval_zero if keeping them
-ComponentTimedMetric(
-    name::String,
-    description::String,
-    eval_fn::Function;
-    component_agg_fn = sum,
-    time_agg_fn = sum,
-    component_meta_agg_fn = sum,
-    time_meta_agg_fn = sum,
-    eval_zero = nothing,
-) = ComponentTimedMetric(
-    name,
-    description,
-    eval_fn,
-    component_agg_fn,
-    time_agg_fn,
-    component_meta_agg_fn,
-    time_meta_agg_fn,
-    eval_zero,
-)
 
 # TODO test CustomTimedMetric
 """
@@ -70,22 +52,13 @@ just call the `eval_fn` directly.
    DataFrame representing the results for that `Component`
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
 """
-struct CustomTimedMetric <: ComponentSelectorTimedMetric
+@kwdef struct CustomTimedMetric <: ComponentSelectorTimedMetric
     name::String
     description::String
-    eval_fn::Any
-    time_agg_fn::Any
-    time_meta_agg_fn::Any
+    eval_fn::Function
+    time_agg_fn::Function = sum
+    time_meta_agg_fn::Function = sum
 end
-
-CustomTimedMetric(
-    name::String,
-    description::String,
-    eval_fn::Function;
-    time_agg_fn = sum,
-    time_meta_agg_fn = sum,
-) =
-    CustomTimedMetric(name, description, eval_fn, time_agg_fn, time_meta_agg_fn)
 
 """
 Time series `Metrics` defined on `Systems`.
@@ -98,22 +71,13 @@ Time series `Metrics` defined on `Systems`.
    DataFrame representing the results
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
 """
-struct SystemTimedMetric <: TimedMetric
+@kwdef struct SystemTimedMetric <: TimedMetric
     name::String
     description::String
-    eval_fn::Any
-    time_agg_fn::Any
-    time_meta_agg_fn::Any
+    eval_fn::Function
+    time_agg_fn::Function = sum
+    time_meta_agg_fn::Function = sum
 end
-
-SystemTimedMetric(
-    name::String,
-    description::String,
-    eval_fn::Function;
-    time_agg_fn = sum,
-    time_meta_agg_fn = sum,
-) =
-    SystemTimedMetric(name, description, eval_fn, time_agg_fn, time_meta_agg_fn)
 
 """
 Timeless Metrics with a single value per `IS.Results` instance
@@ -124,7 +88,7 @@ Timeless Metrics with a single value per `IS.Results` instance
     - `eval_fn`: a callable with signature `(::IS.Results,)` that returns a `DataFrame`
       representing the results
 """
-struct ResultsTimelessMetric <: TimelessMetric
+@kwdef struct ResultsTimelessMetric <: TimelessMetric
     name::String
     description::String
     eval_fn::Function
@@ -138,29 +102,7 @@ struct NoResultError <: Exception
     msg::AbstractString
 end
 
-# TODO remove :DateTime hardcoding in PowerSimulations
-"Name of the column that represents the time axis in computed DataFrames"
-const DATETIME_COL::String = "DateTime"
-
-"""
-Column metadata key whose value signifies whether the column is metadata. Metadata columns
-are excluded from `data_cols` and similar and can be used to represent things like a time
-aggregation.
-"""
-const META_COL_KEY::String = "meta_col"
-
-"Name of a column that represents whole-of-`System` data"
-const SYSTEM_COL::String = "System"
-
-"Name of a column that represents whole-of-`Results` data"
-const RESULTS_COL::String = "Results"
-
-"""
-Column metadata key whose value, if any, is additional information to be passed to
-aggregation functions. Values of `nothing` are equivalent to absence of the entry.
-"""
-const AGG_META_KEY::String = "agg_meta"
-
+# SMALL FUNCTIONS
 # Override these if you define Metric subtypes with different implementations
 get_name(m::Metric) = m.name
 get_description(m::Metric) = m.description
@@ -168,15 +110,20 @@ get_time_agg_fn(m::TimedMetric) = m.time_agg_fn
 # TODO is there a naming convention for this kind of function?
 "Returns a `Metric` identical to the input except with the given `time_agg_fn`"
 with_time_agg_fn(m::T, time_agg_fn) where {T <: ComponentSelectorTimedMetric} =
-    T(m.name, m.description, m.eval_fn; time_agg_fn = time_agg_fn)
+    T(;
+        name = m.name,
+        description = m.description,
+        eval_fn = m.eval_fn,
+        time_agg_fn = time_agg_fn,
+    )
 
 get_component_agg_fn(m::ComponentTimedMetric) = m.component_agg_fn
 "Returns a `Metric` identical to the input except with the given `component_agg_fn`"
 with_component_agg_fn(m::ComponentTimedMetric, component_agg_fn) =
-    ComponentTimedMetric(
-        m.name,
-        m.description,
-        m.eval_fn;
+    ComponentTimedMetric(;
+        name = m.name,
+        description = m.description,
+        eval_fn = m.eval_fn,
         component_agg_fn = component_agg_fn,
     )
 
@@ -188,10 +135,10 @@ with_time_meta_agg_fn(m::T, time_meta_agg_fn) where {T <: ComponentSelectorTimed
 get_component_meta_agg_fn(m::ComponentTimedMetric) = m.component_meta_agg_fn
 "Returns a `Metric` identical to the input except with the given `component_meta_agg_fn`"
 with_component_meta_agg_fn(m::ComponentTimedMetric, component_meta_agg_fn) =
-    ComponentTimedMetric(
-        m.name,
-        m.description,
-        m.eval_fn;
+    ComponentTimedMetric(;
+        name = m.name,
+        description = m.description,
+        eval_fn = m.eval_fn,
         component_meta_agg_fn = component_meta_agg_fn,
     )
 
@@ -201,81 +148,6 @@ a string.
 """
 metric_selector_to_string(m::Metric, e::Union{ComponentSelector, Component}) =
     get_name(m) * COMPONENT_NAME_DELIMETER * get_name(e)
-
-"Check whether a column is metadata"
-is_col_meta(df, colname) = get(colmetadata(df, colname), META_COL_KEY, false)
-
-"Mark a column as metadata"
-set_col_meta!(df, colname, val = true) =
-    colmetadata!(df, colname, META_COL_KEY, val; style = :note)
-
-"Get the column's aggregation metadata; return `nothing` if there is none."
-get_agg_meta(df, colname) = get(colmetadata(df, colname), AGG_META_KEY, nothing)
-
-"Get the single data column's aggregation metadata; error on multiple data columns."
-function get_agg_meta(df)
-    my_data_cols = data_cols(df)
-    (length(my_data_cols) == 1) && return get_agg_meta(df, first(my_data_cols))
-    throw(
-        ArgumentError(
-            "DataFrame has $(size(the_data, 2)) columns of data, must specify a column name",
-        ),
-    )
-end
-
-"Set the column's aggregation metadata."
-set_agg_meta!(df, colname, val) =
-    colmetadata!(df, colname, AGG_META_KEY, val; style = :note)
-
-"Set the single data column's aggregation metadata; error on multiple data columns."
-function set_agg_meta!(df, val)
-    my_data_cols = data_cols(df)
-    (length(my_data_cols) == 1) && return set_agg_meta!(df, first(my_data_cols), val)
-    throw(
-        ArgumentError(
-            "DataFrame has $(size(the_data, 2)) columns of data, must specify a column name",
-        ),
-    )
-end
-
-# TODO test that mutating the selection mutates the original
-"Select the `DateTime` column of the `DataFrame` as a one-column `DataFrame` without copying."
-time_df(df::DataFrames.AbstractDataFrame) =
-    DataFrames.select(df, DATETIME_COL; copycols = false)
-
-"Select the `DateTime` column of the `DataFrame` as a `Vector` without copying."
-time_vec(df::DataFrames.AbstractDataFrame) = df[!, DATETIME_COL]
-
-"""
-Select the names of the data columns of the `DataFrame`, i.e., those that are not `DateTime`
-and not metadata.
-"""
-data_cols(df::DataFrames.AbstractDataFrame) =
-    filter(
-        (
-            colname ->
-                (colname != DATETIME_COL) &&
-                    !is_col_meta(df, colname)
-        ),
-        names(df))
-
-"Select the data columns of the `DataFrame` as a `DataFrame` without copying."
-data_df(df::DataFrames.AbstractDataFrame) =
-    DataFrames.select(df, data_cols(df); copycols = false)
-
-"Select the data column of the `DataFrame` as a vector without copying, errors if more than one."
-function data_vec(df::DataFrames.AbstractDataFrame)
-    the_data = data_df(df)
-    (size(the_data, 2) > 1) && throw(
-        ArgumentError(
-            "DataFrame has $(size(the_data, 2)) columns of data, consider using data_mat",
-        ),
-    )
-    return the_data[!, 1]
-end
-
-"Select the data columns of the `DataFrame` as a `Matrix` with copying."
-data_mat(df::DataFrames.AbstractDataFrame) = Matrix(data_df(df))
 
 # Validation and metadata management helper function for various compute methods
 function _compute_meta_timed!(val, metric, results)
@@ -313,7 +185,6 @@ end
 """
 Compute the given metric on the given component within the given set of results, returning a
 `DataFrame` with a `DateTime` column and a data column labeled with the component's name.
-Exclude components marked as not available.
 
 # Arguments
  - `metric::ComponentTimedMetric`: the metric to compute
@@ -323,10 +194,8 @@ Exclude components marked as not available.
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
-compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component;
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing) =
-    _compute_component_timed_helper(metric, results, comp; start_time, len)
+compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component; kwargs...) =
+    _compute_component_timed_helper(metric, results, comp; kwargs...)
 
 """
 Compute the given metric on the given component within the given set of results, returning a
@@ -400,44 +269,6 @@ compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing;
     start_time::Union{Nothing, Dates.DateTime} = nothing,
     len::Union{Int, Nothing} = nothing) = compute(metric, results;
     start_time = start_time, len = len)
-
-# TODO test allow_missing behavior
-function _extract_common_time(dfs::DataFrames.AbstractDataFrame...;
-    allow_missing = true, ex_fn::Function = time_vec)
-    time_cols = ex_fn.(dfs)
-    allow_missing || !any([any(ismissing.(ex_fn(tc))) for tc in time_cols]) ||
-        throw(ErrorException("Missing time columns"))
-    # Candidate time column is the one with the most non-missing values
-    time_col = argmax(x -> count(!ismissing, Array(x)), time_cols)
-    # Other time columns must either be the same or [nothing]
-    # TODO come up with a more informative error here
-    all([
-        isequal(sub, time_col) ||
-            (all(ismissing.(Array(sub))) && size(sub, 1) == 1) for sub in time_cols
-    ]) ||
-        throw(ErrorException("Mismatched time columns"))
-    return time_col
-end
-
-# TODO test
-function _broadcast_time(data_cols, time_col; allow_unitary = true)
-    size(data_cols, 1) == size(time_col, 1) && return data_cols
-    (allow_unitary && size(data_cols, 1) == 1) ||
-        throw(ErrorException("Individual data column does not match aggregate time column"))
-    return repeat(data_cols, size(time_col, 1))  # Preserves metadata
-end
-
-# NOTE this really makes the case for a dedicated type for time-indexed dataframes, then
-# this would just be another hcat method to multiply dispatch
-"""
-If the time axes match across all the `DataFrames`, horizontally concatenate them and remove
-the duplicate time axes. If not, throw an error
-"""
-function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
-    time_col = _extract_common_time(vals...; ex_fn = time_df)
-    broadcasted_vals = [data_df(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
-    return hcat(time_col, broadcasted_vals...)
-end
 
 """
 Compute the given `Metric` on the given `ComponentSelector` within the given set of results,
@@ -796,8 +627,8 @@ compose_metrics(
     description::String,
     reduce_fn,
     metrics::ComponentSelectorTimedMetric...,
-) = CustomTimedMetric(name, description,
-    (res::IS.Results, ent::Union{Component, ComponentSelector},
+) = CustomTimedMetric(; name = name, description = description,
+    eval_fn = (res::IS.Results, ent::Union{Component, ComponentSelector},
         start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
         _common_compose_metrics(
             res,
@@ -814,8 +645,8 @@ compose_metrics(
     name::String,
     description::String,
     reduce_fn,
-    metrics::SystemTimedMetric...) = SystemTimedMetric(name, description,
-    (
+    metrics::SystemTimedMetric...) = SystemTimedMetric(; name = name, description = description,
+    eval_fn = (
         res::IS.Results,
         start_time::Union{Nothing, Dates.DateTime},
         len::Union{Int, Nothing},
@@ -835,23 +666,25 @@ compose_metrics(
     name::String,
     description::String,
     reduce_fn,
-    metrics::ResultsTimelessMetric...) = ResultsTimelessMetric(name, description,
-    res::IS.Results ->
-        _common_compose_metrics(
-            res,
-            nothing,
-            reduce_fn,
-            metrics,
-            RESULTS_COL,
-        ),
+    metrics::ResultsTimelessMetric...) = ResultsTimelessMetric(; name = name, description = description,
+    eval_fn = (
+        res::IS.Results ->
+            _common_compose_metrics(
+                res,
+                nothing,
+                reduce_fn,
+                metrics,
+                RESULTS_COL,
+            )
+    ),
 )
 
 # Create a ComponentSelectorTimedMetric that wraps a SystemTimedMetric, disregarding the ComponentSelector
 component_selector_metric_from_system_metric(in_metric::SystemTimedMetric) =
-    CustomTimedMetric(
-        get_name(in_metric),
-        get_description(in_metric),
-        (res::IS.Results, comp::Union{Component, ComponentSelector},
+    CustomTimedMetric(;
+        name = get_name(in_metric),
+        description = get_description(in_metric),
+        eval_fn = (res::IS.Results, comp::Union{Component, ComponentSelector},
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
             compute(in_metric, res, start_time, len))
 

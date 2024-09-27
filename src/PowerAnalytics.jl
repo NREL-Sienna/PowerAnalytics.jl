@@ -1,5 +1,6 @@
 module PowerAnalytics
 
+# EXPORTS
 export make_fuel_dictionary
 export get_generation_data
 export get_load_data
@@ -29,7 +30,8 @@ export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown
     calc_system_load_from_storage, calc_integration, calc_capacity_factor
 export mean, weighted_mean, unweighted_sum
 
-#I/O Imports
+# IMPORTS
+import Base: @kwdef
 import Dates
 import TimeSeries
 import Statistics
@@ -49,22 +51,29 @@ import PowerSystems:
 
 import InfrastructureSystems
 import PowerSimulations
+import PowerSimulations:
+    get_system
 import InteractiveUtils
 
+# ALIASES
 const PSY = PowerSystems
 const IS = InfrastructureSystems
 const PSI = PowerSimulations
 
+# INCLUDES
+# Old PowerAnalytics
 include("definitions.jl")
 include("get_data.jl")
 include("fuel_results.jl")
 
-include("metrics.jl")
+# New PowerAnalytics
 include("input_utils.jl")
+include("output_utils.jl")
+include("metrics.jl")
 include("builtin_component_selectors.jl")
 include("builtin_metrics.jl")
 
-# Submodules
+# SUBMODULES
 using .Selectors
 
 greet() = print("Hello World!")

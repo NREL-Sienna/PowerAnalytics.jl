@@ -112,8 +112,8 @@ make_component_metric_from_entry(
     description::String,
     key::Type{<:EntryType},
 ) =
-    ComponentTimedMetric(name, description,
-        (res::IS.Results, comp::Component,
+    ComponentTimedMetric(; name = name, description = description,
+        eval_fn = (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
             read_component_result(res, key, comp, start_time, len))
 
@@ -124,8 +124,8 @@ make_system_metric_from_entry(
     description::String,
     key::Type{<:SystemEntryType},
 ) =
-    SystemTimedMetric(name, description,
-        (res::IS.Results,
+    SystemTimedMetric(; name = name, description = description,
+        eval_fn = (res::IS.Results,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
             read_system_result(res, key, start_time, len))
 
@@ -197,30 +197,38 @@ calc_active_power_forecast = make_component_metric_from_entry(
     PSI.ActivePowerTimeSeriesParameter,
 )
 
-calc_load_forecast = ComponentTimedMetric(
-    "LoadForecast",
-    "Fetch the forecast active load of the specified ComponentSelector",
+calc_load_forecast = ComponentTimedMetric(;
+    name = "LoadForecast",
+    description = "Fetch the forecast active load of the specified ComponentSelector",
     # Load is negative power
     # NOTE if we had our own time-indexed dataframe type we could overload multiplication with a scalar and simplify this
-    (args...) -> let
+    eval_fn = (args...) -> let
         val = compute(calc_active_power_forecast, args...)
         data_vec(val) .*= -1
         return val
     end,
 )
 
-calc_system_load_forecast = SystemTimedMetric(
-    "SystemLoadForecast",
-    "Fetch the forecast active load of all the ElectricLoad Components in the system",
-    (res::IS.Results, st::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+calc_system_load_forecast = SystemTimedMetric(;
+    name = "SystemLoadForecast",
+    description = "Fetch the forecast active load of all the ElectricLoad Components in the system",
+    eval_fn = (
+        res::IS.Results,
+        st::Union{Nothing, Dates.DateTime},
+        len::Union{Int, Nothing},
+    ) ->
         compute(calc_load_forecast, res, load_component_selector, st, len),
 )
 
 calc_system_load_from_storage = let
-    SystemTimedMetric(
-        "SystemLoadFromStorage",
-        "Fetch the LoadFromStorage of all storage in the system",
-        (res::IS.Results, st::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+    SystemTimedMetric(;
+        name = "SystemLoadFromStorage",
+        description = "Fetch the LoadFromStorage of all storage in the system",
+        eval_fn = (
+            res::IS.Results,
+            st::Union{Nothing, Dates.DateTime},
+            len::Union{Int, Nothing},
+        ) ->
             compute(calc_load_from_storage, res, storage_component_selector, st, len),
     )
 end
@@ -239,10 +247,10 @@ calc_curtailment = compose_metrics(
     calc_active_power_forecast, calc_active_power,
 )
 
-calc_curtailment_frac = ComponentTimedMetric(
-    "CurtailmentFrac",
-    "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given ComponentSelector",
-    (
+calc_curtailment_frac = ComponentTimedMetric(;
+    name = "CurtailmentFrac",
+    description = "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given ComponentSelector",
+    eval_fn = (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
         ) -> let
@@ -256,7 +264,7 @@ calc_curtailment_frac = ComponentTimedMetric(
             set_agg_meta!(result, power)
             return result
         end
-    ); component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
+    ), component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
 )
 
 # Helper function for calc_integration
@@ -264,10 +272,10 @@ _integration_denoms(res, start_time, len) =
     compute(calc_system_load_forecast, res, start_time, len),
     compute(calc_system_load_from_storage, res, start_time, len)
 
-calc_integration = ComponentTimedMetric(
-    "Integration",
-    "Calculate the ActivePower of the given ComponentSelector over the sum of the SystemLoadForecast and the SystemLoadFromStorage",
-    (
+calc_integration = ComponentTimedMetric(;
+    name = "Integration",
+    description = "Calculate the ActivePower of the given ComponentSelector over the sum of the SystemLoadForecast and the SystemLoadFromStorage",
+    eval_fn = (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
         ) -> let
@@ -280,7 +288,7 @@ calc_integration = ComponentTimedMetric(
             set_agg_meta!(result, denom)
             return result
         end
-    ); component_agg_fn = unweighted_sum, time_agg_fn = weighted_mean,
+    ), component_agg_fn = unweighted_sum, time_agg_fn = weighted_mean,
     component_meta_agg_fn = mean,
     # We use a custom eval_zero to put the weight in there even when there are no components
     eval_zero = (res::IS.Results,
@@ -295,11 +303,11 @@ calc_integration = ComponentTimedMetric(
     end,
 )
 
-calc_capacity_factor = ComponentTimedMetric(
-    "CapacityFactor",
-    "Calculate the capacity factor (actual production/rated production) of the specified ComponentSelector",
+calc_capacity_factor = ComponentTimedMetric(;
+    name = "CapacityFactor",
+    description = "Calculate the capacity factor (actual production/rated production) of the specified ComponentSelector",
     # (intentionally done with forecast to serve as sanity check -- solar capacity factor shouldn't exceed 20%, etc.)
-    (
+    eval_fn = (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
         ) -> let
@@ -309,13 +317,13 @@ calc_capacity_factor = ComponentTimedMetric(
             set_agg_meta!(result, repeat([rating], length(data_vec(result))))
             return result
         end
-    ); component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
+    ), component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
 )
 
-calc_startup_cost = ComponentTimedMetric(
-    "StartupCost",
-    "Calculate the startup cost of the specified ComponentSelector",
-    (
+calc_startup_cost = ComponentTimedMetric(;
+    name = "StartupCost",
+    description = "Calculate the startup cost of the specified ComponentSelector",
+    eval_fn = (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.StartVariable, comp, start_time, len)
@@ -326,10 +334,10 @@ calc_startup_cost = ComponentTimedMetric(
     ),
 )
 
-calc_shutdown_cost = ComponentTimedMetric(
-    "ShutdownCost",
-    "Calculate the shutdown cost of the specified ComponentSelector",
-    (
+calc_shutdown_cost = ComponentTimedMetric(;
+    name = "ShutdownCost",
+    description = "Calculate the shutdown cost of the specified ComponentSelector",
+    eval_fn = (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.StartVariable, comp, start_time, len)
@@ -340,10 +348,10 @@ calc_shutdown_cost = ComponentTimedMetric(
     ),
 )
 
-calc_total_cost = ComponentTimedMetric(
-    "TotalCost",
-    "Calculate the production+startup+shutdown cost of the specified ComponentSelector; startup and shutdown costs are assumed to be zero if undefined",
-    (args...) -> let
+calc_total_cost = ComponentTimedMetric(;
+    name = "TotalCost",
+    description = "Calculate the production+startup+shutdown cost of the specified ComponentSelector; startup and shutdown costs are assumed to be zero if undefined",
+    eval_fn = (args...) -> let
         production = compute(calc_production_cost, args...)
         startup = try
             data_vec(compute(calc_startup_cost, args...))
@@ -361,13 +369,13 @@ calc_total_cost = ComponentTimedMetric(
     end,
 )
 
-calc_discharge_cycles = ComponentTimedMetric(
-    "DischargeCycles",
-    "Calculate the number of discharge cycles a storage device has gone through in the time period",
+calc_discharge_cycles = ComponentTimedMetric(;
+    name = "DischargeCycles",
+    description = "Calculate the number of discharge cycles a storage device has gone through in the time period",
     # NOTE: here, we define one "cycle" as a discharge from the maximum state of charge to
     # the minimum state of charge. A simpler algorithm might define a cycle as a discharge
     # from the maximum state of charge to zero; the algorithm given here is more rigorous.
-    (
+    eval_fn = (
         (res::IS.Results, comp::Component,
             start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
             val = read_component_result(res, PSI.ActivePowerOutVariable, comp, start_time, len)
@@ -390,10 +398,10 @@ calc_system_slack_up = make_system_metric_from_entry(
 Create a boolean Metric for whether the given time period has system balance slack up of
 magnitude greater than the `threshold` argument
 """
-make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(
-    "IsSlackUp($threshold)",
-    "Calculate whether the given time period has system balance slack up of magnitude greater than $threshold",
-    (args...) -> let
+make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(;
+    name = "IsSlackUp($threshold)",
+    description = "Calculate whether the given time period has system balance slack up of magnitude greater than $threshold",
+    eval_fn = (args...) -> let
         val = compute(calc_system_slack_up, args...)
         val[!, first(data_cols(val))] =
             abs.(val[!, first(data_cols(val))]) .> threshold
