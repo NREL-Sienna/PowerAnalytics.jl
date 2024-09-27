@@ -60,7 +60,7 @@ include("get_data.jl")
 include("fuel_results.jl")
 
 include("metrics.jl")
-include("input.jl")
+include("input_utils.jl")
 include("builtin_component_selectors.jl")
 include("builtin_metrics.jl")
 
