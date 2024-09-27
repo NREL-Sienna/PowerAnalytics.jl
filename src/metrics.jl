@@ -174,9 +174,8 @@ end
 function _compute_component_timed_helper(metric::ComponentSelectorTimedMetric,
     results::IS.Results,
     comp::Union{Component, ComponentSelector};
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing)
-    val = metric.eval_fn(results, comp, start_time, len)
+    kwargs...)
+    val = metric.eval_fn(results, comp; kwargs...)
     _compute_meta_timed!(val, metric, results)
     colmetadata!(val, 2, "components", [comp]; style = :note)
     return val
@@ -212,9 +211,8 @@ Exclude components marked as not available.
 """
 compute(metric::CustomTimedMetric, results::IS.Results,
     comp::Union{Component, ComponentSelector};
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing) =
-    _compute_component_timed_helper(metric, results, comp; start_time, len)
+    kwargs...) =
+    _compute_component_timed_helper(metric, results, comp; kwargs...)
 
 """
 Compute the given metric on the `System` associated with the given set of results, returning
@@ -228,10 +226,8 @@ available.
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
-function compute(metric::SystemTimedMetric, results::IS.Results;
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing)
-    val = metric.eval_fn(results, start_time, len)
+function compute(metric::SystemTimedMetric, results::IS.Results; kwargs...)
+    val = metric.eval_fn(results; kwargs...)
     _compute_meta_timed!(val, metric, results)
     return val
 end
@@ -265,10 +261,8 @@ a `DataFrame` with a `DateTime` column and a data column; takes a `Nothing` wher
 `ComponentSelectorTimedMetric` method of this function would take a
 `Component`/`ComponentSelector` for convenience. Exclude components marked as not available.
 """
-compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing;
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing) = compute(metric, results;
-    start_time = start_time, len = len)
+compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing; kwargs...) =
+    compute(metric, results; kwargs...)
 
 """
 Compute the given `Metric` on the given `ComponentSelector` within the given set of results,
@@ -285,9 +279,7 @@ a `DataFrame` with a `DateTime` column and a data column labeled with the
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
 function compute(metric::ComponentTimedMetric, results::IS.Results,
-    selector::ComponentSelector;
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing)
+    selector::ComponentSelector; kwargs...)
     # TODO incorporate allow_missing
     agg_fn = get_component_agg_fn(metric)
     meta_agg_fn = get_component_meta_agg_fn(metric)
@@ -297,12 +289,12 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
         filterby = get_available,
     )
     vals = [
-        compute(metric, results, com; start_time = start_time, len = len) for
+        compute(metric, results, com; kwargs...) for
         com in components
     ]
     if length(vals) == 0
         if metric.eval_zero !== nothing
-            result = metric.eval_zero(results, start_time, len)
+            result = metric.eval_zero(results; kwargs...)
         else
             time_col = Vector{Union{Missing, Dates.DateTime}}([missing])
             data_col = agg_fn(Vector{Float64}())
@@ -326,17 +318,6 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
     return result
 end
 
-# TODO these are currently necessary because eval_fn is supposed to take start_time and len
-# as positional arguments and compute as kwargs; would it be better to just switch one of
-# those?
-"""A version of `compute` that takes positional arguments for convenience"""
-compute(met, res, ent, start_time, len) =
-    compute(met, res, ent; start_time = start_time, len = len)
-
-"""A version of `compute` that takes positional arguments for convenience"""
-compute(met, res, start_time, len) =
-    compute(met, res; start_time = start_time, len = len)
-
 # TODO function compute_set
 """
 Compute the given metric on the subselectors of the given `ComponentSelector` within the
@@ -354,15 +335,13 @@ concatenating. Exclude components marked as not available.
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
 function compute_set(metric::ComponentSelectorTimedMetric, results::IS.Results,
-    selector::ComponentSelector;
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing)
+    selector::ComponentSelector; kwargs...)
     subents = PSY.get_groups(
         selector,
         PowerSimulations.get_system(results);
         filterby = get_available,
     )
-    subcomputations = [compute(metric, results, sub; start_time, len) for sub in subents]
+    subcomputations = [compute(metric, results, sub; kwargs...) for sub in subents]
     return hcat_timed(subcomputations...)
 end
 
@@ -628,16 +607,14 @@ compose_metrics(
     reduce_fn,
     metrics::ComponentSelectorTimedMetric...,
 ) = CustomTimedMetric(; name = name, description = description,
-    eval_fn = (res::IS.Results, ent::Union{Component, ComponentSelector},
-        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
+    eval_fn = (res::IS.Results, ent::Union{Component, ComponentSelector}; kwargs...) ->
         _common_compose_metrics(
             res,
             ent,
             reduce_fn,
             metrics,
             get_name(ent);
-            start_time = start_time,
-            len = len,
+            kwargs...
         ),
 )
 
@@ -646,19 +623,14 @@ compose_metrics(
     description::String,
     reduce_fn,
     metrics::SystemTimedMetric...) = SystemTimedMetric(; name = name, description = description,
-    eval_fn = (
-        res::IS.Results,
-        start_time::Union{Nothing, Dates.DateTime},
-        len::Union{Int, Nothing},
-    ) ->
+    eval_fn = (res::IS.Results; kwargs...) ->
         _common_compose_metrics(
             res,
             nothing,
             reduce_fn,
             metrics,
             SYSTEM_COL;
-            start_time = start_time,
-            len = len,
+            kwargs...
         ),
 )
 
@@ -684,9 +656,8 @@ component_selector_metric_from_system_metric(in_metric::SystemTimedMetric) =
     CustomTimedMetric(;
         name = get_name(in_metric),
         description = get_description(in_metric),
-        eval_fn = (res::IS.Results, comp::Union{Component, ComponentSelector},
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
-            compute(in_metric, res, start_time, len))
+        eval_fn = (res::IS.Results, comp::Union{Component, ComponentSelector}; kwargs...) ->
+            compute(in_metric, res; kwargs...))
 
 # This one only gets triggered when we have at least one ComponentSelectorTimedMetric *and*
 # at least one SystemTimedMetric, in which case the behavior is to treat the
@@ -707,7 +678,5 @@ end
 # Functor interface
 
 (metric::ComponentSelectorTimedMetric)(selector::ComponentSelector,
-    results::IS.Results;
-    start_time::Union{Nothing, Dates.DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing) =
-    compute_set(metric, results, selector; start_time = start_time, len = len)
+    results::IS.Results; kwargs...) =
+    compute_set(metric, results, selector; kwargs...)

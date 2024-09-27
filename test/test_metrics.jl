@@ -11,9 +11,9 @@ comp_results = Dict()  # Will be populated later
 test_calc_active_power = ComponentTimedMetric(;
     name = "ActivePower",
     description = "Calculate the active power output of the specified `ComponentSelector`",
-    eval_fn = (res::IS.Results, comp::Component,
-        start_time::Union{Nothing, Dates.DateTime},
-        len::Union{Int, Nothing}) -> let
+    eval_fn = (res::IS.Results, comp::Component;
+        start_time::Union{Nothing, Dates.DateTime} = nothing,
+        len::Union{Int, Nothing} = nothing) -> let
         key = PSI.VariableKey(ActivePowerVariable, typeof(comp))
         res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
         first(values(res))[!, [DATETIME_COL, get_name(comp)]]
@@ -23,9 +23,9 @@ test_calc_active_power = ComponentTimedMetric(;
 test_calc_production_cost = ComponentTimedMetric(;
     name = "ProductionCost",
     description = "Calculate the production cost of the specified `ComponentSelector`",
-    eval_fn = (res::IS.Results, comp::Component,
-        start_time::Union{Nothing, Dates.DateTime},
-        len::Union{Int, Nothing}) -> let
+    eval_fn = (res::IS.Results, comp::Component;
+        start_time::Union{Nothing, Dates.DateTime} = nothing,
+        len::Union{Int, Nothing} = nothing) -> let
         key = PSI.ExpressionKey(ProductionCostExpression, typeof(comp))
         res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
         first(values(res))[!, [DATETIME_COL, get_name(comp)]]
@@ -35,9 +35,9 @@ test_calc_production_cost = ComponentTimedMetric(;
 test_calc_system_slack_up = SystemTimedMetric(;
     name = "SystemSlackUp",
     description = "Calculate the system balance slack up",
-    eval_fn = (res::IS.Results,
-        start_time::Union{Nothing, Dates.DateTime},
-        len::Union{Int, Nothing}) -> let
+    eval_fn = (res::IS.Results;
+        start_time::Union{Nothing, Dates.DateTime} = nothing,
+        len::Union{Int, Nothing} = nothing) -> let
         key = PSI.VariableKey(SystemBalanceSlackUp, System)
         res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
         res = first(values(res))
@@ -69,9 +69,9 @@ other_weights = [2, 1, 1]
 test_calc_dummy_meta = ComponentTimedMetric(;
     name = "DummyMeta",
     description = "Return some simple numbers with some simple metadata",
-    eval_fn = (res::IS.Results, comp::Component,
-        start_time::Union{Nothing, Dates.DateTime},
-        len::Union{Int, Nothing}) -> let
+    eval_fn = (res::IS.Results, comp::Component;
+        start_time::Union{Nothing, Dates.DateTime} = nothing,
+        len::Union{Int, Nothing} = nothing) -> let
         (start_time !== nothing && len !== nothing) &&
             error("Not implemented for non-nothing `start_time`, `len`")
         dates = collect(DateTime(2023, 1, 1):Hour(8):DateTime(2023, 1, 1, 16))

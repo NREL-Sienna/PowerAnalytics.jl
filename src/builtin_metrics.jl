@@ -113,9 +113,8 @@ make_component_metric_from_entry(
     key::Type{<:EntryType},
 ) =
     ComponentTimedMetric(; name = name, description = description,
-        eval_fn = (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
-            read_component_result(res, key, comp, start_time, len))
+        eval_fn = (res::IS.Results, comp::Component; kwargs...) ->
+            read_component_result(res, key, comp; kwargs...))
 
 # TODO test
 "Convenience function to convert a SystemEntryType to a function and make a SystemTimedMetric from it"
@@ -125,9 +124,8 @@ make_system_metric_from_entry(
     key::Type{<:SystemEntryType},
 ) =
     SystemTimedMetric(; name = name, description = description,
-        eval_fn = (res::IS.Results,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) ->
-            read_system_result(res, key, start_time, len))
+        eval_fn = (res::IS.Results; kwargs...) ->
+            read_system_result(res, key, kwargs...))
 
 "Compute the mean of `values` weighted by the corresponding entries of `weights`."
 function weighted_mean(values, weights)  # Made quite finnicky by the need to broadcast in two dimensions (or am I just new to this?)
@@ -251,13 +249,12 @@ calc_curtailment_frac = ComponentTimedMetric(;
     name = "CurtailmentFrac",
     description = "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given ComponentSelector",
     eval_fn = (
-        (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+        (res::IS.Results, comp::Component; kwargs...,
         ) -> let
-            result = compute(calc_curtailment, res, comp, start_time, len)
+            result = compute(calc_curtailment, res, comp; kwargs...)
             power = collect(
                 data_vec(
-                    compute(calc_active_power_forecast, res, comp, start_time, len),
+                    compute(calc_active_power_forecast, res, comp; kwargs...),
                 ),
             )
             data_vec(result) ./= power
@@ -268,21 +265,20 @@ calc_curtailment_frac = ComponentTimedMetric(;
 )
 
 # Helper function for calc_integration
-_integration_denoms(res, start_time, len) =
-    compute(calc_system_load_forecast, res, start_time, len),
-    compute(calc_system_load_from_storage, res, start_time, len)
+_integration_denoms(res; kwargs...) =
+    compute(calc_system_load_forecast, res; kwargs...),
+    compute(calc_system_load_from_storage, res; kwargs...)
 
 calc_integration = ComponentTimedMetric(;
     name = "Integration",
     description = "Calculate the ActivePower of the given ComponentSelector over the sum of the SystemLoadForecast and the SystemLoadFromStorage",
     eval_fn = (
-        (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
+        (res::IS.Results, comp::Component; kwargs...,
         ) -> let
-            result = compute(calc_active_power, res, comp, start_time, len)
+            result = compute(calc_active_power, res, comp; kwargs...)
             # TODO does not check date alignment, maybe use hcat_timed
             denom = (.+)(
-                (_integration_denoms(res, start_time, len) .|> data_vec .|> collect)...,
+                (_integration_denoms(res; kwargs...) .|> data_vec .|> collect)...,
             )
             data_vec(result) ./= denom
             set_agg_meta!(result, denom)
@@ -291,10 +287,8 @@ calc_integration = ComponentTimedMetric(;
     ), component_agg_fn = unweighted_sum, time_agg_fn = weighted_mean,
     component_meta_agg_fn = mean,
     # We use a custom eval_zero to put the weight in there even when there are no components
-    eval_zero = (res::IS.Results,
-        start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
-    ) -> let
-        denoms = _integration_denoms(res, start_time, len)
+    eval_zero = (res::IS.Results; kwargs...) -> let
+        denoms = _integration_denoms(res; kwargs...)
         # TODO does not check date alignment, maybe use hcat_timed
         time_col = time_vec(first(denoms))
         data_col = repeat([0.0], length(time_col))
@@ -308,10 +302,8 @@ calc_capacity_factor = ComponentTimedMetric(;
     description = "Calculate the capacity factor (actual production/rated production) of the specified ComponentSelector",
     # (intentionally done with forecast to serve as sanity check -- solar capacity factor shouldn't exceed 20%, etc.)
     eval_fn = (
-        (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing},
-        ) -> let
-            result = compute(calc_active_power_forecast, res, comp, start_time, len)
+        (res::IS.Results, comp::Component; kwargs...) -> let
+            result = compute(calc_active_power_forecast, res, comp; kwargs...)
             rating = PSY.get_rating(comp)
             data_vec(result) ./= rating
             set_agg_meta!(result, repeat([rating], length(data_vec(result))))
@@ -324,9 +316,8 @@ calc_startup_cost = ComponentTimedMetric(;
     name = "StartupCost",
     description = "Calculate the startup cost of the specified ComponentSelector",
     eval_fn = (
-        (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
-            val = read_component_result(res, PSI.StartVariable, comp, start_time, len)
+        (res::IS.Results, comp::Component; kwargs...) -> let
+            val = read_component_result(res, PSI.StartVariable, comp; kwargs...)
             start_cost = PSY.get_start_up(PSY.get_operation_cost(comp))
             data_vec(val) .*= start_cost
             return val
@@ -338,9 +329,8 @@ calc_shutdown_cost = ComponentTimedMetric(;
     name = "ShutdownCost",
     description = "Calculate the shutdown cost of the specified ComponentSelector",
     eval_fn = (
-        (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
-            val = read_component_result(res, PSI.StartVariable, comp, start_time, len)
+        (res::IS.Results, comp::Component; kwargs...) -> let
+            val = read_component_result(res, PSI.StartVariable, comp; kwargs...)
             stop_cost = PSY.get_shut_down(PSY.get_operation_cost(comp))
             data_vec(val) .*= stop_cost
             return val
@@ -376,9 +366,8 @@ calc_discharge_cycles = ComponentTimedMetric(;
     # the minimum state of charge. A simpler algorithm might define a cycle as a discharge
     # from the maximum state of charge to zero; the algorithm given here is more rigorous.
     eval_fn = (
-        (res::IS.Results, comp::Component,
-            start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing}) -> let
-            val = read_component_result(res, PSI.ActivePowerOutVariable, comp, start_time, len)
+        (res::IS.Results, comp::Component; kwargs...) -> let
+            val = read_component_result(res, PSI.ActivePowerOutVariable, comp; kwargs...)
             soc_limits = PSY.get_storage_level_limits(comp)
             soc_range =
                 PSY.get_storage_capacity(comp) * (soc_limits.max - soc_limits.min)
