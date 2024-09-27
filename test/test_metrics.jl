@@ -8,10 +8,10 @@ resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
 comp_results = Dict()  # Will be populated later
 
 # CONSTRUCT COMMON TEST RESOURCES
-test_calc_active_power = ComponentTimedMetric(
-    "ActivePower",
-    "Calculate the active power output of the specified `ComponentSelector`",
-    (res::IS.Results, comp::Component,
+test_calc_active_power = ComponentTimedMetric(;
+    name = "ActivePower",
+    description = "Calculate the active power output of the specified `ComponentSelector`",
+    eval_fn = (res::IS.Results, comp::Component,
         start_time::Union{Nothing, Dates.DateTime},
         len::Union{Int, Nothing}) -> let
         key = PSI.VariableKey(ActivePowerVariable, typeof(comp))
@@ -20,10 +20,10 @@ test_calc_active_power = ComponentTimedMetric(
     end,
 )
 
-test_calc_production_cost = ComponentTimedMetric(
-    "ProductionCost",
-    "Calculate the production cost of the specified `ComponentSelector`",
-    (res::IS.Results, comp::Component,
+test_calc_production_cost = ComponentTimedMetric(;
+    name = "ProductionCost",
+    description = "Calculate the production cost of the specified `ComponentSelector`",
+    eval_fn = (res::IS.Results, comp::Component,
         start_time::Union{Nothing, Dates.DateTime},
         len::Union{Int, Nothing}) -> let
         key = PSI.ExpressionKey(ProductionCostExpression, typeof(comp))
@@ -32,10 +32,10 @@ test_calc_production_cost = ComponentTimedMetric(
     end,
 )
 
-test_calc_system_slack_up = SystemTimedMetric(
-    "SystemSlackUp",
-    "Calculate the system balance slack up",
-    (res::IS.Results,
+test_calc_system_slack_up = SystemTimedMetric(;
+    name = "SystemSlackUp",
+    description = "Calculate the system balance slack up",
+    eval_fn = (res::IS.Results,
         start_time::Union{Nothing, Dates.DateTime},
         len::Union{Int, Nothing}) -> let
         key = PSI.VariableKey(SystemBalanceSlackUp, System)
@@ -66,10 +66,10 @@ thermal_vals = [1, 2, 3]
 thermal_weights = [1, 1, 3]
 other_vals = [4, 5, 6]
 other_weights = [2, 1, 1]
-test_calc_dummy_meta = ComponentTimedMetric(
-    "DummyMeta",
-    "Return some simple numbers with some simple metadata",
-    (res::IS.Results, comp::Component,
+test_calc_dummy_meta = ComponentTimedMetric(;
+    name = "DummyMeta",
+    description = "Return some simple numbers with some simple metadata",
+    eval_fn = (res::IS.Results, comp::Component,
         start_time::Union{Nothing, Dates.DateTime},
         len::Union{Int, Nothing}) -> let
         (start_time !== nothing && len !== nothing) &&
@@ -79,7 +79,7 @@ test_calc_dummy_meta = ComponentTimedMetric(
         agg_meta = (typeof(comp) == ThermalStandard) ? thermal_weights : other_weights
         result = DataFrame(DATETIME_COL => dates, get_name(comp) => values)
         set_agg_meta!(result, agg_meta)
-    end;
+    end,
     component_agg_fn = weighted_mean,
     time_agg_fn = weighted_mean,
 )
