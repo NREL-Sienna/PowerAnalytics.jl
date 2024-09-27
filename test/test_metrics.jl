@@ -8,9 +8,9 @@ resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
 comp_results = Dict()  # Will be populated later
 
 # CONSTRUCT COMMON TEST RESOURCES
+"Calculate the active power output of the specified `ComponentSelector`"
 test_calc_active_power = ComponentTimedMetric(;
     name = "ActivePower",
-    description = "Calculate the active power output of the specified `ComponentSelector`",
     eval_fn = (res::IS.Results, comp::Component;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
@@ -20,9 +20,9 @@ test_calc_active_power = ComponentTimedMetric(;
     end,
 )
 
+"Calculate the production cost of the specified `ComponentSelector`"
 test_calc_production_cost = ComponentTimedMetric(;
     name = "ProductionCost",
-    description = "Calculate the production cost of the specified `ComponentSelector`",
     eval_fn = (res::IS.Results, comp::Component;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
@@ -32,9 +32,9 @@ test_calc_production_cost = ComponentTimedMetric(;
     end,
 )
 
+"Calculate the system balance slack up"
 test_calc_system_slack_up = SystemTimedMetric(;
     name = "SystemSlackUp",
-    description = "Calculate the system balance slack up",
     eval_fn = (res::IS.Results;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
@@ -50,15 +50,15 @@ test_calc_system_slack_up = SystemTimedMetric(;
     end,
 )
 
+"Sum the objective values achieved in the optimization problems"
 test_calc_sum_objective_value = ResultsTimelessMetric(
     "SumObjectiveValue",
-    "Sum the objective values achieved in the optimization problems",
     (res::IS.Results) -> sum(PSI.read_optimizer_stats(res)[!, "objective_value"]),
 )
 
+"Sum the solve times taken by the optimization problems"
 test_calc_sum_solve_time = ResultsTimelessMetric(
     "SumSolveTime",
-    "Sum the solve times taken by the optimization problems",
     (res::IS.Results) -> sum(PSI.read_optimizer_stats(res)[!, "solve_time"]),
 )
 
@@ -66,9 +66,9 @@ thermal_vals = [1, 2, 3]
 thermal_weights = [1, 1, 3]
 other_vals = [4, 5, 6]
 other_weights = [2, 1, 1]
+"Return some simple numbers with some simple metadata"
 test_calc_dummy_meta = ComponentTimedMetric(;
     name = "DummyMeta",
-    description = "Return some simple numbers with some simple metadata",
     eval_fn = (res::IS.Results, comp::Component;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
@@ -514,9 +514,9 @@ end
 
 @testset "Test compose_metrics" begin
     myent = make_selector(ThermalStandard)
+    "Computes ActivePower*3"
     mymet1 = compose_metrics(
         "ThriceActivePower",
-        "Computes ActivePower*3",
         (+),
         test_calc_active_power,
         test_calc_active_power,
@@ -530,9 +530,9 @@ end
     )
     @test all(results1[!, "once"] * 3 .== results1[!, "thrice"])
 
+    "Computes SystemSlackUp*3"
     mymet2 = compose_metrics(
         "ThriceSystemSlackUp",
-        "Computes SystemSlackUp*3",
         (+),
         test_calc_system_slack_up,
         test_calc_system_slack_up,
@@ -546,9 +546,9 @@ end
     )
     @test all(results2[!, "once"] * 3 .== results2[!, "thrice"])
 
+    "Computes SumObjectiveValue*3"
     mymet3 = compose_metrics(
         "ThriceSumObjectiveValue",
-        "Computes SumObjectiveValue*3",
         (+),
         test_calc_sum_objective_value,
         test_calc_sum_objective_value,
@@ -562,9 +562,9 @@ end
     )
     @test all(results3[!, "once"] * 3 .== results3[!, "thrice"])
 
+    "Computes SystemSlackUp^2*ActivePower (element-wise)"
     mymet4 = compose_metrics(
         "SlackSlackPower",
-        "Computes SystemSlackUp^2*ActivePower (element-wise)",
         (.*),
         test_calc_system_slack_up,
         test_calc_active_power,
