@@ -18,7 +18,6 @@ abstract type ComponentSelectorTimedMetric <: TimedMetric end
 
 # Arguments
  - `name::String`: the name of the `Metric`
- - `description::String`: a description of the `Metric`
  - `eval_fn`: a callable with signature
    `(::IS.Results, ::Component, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})`
    that returns a DataFrame representing the results for that `Component`
@@ -29,7 +28,6 @@ abstract type ComponentSelectorTimedMetric <: TimedMetric end
 """
 @kwdef struct ComponentTimedMetric <: ComponentSelectorTimedMetric
     name::String
-    description::String
     eval_fn::Function
     component_agg_fn::Function = sum
     time_agg_fn::Function = sum
@@ -46,7 +44,6 @@ just call the `eval_fn` directly.
 
 # Arguments
  - `name::String`: the name of the `Metric`
- - `description::String`: a description of the `Metric`
  - `eval_fn`: a callable with signature `(::IS.Results, ::Union{ComponentSelector,
    Component}, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
    DataFrame representing the results for that `Component`
@@ -54,7 +51,6 @@ just call the `eval_fn` directly.
 """
 @kwdef struct CustomTimedMetric <: ComponentSelectorTimedMetric
     name::String
-    description::String
     eval_fn::Function
     time_agg_fn::Function = sum
     time_meta_agg_fn::Function = sum
@@ -65,7 +61,6 @@ Time series `Metrics` defined on `Systems`.
 
 # Arguments
  - `name::String`: the name of the `Metric`
- - `description::String`: a description of the `Metric`
  - `eval_fn`: a callable with signature
    `(::IS.Results, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
    DataFrame representing the results
@@ -73,7 +68,6 @@ Time series `Metrics` defined on `Systems`.
 """
 @kwdef struct SystemTimedMetric <: TimedMetric
     name::String
-    description::String
     eval_fn::Function
     time_agg_fn::Function = sum
     time_meta_agg_fn::Function = sum
@@ -84,13 +78,11 @@ Timeless Metrics with a single value per `IS.Results` instance
 
 # Arguments
     - `name::String`: the name of the `Metric`
-    - `description::String`: a description of the `Metric`
     - `eval_fn`: a callable with signature `(::IS.Results,)` that returns a `DataFrame`
       representing the results
 """
 @kwdef struct ResultsTimelessMetric <: TimelessMetric
     name::String
-    description::String
     eval_fn::Function
 end
 
@@ -105,14 +97,12 @@ end
 # SMALL FUNCTIONS
 # Override these if you define Metric subtypes with different implementations
 get_name(m::Metric) = m.name
-get_description(m::Metric) = m.description
 get_time_agg_fn(m::TimedMetric) = m.time_agg_fn
 # TODO is there a naming convention for this kind of function?
 "Returns a `Metric` identical to the input except with the given `time_agg_fn`"
 with_time_agg_fn(m::T, time_agg_fn) where {T <: ComponentSelectorTimedMetric} =
     T(;
         name = m.name,
-        description = m.description,
         eval_fn = m.eval_fn,
         time_agg_fn = time_agg_fn,
     )
@@ -122,7 +112,6 @@ get_component_agg_fn(m::ComponentTimedMetric) = m.component_agg_fn
 with_component_agg_fn(m::ComponentTimedMetric, component_agg_fn) =
     ComponentTimedMetric(;
         name = m.name,
-        description = m.description,
         eval_fn = m.eval_fn,
         component_agg_fn = component_agg_fn,
     )
@@ -130,14 +119,13 @@ with_component_agg_fn(m::ComponentTimedMetric, component_agg_fn) =
 get_time_meta_agg_fn(m::TimedMetric) = m.time_meta_agg_fn
 "Returns a `Metric` identical to the input except with the given `time_meta_agg_fn`"
 with_time_meta_agg_fn(m::T, time_meta_agg_fn) where {T <: ComponentSelectorTimedMetric} =
-    T(m.name, m.description, m.eval_fn; time_meta_agg_fn = time_meta_agg_fn)
+    T(m.name, m.eval_fn; time_meta_agg_fn = time_meta_agg_fn)
 
 get_component_meta_agg_fn(m::ComponentTimedMetric) = m.component_meta_agg_fn
 "Returns a `Metric` identical to the input except with the given `component_meta_agg_fn`"
 with_component_meta_agg_fn(m::ComponentTimedMetric, component_meta_agg_fn) =
     ComponentTimedMetric(;
         name = m.name,
-        description = m.description,
         eval_fn = m.eval_fn,
         component_meta_agg_fn = component_meta_agg_fn,
     )
@@ -591,7 +579,6 @@ own result.
 
 # Arguments
  - `name::String`: the name of the new `Metric`
- - `description::String`: the description of the new `Metric`
  - `reduce_fn`: a callable that takes one value from each of the input `Metric`s and returns
    a single value that will be the result of this `Metric`. "Value" means a vector (not a
    `DataFrame`) in the case of `TimedMetrics` and a scalar for `TimelessMetrics`.
@@ -603,10 +590,9 @@ function compose_metrics end  # For the unified docstring
 
 compose_metrics(
     name::String,
-    description::String,
     reduce_fn,
     metrics::ComponentSelectorTimedMetric...,
-) = CustomTimedMetric(; name = name, description = description,
+) = CustomTimedMetric(; name = name,
     eval_fn = (res::IS.Results, ent::Union{Component, ComponentSelector}; kwargs...) ->
         _common_compose_metrics(
             res,
@@ -620,9 +606,8 @@ compose_metrics(
 
 compose_metrics(
     name::String,
-    description::String,
     reduce_fn,
-    metrics::SystemTimedMetric...) = SystemTimedMetric(; name = name, description = description,
+    metrics::SystemTimedMetric...) = SystemTimedMetric(; name = name,
     eval_fn = (res::IS.Results; kwargs...) ->
         _common_compose_metrics(
             res,
@@ -636,9 +621,8 @@ compose_metrics(
 
 compose_metrics(
     name::String,
-    description::String,
     reduce_fn,
-    metrics::ResultsTimelessMetric...) = ResultsTimelessMetric(; name = name, description = description,
+    metrics::ResultsTimelessMetric...) = ResultsTimelessMetric(; name = name,
     eval_fn = (
         res::IS.Results ->
             _common_compose_metrics(
@@ -655,7 +639,6 @@ compose_metrics(
 component_selector_metric_from_system_metric(in_metric::SystemTimedMetric) =
     CustomTimedMetric(;
         name = get_name(in_metric),
-        description = get_description(in_metric),
         eval_fn = (res::IS.Results, comp::Union{Component, ComponentSelector}; kwargs...) ->
             compute(in_metric, res; kwargs...))
 
@@ -664,7 +647,6 @@ component_selector_metric_from_system_metric(in_metric::SystemTimedMetric) =
 # SystemTimedMetrics as if they applied to the selector
 function compose_metrics(
     name::String,
-    description::String,
     reduce_fn,
     metrics::Union{ComponentSelectorTimedMetric, SystemTimedMetric}...)
     wrapped_metrics = [
@@ -672,7 +654,7 @@ function compose_metrics(
         for
         m in metrics
     ]
-    return compose_metrics(name, description, reduce_fn, wrapped_metrics...)
+    return compose_metrics(name, reduce_fn, wrapped_metrics...)
 end
 
 # Functor interface
