@@ -19,7 +19,7 @@ abstract type ComponentSelectorTimedMetric <: TimedMetric end
 # Arguments
  - `name::String`: the name of the `Metric`
  - `eval_fn`: a callable with signature
-   `(::IS.Results, ::Component, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})`
+   `(::IS.Results, ::Component; start_time::Union{Nothing, DateTime}, len::Union{Int, Nothing})`
    that returns a DataFrame representing the results for that `Component`
  - `component_agg_fn`: optional, a callable to aggregate results between
    `Component`s/`ComponentSelector`s, defaults to `sum`
@@ -45,7 +45,7 @@ just call the `eval_fn` directly.
 # Arguments
  - `name::String`: the name of the `Metric`
  - `eval_fn`: a callable with signature `(::IS.Results, ::Union{ComponentSelector,
-   Component}, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
+   Component}; start_time::Union{Nothing, DateTime}, len::Union{Int, Nothing})` that returns a
    DataFrame representing the results for that `Component`
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
 """
@@ -62,7 +62,7 @@ Time series `Metrics` defined on `Systems`.
 # Arguments
  - `name::String`: the name of the `Metric`
  - `eval_fn`: a callable with signature
-   `(::IS.Results, ::Union{Nothing, Dates.DateTime}, ::Union{Int, Nothing})` that returns a
+   `(::IS.Results; start_time::Union{Nothing, DateTime}, len::Union{Int, Nothing})` that returns a
    DataFrame representing the results
  - `time_agg_fn`: optional, a callable to aggregate results across time, defaults to `sum`
 """
@@ -135,9 +135,9 @@ Canonical way to represent a `(Metric, ComponentSelector)` or `(Metric, Componen
 a string.
 """
 metric_selector_to_string(m::Metric, e::Union{ComponentSelector, Component}) =
-    get_name(m) * COMPONENT_NAME_DELIMETER * get_name(e)
+    get_name(m) * COMPONENT_NAME_DELIMITER * get_name(e)
 
-# COMPUTE() AND FRIENDS
+# COMPUTE() AND HELPERS
 # Validation and metadata management helper function for various compute methods
 function _compute_meta_timed!(val, metric, results)
     (DATETIME_COL in names(val)) || throw(ArgumentError(
@@ -178,7 +178,7 @@ Compute the given metric on the given component within the given set of results,
  - `metric::ComponentTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
  - `comp::Component`: the component on which to compute the metric
- - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
@@ -194,7 +194,7 @@ Exclude components marked as not available.
  - `metric::CustomTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
  - `comp::Component`: the component on which to compute the metric
- - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
@@ -211,7 +211,7 @@ available.
 # Arguments
  - `metric::SystemTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
- - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
@@ -253,21 +253,7 @@ a `DataFrame` with a `DateTime` column and a data column; takes a `Nothing` wher
 compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing; kwargs...) =
     compute(metric, results; kwargs...)
 
-"""
-Compute the given `Metric` on the given `ComponentSelector` within the given set of results,
-aggregating across all the components in the `ComponentSelector` if necessary and returning
-a `DataFrame` with a `DateTime` column and a data column labeled with the
-`ComponentSelector`'s name. Exclude components marked as not available.
-
-# Arguments
- - `metric::ComponentTimedMetric`: the metric to compute
- - `results::IS.Results`: the results from which to fetch data
- - `selector::ComponentSelector`: the `ComponentSelector` on which to compute the metric
- - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
-   time series should begin
- - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
-"""
-function compute(metric::ComponentTimedMetric, results::IS.Results,
+function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
     selector::ComponentSelector; kwargs...)
     # TODO incorporate allow_missing
     agg_fn = get_component_agg_fn(metric)
@@ -285,7 +271,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
         if metric.eval_zero !== nothing
             result = metric.eval_zero(results; kwargs...)
         else
-            time_col = Vector{Union{Missing, Dates.DateTime}}([missing])
+            time_col = Vector{Union{Missing, DateTime}}([missing])
             data_col = agg_fn(Vector{Float64}())
             new_agg_meta = nothing
             result = DataFrame(DATETIME_COL => time_col, get_name(selector) => data_col)
@@ -307,33 +293,33 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
     return result
 end
 
-# TODO function compute_set
+# TODO update docstring
 """
-Compute the given metric on the subselectors of the given `ComponentSelector` within the
-given set of results, returning a `DataFrame` with a `DateTime` column and a data column for
-each subselector. Should be the same as calling `compute` on each subselector and
-concatenating. Exclude components marked as not available.
+Compute the given metric on the groups of the given `ComponentSelector` within the given set
+of results, returning a `DataFrame` with a `DateTime` column and a data column for each
+group. Exclude components marked as not available.
 
 # Arguments
  - `metric::ComponentSelectorTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
  - `selector::ComponentSelector`: the `ComponentSelector` on whose subselectors to compute
    the metric
- - `start_time::Union{Nothing, Dates.DateTime} = nothing`: the time at which the resulting
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
    time series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
-function compute_set(metric::ComponentSelectorTimedMetric, results::IS.Results,
+function compute(metric::ComponentTimedMetric, results::IS.Results,
     selector::ComponentSelector; kwargs...)
     subents = PSY.get_groups(
         selector,
         PowerSimulations.get_system(results);
         filterby = get_available,
     )
-    subcomputations = [compute(metric, results, sub; kwargs...) for sub in subents]
+    subcomputations = [_compute_one(metric, results, sub; kwargs...) for sub in subents]
     return hcat_timed(subcomputations...)
 end
 
+# COMPUTE_ALL()
 # The core of compute_all, shared between the timed and timeless versions
 function _common_compute_all(results, metrics, selectors, col_names; kwargs)
     (selectors === nothing) && (selectors = fill(nothing, length(metrics)))
@@ -407,7 +393,7 @@ compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
 ComputationTuple = Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
 """
 For each (metric, selector, col_name) tuple in `computations`, call [`compute`](@ref) and
-collect the results in a DataFrame with a single DateTime column.
+collect the results in a DataFrame with a single `DateTime` column.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
@@ -518,4 +504,4 @@ end
 # FUNCTOR INTERFACE TO COMPUTE()
 (metric::ComponentSelectorTimedMetric)(selector::ComponentSelector,
     results::IS.Results; kwargs...) =
-    compute_set(metric, results, selector; kwargs...)
+    compute(metric, results, selector; kwargs...)

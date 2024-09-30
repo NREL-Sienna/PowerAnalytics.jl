@@ -36,7 +36,7 @@ function make_fuel_component_selector(category_spec::Dict)
 
     # Create a nice name that is guaranteed to never collide with fully-qualified component names
     selector_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
-        COMPONENT_NAME_DELIMETER)
+        COMPONENT_NAME_DELIMITER)
 
     return make_selector(gen_type, filter_closure; name = selector_name)
 end
