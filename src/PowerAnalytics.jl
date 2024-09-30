@@ -76,6 +76,7 @@ include("builtin_metrics.jl")
 
 # SUBMODULES
 using .Selectors
+using .Metrics
 
 greet() = print("Hello World!")
 
