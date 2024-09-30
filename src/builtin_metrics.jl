@@ -41,8 +41,51 @@ weighted_mean(empty) =
 unweighted_sum(x) = sum(x)
 unweighted_sum(x, y) = sum(x)
 
-# BEGIN BUILT-IN METRICS DEFINITIONS
-# TODO perhaps these built-in metrics should be in some sort of container
+# METRICS MODULE
+"`PowerAnalytics` built-in `Metric`s. Use `names` to list what is available."
+module Metrics
+import
+    ..make_component_metric_from_entry,
+    ..make_system_metric_from_entry,
+    ..compose_metrics,
+    ..ComponentTimedMetric,
+    ..SystemTimedMetric,
+    ..ResultsTimelessMetric,
+    ..PSI,
+    ..IS,
+    ..SystemTimedMetric,
+    ..Component,
+    ..compute,
+    ..data_vec,
+    ..set_agg_meta!,
+    ..time_vec,
+    ..weighted_mean,
+    ..unweighted_sum,
+    ..mean
+export calc_active_power,
+    calc_production_cost,
+    calc_active_power_in,
+    calc_active_power_out,
+    calc_stored_energy,
+    calc_load_from_storage,
+    calc_active_power_forecast,
+    calc_load_forecast,
+    calc_system_load_forecast,
+    calc_system_load_from_storage,
+    calc_net_load_forecast,
+    calc_curtailment,
+    calc_curtailment_frac,
+    calc_integration,
+    calc_capacity_factor,
+    calc_startup_cost,
+    calc_shutdown_cost,
+    calc_total_cost,
+    calc_discharge_cycles,
+    calc_system_slack_up,
+    calc_is_slack_up,
+    calc_sum_objective_value,
+    calc_sum_solve_time,
+    calc_sum_bytes_alloc
 
 # NOTE ActivePowerVariable is in units of megawatts per simulation time period, so it's
 # actually energy and it makes sense to sum it up.
@@ -311,3 +354,4 @@ calc_sum_solve_time = make_results_metric_from_sum_optimizer_stat(
 calc_sum_bytes_alloc = make_results_metric_from_sum_optimizer_stat(
     "SumBytesAlloc",
     "solve_bytes_alloc")
+end
