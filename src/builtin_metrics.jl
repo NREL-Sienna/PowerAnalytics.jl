@@ -103,12 +103,8 @@ calc_load_forecast = ComponentTimedMetric(;
 "Fetch the forecast active load of all the ElectricLoad Components in the system"
 calc_system_load_forecast = SystemTimedMetric(;
     name = "SystemLoadForecast",
-    eval_fn = (
-        res::IS.Results,
-        st::Union{Nothing, Dates.DateTime},
-        len::Union{Int, Nothing},
-    ) ->
-        compute(calc_load_forecast, res, load_component_selector, st, len),
+    eval_fn = (res::IS.Results; kwargs...) ->
+        compute(calc_load_forecast, res, all_loads; kwargs...),
 )
 
 "Fetch the LoadFromStorage of all storage in the system"
@@ -116,11 +112,9 @@ calc_system_load_from_storage = let
     SystemTimedMetric(;
         name = "SystemLoadFromStorage",
         eval_fn = (
-            res::IS.Results,
-            st::Union{Nothing, Dates.DateTime},
-            len::Union{Int, Nothing},
+            res::IS.Results; kwargs...
         ) ->
-            compute(calc_load_from_storage, res, storage_component_selector, st, len),
+            compute(calc_load_from_storage, res, storage_component_selector; kwargs...),
     )
 end
 

@@ -33,6 +33,7 @@ export mean, weighted_mean, unweighted_sum
 # IMPORTS
 import Base: @kwdef
 import Dates
+import Dates: DateTime
 import TimeSeries
 import Statistics
 import Statistics: mean
@@ -47,7 +48,7 @@ import PowerSystems:
     make_selector, get_name, get_groups,
     get_component, get_components,
     get_available,
-    COMPONENT_NAME_DELIMETER
+    COMPONENT_NAME_DELIMITER
 
 import InfrastructureSystems
 import PowerSimulations

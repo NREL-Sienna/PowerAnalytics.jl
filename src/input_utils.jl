@@ -86,8 +86,9 @@ make_entry_kwargs(key_tuples::Vector{<:Tuple}) = [
 
 # TODO test
 "Given an EntryType and a Component, fetch a single column of results"
-function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component,
-    start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
+function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component;
+    start_time::Union{Nothing, DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing)
     cache_len = isnothing(len) ? length(PSI.get_timestamps(res)) : len
     key_pair = (entry, typeof(comp))
     PSI.load_results!(
@@ -125,8 +126,8 @@ end
 
 # TODO caching here too
 "Given an EntryType that applies to the System, fetch a single column of results"
-function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType},
-    start_time::Union{Nothing, Dates.DateTime}, len::Union{Int, Nothing})
+function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType};
+    start_time::Union{Nothing, DateTime} = nothing, len::Union{Int, Nothing} = nothing)
     key = make_key(entry, PSY.System)
     res = first(
         values(PSI.read_results_with_keys(
