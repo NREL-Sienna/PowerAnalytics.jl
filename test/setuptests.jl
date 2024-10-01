@@ -9,6 +9,7 @@ import InfrastructureSystems: Deterministic, Probabilistic, Scenarios, Forecast
 using PowerSystems
 using PowerAnalytics
 using PowerAnalytics.Selectors
+using PowerAnalytics.Metrics
 using PowerSimulations
 using GLPK
 using TimeSeries
@@ -35,6 +36,7 @@ const PSB = PowerSystemCaseBuilder
 
 const DISABLED_TEST_FILES = [  # Can generate with ls -1 test | grep "test_.*.jl"
 # "test_builtin_component_selectors.jl",
+# "test_builtin_metrics.jl",
 # "test_input.jl",
 # "test_metrics.jl",
 # "test_result_sorting.jl",

@@ -64,7 +64,9 @@ import
     ..weighted_mean,
     ..unweighted_sum,
     ..mean,
-    ..read_component_result
+    ..read_component_result,
+    ...Selectors.all_loads,  # number of dots obtained by trial and error
+    ...Selectors.all_storage
 export calc_active_power,
     calc_production_cost,
     calc_active_power_in,
@@ -160,7 +162,7 @@ calc_system_load_from_storage = let
         eval_fn = (
             res::IS.Results; kwargs...
         ) ->
-            compute(calc_load_from_storage, res, storage_component_selector; kwargs...),
+            compute(calc_load_from_storage, res, all_storage; kwargs...),
     )
 end
 
