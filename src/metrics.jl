@@ -113,7 +113,7 @@ get_time_agg_fn(m::TimedMetric) = m.time_agg_fn
 get_component_agg_fn(m::ComponentTimedMetric) = m.component_agg_fn
 get_time_meta_agg_fn(m::TimedMetric) = m.time_meta_agg_fn
 get_component_meta_agg_fn(m::ComponentTimedMetric) = m.component_meta_agg_fn
-get_eval_zero(m::ComponentTimedMetric) = m.component_meta_agg_fn
+get_eval_zero(m::ComponentTimedMetric) = m.eval_zero
 
 """
 Returns a `Metric` identical to the input `metric` except with the changes to its
