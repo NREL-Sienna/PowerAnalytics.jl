@@ -122,10 +122,10 @@ my_df3 = DataFrame(
     "MyMeta" => my_meta_long,
 )
 
-wind_ent = make_selector(RenewableDispatch, "WindBusA")
-solar_ent = make_selector(RenewableDispatch, "SolarBusC")
-thermal_ent = make_selector(ThermalStandard, "Brighton")
-test_selectors = [wind_ent, solar_ent, thermal_ent]
+wind_sel = make_selector(RenewableDispatch, "WindBusA")
+solar_sel = make_selector(RenewableDispatch, "SolarBusC")
+thermal_sel = make_selector(ThermalStandard, "Brighton")
+test_selectors = [wind_sel, solar_sel, thermal_sel]
 
 # HELPER FUNCTIONS
 function test_timed_metric_helper(computed_alltime, met, data_colname)
@@ -145,29 +145,30 @@ function test_generic_metric_helper(computed, met, data_colname)
     @test eltype(computed[!, data_colname]) <: Number
 end
 
-function test_component_timed_metric(met, res, ent)
-    computed_alltime = compute(met, res, ent)
-    test_timed_metric_helper(computed_alltime, met, get_name(ent))
+function test_component_timed_metric(met, res, sel)
+    computed_alltime = compute(met, res, sel)
+    col_sel = (sel isa ComponentSelector) ? only(get_groups(sel, get_system(res))) : sel
+    test_timed_metric_helper(computed_alltime, met, get_name(col_sel))
 
     the_components =
-        (ent isa Component) ? [ent] :
-        collect(get_components(ent, get_system(res)))
+        (sel isa Component) ? [sel] :
+        collect(get_components(sel, get_system(res)))
     @test all(
-        get(colmetadata(computed_alltime, get_name(ent)), "components", nothing) .==
+        get(colmetadata(computed_alltime, get_name(col_sel)), "components", nothing) .==
         the_components,
     )
-    (ent isa ComponentSelector) &&
+    (sel isa ComponentSelector) &&
         @test get(
-            colmetadata(computed_alltime, get_name(ent)),
+            colmetadata(computed_alltime, get_name(col_sel)),
             "ComponentSelector",
             nothing,
-        ) == ent
+        ) == col_sel
 
     # Row tests, specified time. Skip for test on empty selector, there is no time axis to base computed_sometime off in this case
     if length(the_components) > 0
         test_start_time = computed_alltime[2, DATETIME_COL]
         test_len = 3
-        computed_sometime = compute(met, res, ent;
+        computed_sometime = compute(met, res, sel;
             start_time = test_start_time, len = test_len)
         @test computed_sometime[1, DATETIME_COL] == test_start_time
         @test size(computed_sometime, 1) == test_len
@@ -322,12 +323,12 @@ end
 
 @testset "Test ComponentTimedMetric on SingularComponentSelectors" begin
     for (label, res) in pairs(resultses)
-        for ent in test_selectors
+        for sel in test_selectors
             computed_alltime, computed_sometime =
-                test_component_timed_metric(test_calc_active_power, res, ent)
+                test_component_timed_metric(test_calc_active_power, res, sel)
 
             # SingularComponentSelector results should be the same as Component results
-            component_name = get_name(first(get_components(ent, get_system(res))))
+            component_name = get_name(first(get_components(sel, get_system(res))))
             base_computed_alltime, base_computed_sometime =
                 comp_results[(label, component_name)]
             @test time_df(computed_alltime) == time_df(base_computed_alltime)
@@ -341,19 +342,18 @@ end
 
 @testset "Test ComponentTimedMetric on PluralComponentSelectors" begin
     test_selector_sets = [
-        make_selector(wind_ent, solar_ent),
-        make_selector(test_selectors...),
+        make_selector(make_selector(wind_sel, solar_sel)),
+        make_selector(make_selector(test_selectors...)),
         make_selector(ThermalStandard),
-        make_selector(),
     ]
 
     for (label, res) in pairs(resultses)
-        for ent in test_selector_sets
+        for sel in test_selector_sets
             my_test_metric = test_calc_active_power
             computed_alltime, computed_sometime =
-                test_component_timed_metric(my_test_metric, res, ent)
+                test_component_timed_metric(my_test_metric, res, sel)
 
-            component_names = get_name.(get_components(ent, get_system(res)))
+            component_names = get_name.(get_components(sel, get_system(res)))
             if length(component_names) == 0
                 @test isequal(time_vec(computed_alltime),
                     Vector{Union{Missing, Dates.DateTime}}([missing]))
@@ -389,22 +389,22 @@ end
     combo_selector = make_selector(test_selectors...)
     mymet = test_calc_active_power
     for (label, res) in pairs(resultses)
-        computed_alltime = compute_set(mymet, res, combo_selector)
+        computed_alltime = compute(mymet, res, combo_selector)
         cols = data_cols(computed_alltime)
-        ents = colmetadata.(Ref(computed_alltime), cols, "ComponentSelector")
-        @test all(ents .== test_selectors)  # One column for each subselector in the input
-        @test all(cols .== get_name.(ents))  # Named properly
+        sels = colmetadata.(Ref(computed_alltime), cols, "ComponentSelector")
+        @test all(sels .== test_selectors)  # One column for each subselector in the input
+        @test all(cols .== get_name.(sels))  # Named properly
 
         # TODO bit of code duplication between here and test_component_timed_metric
         test_start_time = computed_alltime[2, DATETIME_COL]
         test_len = 3
-        computed_sometime = compute_set(mymet, res, combo_selector;
+        computed_sometime = compute(mymet, res, combo_selector;
             start_time = test_start_time, len = test_len)
         @test computed_sometime[1, DATETIME_COL] == test_start_time
         @test size(computed_sometime, 1) == test_len
 
-        # DateTime plus data column slices of compute_set() should be identical to results of compute()
-        for (col_name, this_selector) in zip(cols, ents)
+        # DateTime plus data column slices of compute() should be identical to results of compute_one()
+        for (col_name, this_selector) in zip(cols, sels)
             test_timed_metric_helper(
                 computed_alltime[!, [DATETIME_COL, col_name]],
                 mymet,
@@ -513,7 +513,7 @@ end
 end
 
 @testset "Test compose_metrics" begin
-    myent = make_selector(ThermalStandard)
+    mysel = make_selector(ThermalStandard)
     "Computes ActivePower*3"
     mymet1 = compose_metrics(
         "ThriceActivePower",
@@ -525,7 +525,7 @@ end
     results1 = compute_all(
         results_uc,
         [test_calc_active_power, mymet1],
-        [myent, myent],
+        [mysel, mysel],
         ["once", "thrice"],
     )
     @test all(results1[!, "once"] * 3 .== results1[!, "thrice"])
@@ -573,7 +573,7 @@ end
     results4 = compute_all(
         results_ed,
         [test_calc_system_slack_up, test_calc_active_power, mymet4],
-        [nothing, myent, myent],
+        [nothing, mysel, mysel],
         ["slack", "power", "final"],
     )
     @test all(results4[!, "slack"] .^ 2 .* results4[!, "power"] .== results4[!, "final"])
@@ -600,7 +600,7 @@ end
     sum_metric = test_calc_active_power
     @test get_component_agg_fn(sum_metric) == sum  # Should be the default
     my_mean(x) = sum(x) / length(x)
-    mean_metric = with_component_agg_fn(sum_metric, my_mean)
+    mean_metric = rebuild_metric(sum_metric; component_agg_fn = my_mean)
     @test get_component_agg_fn(mean_metric) == my_mean
     # NOTE a more thorough approach would test the getter and "with-er" on all subtypes
 
@@ -619,7 +619,7 @@ end
     results2 = compute_all(
         my_results,
         repeat([test_calc_dummy_meta], 3),
-        [thermal_ent, wind_ent, make_selector(thermal_ent, wind_ent)],
+        [thermal_sel, wind_sel, make_selector(make_selector(thermal_sel, wind_sel))],
         ["thermal", "wind", "combo"])
     @test isapprox(
         data_mat(results2),
@@ -637,9 +637,8 @@ end
     my_results = results_uc
     sum_metric = test_calc_active_power
     @test get_time_agg_fn(sum_metric) == sum  # Should be the default
-    mean_metric = with_time_agg_fn(sum_metric, mean)
+    mean_metric = rebuild_metric(sum_metric; time_agg_fn = mean)
     @test get_time_agg_fn(mean_metric) == mean
-    # NOTE a more thorough approach would test the getter and "with-er" on all subtypes
 
     results = compute_all(
         my_results,
@@ -658,7 +657,7 @@ end
     results2 = compute_all(
         my_results,
         repeat([test_calc_dummy_meta], 3),
-        [thermal_ent, wind_ent, make_selector(thermal_ent, wind_ent)],
+        [thermal_sel, wind_sel, make_selector(make_selector(thermal_sel, wind_sel))],
         ["thermal", "wind", "combo"])
     results2_agg = aggregate_time(results2)
     answer1 = weighted_mean(thermal_vals, thermal_weights)
