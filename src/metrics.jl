@@ -98,37 +98,27 @@ end
 # Override these if you define Metric subtypes with different implementations
 get_name(m::Metric) = m.name
 get_time_agg_fn(m::TimedMetric) = m.time_agg_fn
-# TODO is there a naming convention for this kind of function?
-"Returns a `Metric` identical to the input except with the given `time_agg_fn`"
-with_time_agg_fn(m::T, time_agg_fn) where {T <: ComponentSelectorTimedMetric} =
-    T(;
-        name = m.name,
-        eval_fn = m.eval_fn,
-        time_agg_fn = time_agg_fn,
-    )
-
 get_component_agg_fn(m::ComponentTimedMetric) = m.component_agg_fn
-"Returns a `Metric` identical to the input except with the given `component_agg_fn`"
-with_component_agg_fn(m::ComponentTimedMetric, component_agg_fn) =
-    ComponentTimedMetric(;
-        name = m.name,
-        eval_fn = m.eval_fn,
-        component_agg_fn = component_agg_fn,
-    )
-
 get_time_meta_agg_fn(m::TimedMetric) = m.time_meta_agg_fn
-"Returns a `Metric` identical to the input except with the given `time_meta_agg_fn`"
-with_time_meta_agg_fn(m::T, time_meta_agg_fn) where {T <: ComponentSelectorTimedMetric} =
-    T(m.name, m.eval_fn; time_meta_agg_fn = time_meta_agg_fn)
-
 get_component_meta_agg_fn(m::ComponentTimedMetric) = m.component_meta_agg_fn
-"Returns a `Metric` identical to the input except with the given `component_meta_agg_fn`"
-with_component_meta_agg_fn(m::ComponentTimedMetric, component_meta_agg_fn) =
-    ComponentTimedMetric(;
-        name = m.name,
-        eval_fn = m.eval_fn,
-        component_meta_agg_fn = component_meta_agg_fn,
-    )
+
+"""
+Returns a `Metric` identical to the input `metric` except with the changes to its
+fields specified in the keyword arguments.
+
+# Examples
+Make a variant of `calc_active_power` that averages across components rather than summing:
+```julia
+using PowerAnalytics.Metrics
+calc_active_power_mean = rebuild_metric(calc_active_power; component_agg_fn = mean)
+# (now calc_active_power_mean works as a standalone, callable metric)
+```
+"""
+function rebuild_metric(metric::T; kwargs...) where {T <: Metric}
+    metric_data = Dict(key => getfield(metric, key) for key in fieldnames(typeof(metric)))
+    merge!(metric_data, kwargs)
+    return T(; metric_data...)  # NOTE this works because all the `Metric` structs have @kwdef
+end
 
 """
 Canonical way to represent a `(Metric, ComponentSelector)` or `(Metric, Component)` pair as
@@ -505,3 +495,9 @@ end
 (metric::ComponentSelectorTimedMetric)(selector::ComponentSelector,
     results::IS.Results; kwargs...) =
     compute(metric, results, selector; kwargs...)
+
+(metric::SystemTimedMetric)(results::IS.Results; kwargs...) =
+    compute(metric, results; kwargs...)
+
+(metric::ResultsTimelessMetric)(results::IS.Results; kwargs...) =
+    compute(metric, results; kwargs...)
