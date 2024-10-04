@@ -253,7 +253,7 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
     components = get_components(
         selector,
         PowerSimulations.get_system(results);
-        filterby = get_available,
+        scope_limiter = get_available,
     )
     vals = [
         compute(metric, results, com; kwargs...) for
@@ -304,7 +304,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
     subents = PSY.get_groups(
         selector,
         PowerSimulations.get_system(results);
-        filterby = get_available,
+        scope_limiter = get_available,
     )
     subcomputations = [_compute_one(metric, results, sub; kwargs...) for sub in subents]
     return hcat_timed(subcomputations...)
