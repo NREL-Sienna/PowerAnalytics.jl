@@ -1,6 +1,6 @@
-# For now we are mostly just testing that all the metrics can be called without error,
-# though I've built out the structure to do much more than that. TODO it would be great if
-# we did.
+# For now, for the built-in metrics, we are mostly just testing that they can all be called
+# without error, though I've built out the structure to do much more than that. TODO it
+# would be great if we did.
 
 (results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR, TEST_SIM_NAME)
 const ResultType = AbstractDataFrame
