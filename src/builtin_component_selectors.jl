@@ -3,16 +3,16 @@ const FUEL_TYPES_DATA_FILE =
 
 # Parse the strings in generator_mapping.yaml into types and enum items
 function parse_fuel_category(category_spec::Dict)
-    # Use reflection to look up the type corresponding the generator type string (this isn't a security risk, is it?)
+    # TODO support types beyond PowerSystems
     gen_type = getproperty(PowerSystems, Symbol(get(category_spec, "gentype", Component)))
     (gen_type === Any) && (gen_type = Component)
     @assert gen_type <: Component
 
     pm = get(category_spec, "primemover", nothing)
-    isnothing(pm) || (pm = PowerSystems.parse_enum_mapping(PowerSystems.PrimeMovers, pm))
+    isnothing(pm) || (pm = PSY.parse_enum_mapping(PSY.PrimeMovers, pm))
 
     fc = get(category_spec, "fuel", nothing)
-    isnothing(fc) || (fc = PowerSystems.parse_enum_mapping(PowerSystems.ThermalFuels, fc))
+    isnothing(fc) || (fc = PSY.parse_enum_mapping(PSY.ThermalFuels, fc))
 
     return gen_type, pm, fc
 end
@@ -46,7 +46,7 @@ function parse_generator_mapping(filename)
     # NOTE the YAML library does not support ordered loading
     in_data = open(YAML.load, filename)
     mappings = Dict{String, ComponentSelector}()
-    for top_level in in_data |> keys |> collect
+    for top_level in keys(in_data)
         subselectors = make_fuel_component_selector.(in_data[top_level])
         mappings[top_level] = make_selector(subselectors...; name = top_level)
     end

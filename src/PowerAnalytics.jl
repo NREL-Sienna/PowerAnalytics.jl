@@ -78,6 +78,4 @@ include("builtin_metrics.jl")
 using .Selectors
 using .Metrics
 
-greet() = print("Hello World!")
-
 end # module PowerAnalytics

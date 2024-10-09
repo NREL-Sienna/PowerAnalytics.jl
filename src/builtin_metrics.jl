@@ -1,5 +1,3 @@
-# TODO test all of this
-
 # TODO test
 "Convenience function to convert an EntryType to a function and make a ComponentTimedMetric from it"
 make_component_metric_from_entry(
@@ -95,49 +93,49 @@ export calc_active_power,
 # NOTE ActivePowerVariable is in units of megawatts per simulation time period, so it's
 # actually energy and it makes sense to sum it up.
 "Calculate the active power of the specified ComponentSelector"
-calc_active_power = make_component_metric_from_entry(
+const calc_active_power = make_component_metric_from_entry(
     "ActivePower",
     PSI.ActivePowerVariable,
 )
 
 "Calculate the active power output of the specified ComponentSelector"
-calc_production_cost = make_component_metric_from_entry(
+const calc_production_cost = make_component_metric_from_entry(
     "ProductionCost",
     PSI.ProductionCostExpression,
 )
 
 "Calculate the active power input to the specified (storage) ComponentSelector"
-calc_active_power_in = make_component_metric_from_entry(
+const calc_active_power_in = make_component_metric_from_entry(
     "ActivePowerIn",
     PSI.ActivePowerInVariable,
 )
 
 "Calculate the active power output of the specified (storage) ComponentSelector"
-calc_active_power_out = make_component_metric_from_entry(
+const calc_active_power_out = make_component_metric_from_entry(
     "ActivePowerOut",
     PSI.ActivePowerOutVariable,
 )
 
 "Calculate the energy stored in the specified (storage) ComponentSelector"
-calc_stored_energy = make_component_metric_from_entry(
+const calc_stored_energy = make_component_metric_from_entry(
     "StoredEnergy",
     PSI.EnergyVariable,
 )
 
 "Calculate the ActivePowerIn minus the ActivePowerOut of the specified (storage) ComponentSelector"
-calc_load_from_storage = compose_metrics(
+const calc_load_from_storage = compose_metrics(
     "LoadFromStorage",
     (-),
     calc_active_power_in, calc_active_power_out)
 
 "Fetch the forecast active power of the specified ComponentSelector"
-calc_active_power_forecast = make_component_metric_from_entry(
+const calc_active_power_forecast = make_component_metric_from_entry(
     "ActivePowerForecast",
     PSI.ActivePowerTimeSeriesParameter,
 )
 
 "Fetch the forecast active load of the specified ComponentSelector"
-calc_load_forecast = ComponentTimedMetric(;
+const calc_load_forecast = ComponentTimedMetric(;
     name = "LoadForecast",
     # Load is negative power
     # NOTE if we had our own time-indexed dataframe type we could overload multiplication with a scalar and simplify this
@@ -149,14 +147,14 @@ calc_load_forecast = ComponentTimedMetric(;
 )
 
 "Fetch the forecast active load of all the ElectricLoad Components in the system"
-calc_system_load_forecast = SystemTimedMetric(;
+const calc_system_load_forecast = SystemTimedMetric(;
     name = "SystemLoadForecast",
     eval_fn = (res::IS.Results; kwargs...) ->
         compute(calc_load_forecast, res, all_loads; kwargs...),
 )
 
 "Fetch the LoadFromStorage of all storage in the system"
-calc_system_load_from_storage = let
+const calc_system_load_from_storage = let
     SystemTimedMetric(;
         name = "SystemLoadFromStorage",
         eval_fn = (
@@ -167,21 +165,21 @@ calc_system_load_from_storage = let
 end
 
 "SystemLoadForecast minus ActivePowerForecast of the given ComponentSelector"
-calc_net_load_forecast = compose_metrics(
+const calc_net_load_forecast = compose_metrics(
     "NetLoadForecast",
     # (intentionally done with forecast to inform how storage should be used, among other reasons)
     (-),
     calc_system_load_forecast, calc_active_power_forecast)
 
 "Calculate the ActivePowerForecast minus the ActivePower of the given ComponentSelector"
-calc_curtailment = compose_metrics(
+const calc_curtailment = compose_metrics(
     "Curtailment",
     (-),
     calc_active_power_forecast, calc_active_power,
 )
 
 "Calculate the Curtailment as a fraction of the ActivePowerForecast of the given ComponentSelector"
-calc_curtailment_frac = ComponentTimedMetric(;
+const calc_curtailment_frac = ComponentTimedMetric(;
     name = "CurtailmentFrac",
     eval_fn = (
         (res::IS.Results, comp::Component; kwargs...
@@ -205,7 +203,7 @@ _integration_denoms(res; kwargs...) =
     compute(calc_system_load_from_storage, res; kwargs...)
 
 "Calculate the ActivePower of the given ComponentSelector over the sum of the SystemLoadForecast and the SystemLoadFromStorage"
-calc_integration = ComponentTimedMetric(;
+const calc_integration = ComponentTimedMetric(;
     name = "Integration",
     eval_fn = (
         (res::IS.Results, comp::Component; kwargs...
@@ -233,7 +231,7 @@ calc_integration = ComponentTimedMetric(;
 )
 
 "Calculate the capacity factor (actual production/rated production) of the specified ComponentSelector"
-calc_capacity_factor = ComponentTimedMetric(;
+const calc_capacity_factor = ComponentTimedMetric(;
     name = "CapacityFactor",
     # (intentionally done with forecast to serve as sanity check -- solar capacity factor shouldn't exceed 20%, etc.)
     eval_fn = (
@@ -248,7 +246,7 @@ calc_capacity_factor = ComponentTimedMetric(;
 )
 
 "Calculate the startup cost of the specified ComponentSelector"
-calc_startup_cost = ComponentTimedMetric(;
+const calc_startup_cost = ComponentTimedMetric(;
     name = "StartupCost",
     eval_fn = (
         (res::IS.Results, comp::Component; kwargs...) -> let
@@ -261,7 +259,7 @@ calc_startup_cost = ComponentTimedMetric(;
 )
 
 "Calculate the shutdown cost of the specified ComponentSelector"
-calc_shutdown_cost = ComponentTimedMetric(;
+const calc_shutdown_cost = ComponentTimedMetric(;
     name = "ShutdownCost",
     eval_fn = (
         (res::IS.Results, comp::Component; kwargs...) -> let
@@ -274,7 +272,7 @@ calc_shutdown_cost = ComponentTimedMetric(;
 )
 
 "Calculate the production+startup+shutdown cost of the specified ComponentSelector; startup and shutdown costs are assumed to be zero if undefined"
-calc_total_cost = ComponentTimedMetric(;
+const calc_total_cost = ComponentTimedMetric(;
     name = "TotalCost",
     eval_fn = (args...) -> let
         production = compute(calc_production_cost, args...)
@@ -295,7 +293,7 @@ calc_total_cost = ComponentTimedMetric(;
 )
 
 "Calculate the number of discharge cycles a storage device has gone through in the time period"
-calc_discharge_cycles = ComponentTimedMetric(;
+const calc_discharge_cycles = ComponentTimedMetric(;
     name = "DischargeCycles",
     # NOTE: here, we define one "cycle" as a discharge from the maximum state of charge to
     # the minimum state of charge. A simpler algorithm might define a cycle as a discharge
@@ -313,7 +311,7 @@ calc_discharge_cycles = ComponentTimedMetric(;
 )
 
 "Calculate the system balance slack up"
-calc_system_slack_up = make_system_metric_from_entry(
+const calc_system_slack_up = make_system_metric_from_entry(
     "SystemSlackUp",
     PSI.SystemBalanceSlackUp,
 )
@@ -335,7 +333,7 @@ make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(;
 # TODO is this the appropriate place to put a default threshold (and is it the appropriate default)?
 const DEFAULT_SLACK_UP_THRESHOLD = 1e-3
 "Calculate whether the given time period has system balance slack up of magnitude greater than $DEFAULT_SLACK_UP_THRESHOLD"
-calc_is_slack_up = make_calc_is_slack_up(DEFAULT_SLACK_UP_THRESHOLD)
+const calc_is_slack_up = make_calc_is_slack_up(DEFAULT_SLACK_UP_THRESHOLD)
 
 # TODO caching here too
 make_results_metric_from_sum_optimizer_stat(
@@ -346,17 +344,17 @@ make_results_metric_from_sum_optimizer_stat(
 )
 
 "Sum the objective values achieved in the optimization problems"
-calc_sum_objective_value = make_results_metric_from_sum_optimizer_stat(
+const calc_sum_objective_value = make_results_metric_from_sum_optimizer_stat(
     "SumObjectiveValue",
     "objective_value")
 
 "Sum the solve times taken by the optimization problems"
-calc_sum_solve_time = make_results_metric_from_sum_optimizer_stat(
+const calc_sum_solve_time = make_results_metric_from_sum_optimizer_stat(
     "SumSolveTime",
     "solve_time")
 
 "Sum the bytes allocated to the optimization problems"
-calc_sum_bytes_alloc = make_results_metric_from_sum_optimizer_stat(
+const calc_sum_bytes_alloc = make_results_metric_from_sum_optimizer_stat(
     "SumBytesAlloc",
     "solve_bytes_alloc")
 end

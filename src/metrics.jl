@@ -1,5 +1,4 @@
 # TYPE DEFINITIONS
-# TODO there is probably a more principled way of structuring this Metric type hierarchy -- maybe parameterization?
 "The basic type for all `Metrics`."
 abstract type Metric end
 
@@ -400,7 +399,8 @@ compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
     kwargs...,
 ) = hcat(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
 
-ComputationTuple = Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
+const ComputationTuple =
+    Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
 """
 For each (metric, selector, col_name) tuple in `computations`, call [`compute`](@ref) and
 collect the results in a DataFrame with a single `DateTime` column. All selectors must yield
