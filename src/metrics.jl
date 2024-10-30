@@ -261,11 +261,7 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
     # TODO incorporate allow_missing
     agg_fn = get_component_agg_fn(metric)
     meta_agg_fn = get_component_meta_agg_fn(metric)
-    components = get_components(
-        selector,
-        PowerSimulations.get_system(results);
-        scope_limiter = is_available_for_analytics,
-    )
+    components = get_components(selector, results)
     vals = [
         compute(metric, results, com; kwargs...) for
         com in components
@@ -312,18 +308,14 @@ group. Exclude components marked as not available.
 """
 function compute(metric::ComponentTimedMetric, results::IS.Results,
     selector::ComponentSelector; kwargs...)
-    subents = PSY.get_groups(
-        selector,
-        PowerSimulations.get_system(results);
-        scope_limiter = is_available_for_analytics,
-    )
+    subents = get_groups(selector, results)
     subcomputations = [_compute_one(metric, results, sub; kwargs...) for sub in subents]
     return hcat_timed(subcomputations...)
 end
 
 # COMPUTE_ALL()
 _is_single_group(selector::ComponentSelector, results::IS.Results) =
-    length(get_groups(selector, get_system(results))) == 1
+    length(get_groups(selector, results)) == 1
 _is_single_group(selector, results::IS.Results) = true
 
 # The core of compute_all, shared between the timed and timeless versions

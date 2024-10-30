@@ -344,7 +344,7 @@ end
     test_selector_sets = [
         make_selector(make_selector(wind_sel, solar_sel)),
         make_selector(make_selector(test_selectors...)),
-        make_selector(ThermalStandard),
+        make_selector(ThermalStandard; groupby = :all),
     ]
 
     for (label, res) in pairs(resultses)
@@ -431,8 +431,10 @@ end
         test_calc_production_cost, test_calc_production_cost]
     my_component = first(get_components(RenewableDispatch, get_system(results_uc)))
     my_selectors =
-        [make_selector(ThermalStandard), make_selector(RenewableDispatch),
-            make_selector(ThermalStandard), my_component]
+        [make_selector(ThermalStandard; groupby = :all),
+            make_selector(RenewableDispatch; groupby = :all),
+            make_selector(ThermalStandard; groupby = :all),
+            my_component]
     all_result = compute_all(results_uc, my_metrics, my_selectors)
 
     for (metric, selector) in zip(my_metrics, my_selectors)
@@ -486,11 +488,12 @@ end
     broadcasted_compute_all = compute_all(
         results_uc,
         [test_calc_active_power, test_calc_active_power],
-        make_selector(ThermalStandard),
+        make_selector(ThermalStandard; groupby = :all),
         ["discard", "ThermalStandard"],
     )
     @test broadcasted_compute_all[!, [DATETIME_COL, "ThermalStandard"]] ==
-          compute(test_calc_active_power, results_uc, make_selector(ThermalStandard))
+          compute(test_calc_active_power, results_uc,
+        make_selector(ThermalStandard; groupby = :all))
 
     @test compute_all(results_uc, my_metrics, my_selectors, my_names) ==
           compute_all(results_uc, collect(zip(my_metrics, my_selectors, my_names))...)
@@ -513,7 +516,8 @@ end
 end
 
 @testset "Test compose_metrics" begin
-    mysel = make_selector(ThermalStandard)
+    # TODO broken for groupby = :each?
+    mysel = make_selector(ThermalStandard; groupby = :all)
     "Computes ActivePower*3"
     mymet1 = compose_metrics(
         "ThriceActivePower",
@@ -595,7 +599,8 @@ end
 end
 
 @testset "Test component_agg_fn and corresponding `compute` aggregation behavior" begin
-    my_selector = make_selector(ThermalStandard)
+    # TODO broken for groupby = :each?
+    my_selector = make_selector(ThermalStandard; groupby = :all)
     my_results = results_uc
     sum_metric = test_calc_active_power
     @test get_component_agg_fn(sum_metric) == sum  # Should be the default
@@ -633,7 +638,7 @@ end
 end
 
 @testset "Test time_agg_fn and corresponding `aggregate_time` aggregation behavior" begin
-    my_selector = make_selector(ThermalStandard)
+    my_selector = make_selector(ThermalStandard; groupby = :all)
     my_results = results_uc
     sum_metric = test_calc_active_power
     @test get_time_agg_fn(sum_metric) == sum  # Should be the default
