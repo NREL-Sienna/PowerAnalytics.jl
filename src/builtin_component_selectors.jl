@@ -38,7 +38,7 @@ function make_fuel_component_selector(category_spec::Dict)
     selector_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
         COMPONENT_NAME_DELIMITER)
 
-    return make_selector(gen_type, filter_closure; name = selector_name)
+    return make_selector(filter_closure, gen_type; name = selector_name)
 end
 
 # Based on old PowerAnalytics' get_generator_mapping
@@ -69,10 +69,10 @@ export
     generators_by_category
 
 "A ComponentSelector representing all the electric load in a System"
-all_loads::ComponentSelector = make_selector(PSY.ElectricLoad)
+all_loads::ComponentSelector = make_selector(PSY.ElectricLoad; groupby = :all)
 
 "A ComponentSelector representing all the storage in a System"
-all_storage::ComponentSelector = make_selector(PSY.Storage)
+all_storage::ComponentSelector = make_selector(PSY.Storage; groupby = :all)
 
 """
 A dictionary of `ComponentSelector`s, each of which corresponds to one of the generator
