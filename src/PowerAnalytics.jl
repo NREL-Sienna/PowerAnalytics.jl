@@ -21,13 +21,6 @@ export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, d
 export compute, compute_set, compute_all, hcat_timed, aggregate_time, compose_metrics
 export create_problem_results_dict
 export parse_generator_mapping
-export calc_active_power, calc_production_cost, calc_startup_cost, calc_shutdown_cost,
-    calc_discharge_cycles, calc_system_slack_up, calc_load_forecast, calc_active_power_in,
-    calc_active_power_out, calc_stored_energy, calc_active_power_forecast, calc_curtailment,
-    calc_sum_objective_value, calc_sum_solve_time, calc_sum_bytes_alloc, calc_total_cost,
-    make_calc_is_slack_up, calc_is_slack_up, calc_system_load_forecast,
-    calc_net_load_forecast, calc_curtailment_frac, calc_load_from_storage,
-    calc_system_load_from_storage, calc_integration, calc_capacity_factor
 export mean, weighted_mean, unweighted_sum
 
 # IMPORTS
@@ -48,7 +41,8 @@ import PowerSystems:
     make_selector, get_name, get_groups,
     get_component, get_components,
     get_available,
-    COMPONENT_NAME_DELIMITER
+    COMPONENT_NAME_DELIMITER,
+    rebuild_selector
 
 import InfrastructureSystems
 import PowerSimulations

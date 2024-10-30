@@ -20,9 +20,6 @@ NG-CC:
   - {gentype: Any, primemover: CC, fuel: NATURAL_GAS}
 NG-Steam:
   - {gentype: Any, primemover: ST, fuel: NATURAL_GAS}
-Natural gas:
-  - {gentype: Any, primemover: null, fuel: NATURAL_GAS}
-  - {gentype: Any, primemover: null, fuel: OTHER_GAS}
 Hydropower:
   - {gentype: Any, primemover: HY, fuel: null}
 Coal:
@@ -36,6 +33,11 @@ Biopower:
   - {gentype: Any, primemover: null, fuel: WOOD_WASTE}
 CSP:
   - {gentype: Any, primemover: CP, fuel: null}
+Load:
+  - {gentype: ElectricLoad, primemover: null, fuel: null}
 Other:
-  - {gentype: Any, primemover: OT, fuel: OTHER}
-  - {gentype: Any, primemover: null, fuel: null}
+  - {gentype: Generator, primemover: OT, fuel: OTHER}
+__META:
+  non_generators:
+    - Storage
+    - Load

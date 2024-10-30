@@ -63,6 +63,7 @@ import
     ..unweighted_sum,
     ..mean,
     ..read_component_result,
+    ..rebuild_selector,
     ...Selectors.all_loads,  # number of dots obtained by trial and error
     ...Selectors.all_storage
 export calc_active_power,
@@ -150,7 +151,8 @@ const calc_load_forecast = ComponentTimedMetric(;
 const calc_system_load_forecast = SystemTimedMetric(;
     name = "SystemLoadForecast",
     eval_fn = (res::IS.Results; kwargs...) ->
-        compute(calc_load_forecast, res, all_loads; kwargs...),
+        compute(calc_load_forecast, res,
+            rebuild_selector(all_loads; groupby = :all); kwargs...),
 )
 
 "Fetch the LoadFromStorage of all storage in the system"
@@ -160,7 +162,8 @@ const calc_system_load_from_storage = let
         eval_fn = (
             res::IS.Results; kwargs...
         ) ->
-            compute(calc_load_from_storage, res, all_storage; kwargs...),
+            compute(calc_load_from_storage, res,
+                rebuild_selector(all_storage; groupby = :all); kwargs...),
     )
 end
 
