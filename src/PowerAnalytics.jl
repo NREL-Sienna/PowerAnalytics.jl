@@ -20,7 +20,7 @@ export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, d
     set_agg_meta!, rebuild_metric
 export compute, compute_set, compute_all, hcat_timed, aggregate_time, compose_metrics
 export create_problem_results_dict
-export parse_generator_mapping
+export parse_generator_mapping_file, parse_injector_categories, parse_generator_categories
 export mean, weighted_mean, unweighted_sum
 
 # IMPORTS

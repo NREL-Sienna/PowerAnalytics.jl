@@ -52,7 +52,11 @@ function make_fuel_component_selector(
 end
 
 # Based on old PowerAnalytics' get_generator_mapping
-function parse_generator_mapping(
+"""
+Parse a `generator_mapping.yaml` file into a dictionary of `ComponentSelector`s and a
+dictionary of metadata if present
+"""
+function parse_generator_mapping_file(
     filename;
     root_type::Type{<:Component} = PSY.StaticInjection,
 )
@@ -73,13 +77,34 @@ function parse_generator_mapping(
     return mappings, get(in_data, FUEL_TYPES_META_KEY, nothing)
 end
 
+"""
+Use [`parse_generator_mapping_file`](@ref) to parse a `generator_mapping.yaml` file into a
+dictionary of all `ComponentSelector`s
+"""
+parse_injector_categories(filename; root_type::Type{<:Component} = PSY.StaticInjection) =
+    first(parse_generator_mapping_file(filename; root_type = root_type))
+
+"""
+Use [`parse_generator_mapping_file`](@ref) to parse a `generator_mapping.yaml` file into a
+dictionary of `ComponentSelector`, excluding categories in the 'non_generators' list in
+metadata
+"""
+function parse_generator_categories(filename;
+    root_type::Type{<:Component} = PSY.StaticInjection)
+    categories, meta = parse_generator_mapping_file(filename; root_type = root_type)
+    (isnothing(meta) || !haskey(meta, "non_generators")) && return nothing
+    return filter(pair -> !(first(pair) in meta["non_generators"]), categories)
+end
+
 # SELECTORS MODULE
 "`PowerAnalytics` built-in `ComponentSelector`s. Use `names` to list what is available."
 module Selectors
 import
     ..make_selector,
     ..PSY,
-    ..parse_generator_mapping,
+    ..parse_generator_mapping_file,
+    ..parse_injector_categories,
+    ..parse_generator_categories,
     ..ComponentSelector,
     ..FUEL_TYPES_DATA_FILE
 export
@@ -101,21 +126,17 @@ A dictionary of `ComponentSelector`s, each of which corresponds to one of the st
 injector categories in `generator_mapping.yaml`
 """
 injector_categories::AbstractDict{String, ComponentSelector} =
-    first(parse_generator_mapping(FUEL_TYPES_DATA_FILE))
+    parse_injector_categories(FUEL_TYPES_DATA_FILE)
 
 """
 A dictionary of `ComponentSelector`s, each of which corresponds to one of the categories in
 `generator_mapping.yaml`, only considering the components and categories that represent
-`Generator`s (no storage or load)
+generators (no storage or load)
 """
 generator_categories::Union{AbstractDict{String, ComponentSelector}, Nothing} = let
-    categories, meta =
-        parse_generator_mapping(FUEL_TYPES_DATA_FILE)
-    if isnothing(meta) || !haskey(meta, "non_generators")
-        nothing
-    else
-        filter(pair -> !(first(pair) in meta["non_generators"]), categories)
-    end
+    result = parse_generator_categories(FUEL_TYPES_DATA_FILE)
+    isnothing(result) && @warn "Could not construct generator categories"
+    result
 end
 
 """
@@ -126,8 +147,8 @@ categorized_injectors::ComponentSelector =
     make_selector(values(injector_categories)...)
 
 """
-A single `ComponentSelector` representing the `Generator`s in a `System` grouped by the
-categories in `generator_mapping.yaml`
+A single `ComponentSelector` representing the generators in a `System` (no storage or load)
+grouped by the categories in `generator_mapping.yaml`
 """
 categorized_generators::Union{ComponentSelector, Nothing} =
     if isnothing(generator_categories)
