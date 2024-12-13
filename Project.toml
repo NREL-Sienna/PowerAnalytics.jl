@@ -1,7 +1,7 @@
 name = "PowerAnalytics"
 uuid = "56ce1300-00bc-47e4-ba8c-b166ccc19f51"
 authors = ["cbarrows <clayton.barrows@nrel.gov>"]
-version = "0.7.0"
+version = "0.8.0"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -20,7 +20,7 @@ DataFrames = "1"
 DataStructures = "0.18"
 InfrastructureSystems = "2"
 InteractiveUtils = "1"
-PowerSimulations = "^0.28"
+PowerSimulations = "^0.29"
 PowerSystems = "4"
 TimeSeries = "0.24"
 YAML = "0.4"
