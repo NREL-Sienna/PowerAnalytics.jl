@@ -129,4 +129,8 @@ end
     load_data6 = PA.get_load_data(sys; aggregation = StandardLoad)
     @test length(load_data6.data) == 1
     @test length(load_data6.time) == 24
+
+    # Test with a system with `DeterministicSingleTimeSeries`
+    sys = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
+    @test length(PA.get_load_data(sys; aggregation = ACBus).data) == 3
 end

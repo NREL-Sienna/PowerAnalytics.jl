@@ -451,7 +451,7 @@ function get_load_data(
             # TODO awaiting methods in PSY to make this simpler
             keys = filter(
                 key ->
-                    PSY.get_time_series_type(key) == PSY.Deterministic &&
+                    PSY.get_time_series_type(key) <: PSY.AbstractDeterministic &&
                         PSY.get_name(key) == "max_active_power",
                 PSY.get_time_series_keys(load),
             )
