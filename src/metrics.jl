@@ -104,19 +104,6 @@ struct NoResultError <: Exception
     msg::AbstractString
 end
 
-# SMALL FUNCTIONS
-"""
-Whether a given `Component` should be included in analytics. Calls `PSY.get_available` if
-possible, else defaults to `true`.
-"""
-is_available_for_analytics(comp::Component) =
-    try
-        PSY.get_available(comp)
-    catch e  # A bit hacky but the alternative is hardcoding which component types don't have a `get_available` (or using `hasmethod`, which is probably worse)
-        (e isa MethodError) && return true
-        rethrow(e)
-    end
-
 # Override these if you define Metric subtypes with different implementations
 get_name(m::Metric) = m.name
 get_eval_fn(m::Metric) = m.eval_fn
