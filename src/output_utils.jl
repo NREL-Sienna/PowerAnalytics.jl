@@ -3,16 +3,16 @@ Column metadata key whose value signifies whether the column is metadata. Metada
 are excluded from `data_cols` and similar and can be used to represent things like a time
 aggregation.
 """
-const META_COL_KEY::String = "meta_col"
+const META_COL_KEY = "meta_col"
 
 "Name of a column that represents whole-of-`Results` data"
-const RESULTS_COL::String = "Results"
+const RESULTS_COL = "Results"
 
 """
 Column metadata key whose value, if any, is additional information to be passed to
 aggregation functions. Values of `nothing` are equivalent to absence of the entry.
 """
-const AGG_META_KEY::String = "agg_meta"
+const AGG_META_KEY = "agg_meta"
 
 "Check whether a column is metadata"
 is_col_meta(df, colname) = get(colmetadata(df, colname), META_COL_KEY, false)
@@ -185,7 +185,8 @@ function aggregate_time(
     df::DataFrames.AbstractDataFrame;
     groupby_fn = nothing,
     groupby_col::Union{Nothing, AbstractString, Symbol} = nothing,
-    agg_fn = nothing)
+    agg_fn = nothing,
+)
     keep_groupby_col = (groupby_col !== nothing)
     if groupby_fn === nothing && keep_groupby_col
         throw(ArgumentError("Cannot keep the groupby column if not specifying groupby_fn"))

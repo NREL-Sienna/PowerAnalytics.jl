@@ -24,6 +24,7 @@ const LOG_FILE = "PowerAnalytics-test.log"
 
 const BASE_DIR = dirname(dirname(pathof(PowerAnalytics)))
 const TEST_DIR = joinpath(BASE_DIR, "test")
+# Cache the test outputs, no need to regenerate every time we test
 const TEST_OUTPUTS = joinpath(BASE_DIR, "test", "test_results")
 !isdir(TEST_OUTPUTS) && mkdir(TEST_OUTPUTS)
 const TEST_RESULT_DIR = joinpath(TEST_OUTPUTS, "results")
