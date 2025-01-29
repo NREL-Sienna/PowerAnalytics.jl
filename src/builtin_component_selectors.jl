@@ -45,8 +45,16 @@ function make_fuel_component_selector(
     end
 
     # Create a nice name that is guaranteed to never collide with fully-qualified component names
-    selector_name = join(ifelse.(isnothing.(parse_results), "", string.(parse_results)),
-        COMPONENT_NAME_DELIMITER)
+    selector_name = string(nameof(parse_results[1]))
+    if !all(isnothing.(parse_results[2:end]))
+        selector_name *=
+            COMPONENT_NAME_DELIMITER * join(
+                ifelse.(
+                    isnothing.(parse_results[2:end]),
+                    "Any",
+                    string.(parse_results[2:end])),
+                COMPONENT_NAME_DELIMITER)
+    end
 
     return make_selector(filter_closure, gen_type; name = selector_name)
 end
