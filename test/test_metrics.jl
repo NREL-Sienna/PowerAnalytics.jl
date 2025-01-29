@@ -385,7 +385,7 @@ end
     end
 end
 
-@testset "Test compute_set" begin
+@testset "Test compute with multiple columns" begin
     combo_selector = make_selector(test_selectors...)
     mymet = test_calc_active_power
     for (label, res) in pairs(resultses)

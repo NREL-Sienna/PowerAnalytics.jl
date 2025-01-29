@@ -141,8 +141,10 @@ metric_selector_to_string(m::Metric, e::Union{ComponentSelector, Component}) =
 # COMPUTE() AND HELPERS
 # Validation and metadata management helper function for various compute methods
 function _compute_meta_timed!(val, metric, results)
-    (DATETIME_COL in names(val)) || throw(ArgumentError(
-        "Result metric.eval_fn did not include a $DATETIME_COL column"))
+    (DATETIME_COL in names(val)) || throw(
+        ArgumentError(
+            "Result get_eval_fn(metric) did not include a $DATETIME_COL column"),
+    )
     set_col_meta!(val, DATETIME_COL)
     _compute_meta_generic!(val, metric, results)
 end
@@ -216,7 +218,7 @@ a `DataFrame` with a `DateTime` column and a data column.
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
 """
 function compute(metric::SystemTimedMetric, results::IS.Results; kwargs...)
-    val = metric.eval_fn(results; kwargs...)
+    val = get_eval_fn(metric)(results; kwargs...)
     _compute_meta_timed!(val, metric, results)
     return val
 end
@@ -230,7 +232,7 @@ cell. Exclude components marked as not available.
  - `results::IS.Results`: the results from which to fetch data
 """
 function compute(metric::ResultsTimelessMetric, results::IS.Results)
-    val = DataFrame(RESULTS_COL => [metric.eval_fn(results)])
+    val = DataFrame(RESULTS_COL => [get_eval_fn(metric)(results)])
     _compute_meta_generic!(val, metric, results)
     return val
 end
