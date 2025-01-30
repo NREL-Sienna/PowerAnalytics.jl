@@ -72,6 +72,8 @@ import
     ..mean,
     ..read_component_result,
     ..rebuild_selector,
+    ..DataFrame,
+    ..DATETIME_COL,
     ...Selectors.all_loads,  # number of dots obtained by trial and error
     ...Selectors.all_storage
 export calc_active_power,
@@ -282,22 +284,24 @@ const calc_shutdown_cost = ComponentTimedMetric(;
     ),
 )
 
-"Calculate the production+startup+shutdown cost of the specified ComponentSelector; startup and shutdown costs are assumed to be zero if undefined"
+_has_startup_shutdown_costs(::PSY.OperationalCost) = false
+_has_startup_shutdown_costs(::PSY.ThermalGenerationCost) = true
+_has_startup_shutdown_costs(::PSY.StorageCost) = true
+_has_startup_shutdown_costs(::PSY.MarketBidCost) = true
+_has_startup_shutdown_costs(component::PSY.Component) =
+    _has_startup_shutdown_costs(PSY.get_operation_cost(component))
+
+"Calculate the production cost of the specified ComponentSelector, plus the startup and shutdown costs if they are defined"
 const calc_total_cost = ComponentTimedMetric(;
     name = "TotalCost",
     eval_fn = (args...) -> let
         production = compute(calc_production_cost, args...)
-        startup = try
-            get_data_vec(compute(calc_startup_cost, args...))
-        catch
-            repeat([0.0], size(production, 1))
+        (results, component, _...) = args
+        if _has_startup_shutdown_costs(component)
+            startup = get_data_vec(compute(calc_startup_cost, args...))
+            shutdown = get_data_vec(compute(calc_shutdown_cost, args...))
+            production[!, first(get_data_cols(production))] += startup + shutdown
         end
-        shutdown = try
-            get_data_vec(compute(calc_shutdown_cost, args...))
-        catch
-            repeat([0.0], size(production, 1))
-        end
-        production[!, first(get_data_cols(production))] += startup + shutdown
         return production
     end,
 )
