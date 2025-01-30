@@ -5,7 +5,6 @@ resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => results_prob)
 @assert all(
     in.("ActivePowerVariable__ThermalStandard", list_variable_names.(values(resultses))),
 ) "Expected all results to contain ActivePowerVariable__ThermalStandard"
-comp_results = Dict()  # Will be populated later
 
 # CONSTRUCT COMMON TEST RESOURCES
 "Calculate the active power output of the specified `ComponentSelector`"
@@ -126,6 +125,24 @@ wind_sel = make_selector(RenewableDispatch, "WindBusA")
 solar_sel = make_selector(RenewableDispatch, "SolarBusC")
 thermal_sel = make_selector(ThermalStandard, "Brighton")
 test_selectors = [wind_sel, solar_sel, thermal_sel]
+
+function _generate_comp_results()
+    comp_results = Dict()
+    for (label, res) in pairs(resultses)
+        comps1 = collect(get_components(RenewableDispatch, get_system(res)))
+        comps2 = collect(get_components(ThermalStandard, get_system(res)))
+        for comp in vcat(comps1, comps2)
+            computed_alltime = compute(test_calc_active_power, res, comp)
+            test_start_time = computed_alltime[2, DATETIME_COL]
+            test_len = 3
+            computed_sometime = compute(test_calc_active_power, res, comp;
+                start_time = test_start_time, len = test_len)
+            comp_results[(label, get_name(comp))] = (computed_alltime, computed_sometime)
+        end
+    end
+    return comp_results
+end
+comp_results = _generate_comp_results()
 
 # HELPER FUNCTIONS
 function test_timed_metric_helper(computed_alltime, met, data_colname)
@@ -313,10 +330,7 @@ end
         comps1 = collect(get_components(RenewableDispatch, get_system(res)))
         comps2 = collect(get_components(ThermalStandard, get_system(res)))
         for comp in vcat(comps1, comps2)
-            # This is a lot of testing, but we need all these in the dictionary anyway for
-            # later, so we might as well test with all of them
-            comp_results[(label, get_name(comp))] =
-                test_component_timed_metric(test_calc_active_power, res, comp)
+            test_component_timed_metric(test_calc_active_power, res, comp)
         end
     end
 end
