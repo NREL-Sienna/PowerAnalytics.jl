@@ -84,26 +84,57 @@ make_entry_kwargs(key_tuples::Vector{<:Tuple}) = [
     ]
 ]
 
-# TODO test
-"Given an EntryType and a Component, fetch a single column of results"
-function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component;
+# SimulationProblemResults has some extra features: the ability to `load_results!` and to specify which columns we want
+function _read_results_with_keys_wrapper(
+    res::PSI.SimulationProblemResults,
+    key_pair;
     start_time::Union{Nothing, DateTime} = nothing,
-    len::Union{Int, Nothing} = nothing)
+    len::Union{Int, Nothing} = nothing,
+    cols::Union{Colon, Vector{String}},
+)
     cache_len = isnothing(len) ? length(PSI.get_timestamps(res)) : len
-    key_pair = (entry, typeof(comp))
     PSI.load_results!(
         res,
         cache_len;
         initial_time = start_time,
         make_entry_kwargs([key_pair])...,
     )
-    key = make_key(key_pair...)
+    return PSI.read_results_with_keys(
+        res,
+        [make_key(key_pair...)];
+        start_time = start_time,
+        len = len,
+        cols = cols,
+    )
+end
+
+# Otherwise here is the fallback
+_read_results_with_keys_wrapper(
+    res::IS.Results,
+    key_pair;
+    start_time::Union{Nothing, DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing,
+    cols::Union{Colon, Vector{String}},
+) =
+    PSI.read_results_with_keys(
+        res,
+        [make_key(key_pair...)];
+        start_time = start_time,
+        len = len,
+    )
+
+"Given an EntryType and a Component, fetch a single column of results"
+function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::Component;
+    start_time::Union{Nothing, DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing,
+)
+    key_pair = (entry, typeof(comp))
     res = try
-        first(
+        only(
             values(
-                PSI.read_results_with_keys(
+                _read_results_with_keys_wrapper(
                     res,
-                    [key];
+                    key_pair;
                     start_time = start_time,
                     len = len,
                     cols = [get_name(comp)],
@@ -114,7 +145,7 @@ function read_component_result(res::IS.Results, entry::Type{<:EntryType}, comp::
         if e isa KeyError && e.key == get_name(comp)
             throw(
                 NoResultError(
-                    "$(get_name(comp)) not in the results for $(PSI.encode_key_as_string(key))",
+                    "$(get_name(comp)) not in the results for $(PSI.encode_key_as_string(make_key(key_pair...)))",
                 ),
             )
         else
@@ -129,7 +160,7 @@ end
 function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType};
     start_time::Union{Nothing, DateTime} = nothing, len::Union{Int, Nothing} = nothing)
     key = make_key(entry, PSY.System)
-    res = first(
+    res = only(
         values(PSI.read_results_with_keys(
                 res,
                 [key];

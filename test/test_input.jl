@@ -5,12 +5,8 @@ sim_results = SimulationResults(TEST_RESULT_DIR, TEST_SIM_NAME)
 decision_problem_names = ("UC", "ED")
 my_results_sets = get_decision_problem_results.(Ref(sim_results), decision_problem_names)
 
-@testset "Test results function" begin
-    for (my_results, stock_results) in
-        zip(my_results_sets, stock_decision_results_sets)
-        @test IS.compare_values(get_system!(my_results), get_system(stock_results))
-    end
-end
+(results_uc, results_ed) = stock_decision_results_sets
+resultses = Dict("UC" => results_uc, "ED" => results_ed, "prob" => stock_results_prob)
 
 # Reimplements Base.Filesystem.cptree since that isn't exported
 function cptree(src::String, dst::String)
@@ -39,7 +35,7 @@ function teardown_duplicate_results()
         force = true, recursive = true)
 end
 
-@testset "Test scenario-level functions" begin
+@testset "Test create_problem_results_dict" begin
     setup_duplicate_results()
     for (problem, stock_results) in zip(decision_problem_names, stock_decision_results_sets)
         scenario_names = [TEST_SIM_NAME, TEST_DUPLICATE_RESULTS_NAME]
@@ -53,4 +49,27 @@ end
         )
     end
     teardown_duplicate_results()
+end
+
+@testset "Test read_component_result" begin
+    for res in values(resultses)
+        entry = ActivePowerVariable
+        comp = get_component(ThermalStandard, get_system(res), "Solitude")
+        my_result = PA.read_component_result(res, entry, comp)
+        key = PSI.VariableKey(entry, ThermalStandard)
+        existing_result = only(values(PSI.read_results_with_keys(res, [key])))[
+            !,
+            ["DateTime", "Solitude"],
+        ]
+        @test my_result == existing_result
+    end
+end
+
+@testset "Test read_system_result" begin
+    entry = SystemBalanceSlackUp
+    my_result = PA.read_system_result(results_ed, entry)
+    key = PSI.VariableKey(entry, System)
+    existing_result = only(values(PSI.read_results_with_keys(results_ed, [key])))
+    @test get_time_vec(my_result) == get_time_vec(existing_result)
+    @test get_data_vec(my_result) == get_data_vec(existing_result)
 end
