@@ -2,13 +2,28 @@ const FUEL_TYPES_DATA_FILE =
     joinpath(dirname(dirname(pathof(PowerAnalytics))), "deps", "generator_mapping.yaml")
 const FUEL_TYPES_META_KEY = "__META"
 
+"""
+Parse the `gentype` to a type. This is done by first checking whether gentype is qualified
+(`ModuleName.TypeName`). If so, the module is fetched from the `Main` scope and the type
+name is fetched from the module. If not, we default to fetching from `PowerSystems` for
+convenience.
+"""
+function lookup_gentype(gentype::AbstractString)
+    if occursin(".", gentype)
+        splitted = split(gentype, ".")
+        (length(splitted) == 2) || throw(ArgumentError("Cannot parse gentype '$gentype'"))
+        mod, typename = splitted
+        return getproperty(getproperty(Main, Symbol(mod)), Symbol(typename))
+    end
+    return getproperty(PowerSystems, Symbol(gentype))
+end
+
 # Parse the strings in generator_mapping.yaml into types and enum items
 function parse_fuel_category(
     category_spec::Dict;
     root_type::Type{<:Component} = PSY.StaticInjection,
 )
-    # TODO support types beyond PowerSystems
-    gen_type = getproperty(PowerSystems, Symbol(get(category_spec, "gentype", Component)))
+    gen_type = lookup_gentype(get(category_spec, "gentype", "Component"))
     (gen_type === Any) && (gen_type = root_type)
     # Constrain gen_type such that gen_type <: root_type
     gen_type = typeintersect(gen_type, root_type)

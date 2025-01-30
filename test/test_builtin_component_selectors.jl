@@ -2,6 +2,12 @@ test_sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
 test_sys2 = PSB.build_system(PSB.PSITestSystems, "c_sys5_bat")
 name_and_type = component -> (typeof(component), get_name(component))
 
+@testset "Test helper functions" begin
+    @test PA.lookup_gentype("Component") === PSY.Component
+    @test PA.lookup_gentype("PowerSystems.Component") === PSY.Component
+    @test PA.lookup_gentype("InfrastructureSystems.InfrastructureSystemsComponent") ===
+          IS.InfrastructureSystemsComponent
+end
 @testset "Test `all_loads` and `all_storage`" begin
     @test Set(name_and_type.(get_components(all_loads, test_sys))) ==
           Set([(PowerLoad, "Bus2"), (PowerLoad, "Bus4"), (StandardLoad, "Bus3")])
