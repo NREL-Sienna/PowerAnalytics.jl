@@ -47,7 +47,10 @@ end
         @test Set(keys(scenarios)) == Set(scenario_names)
         scenarios = create_problem_results_dict(TEST_RESULT_DIR, problem, scenario_names)
         @test Set(keys(scenarios)) == Set(scenario_names)
-        @test IS.compare_values(get_system!(scenarios[TEST_SIM_NAME]), get_system(stock_results))
+        @test IS.compare_values(
+            get_system!(scenarios[TEST_SIM_NAME]),
+            get_system(stock_results),
+        )
     end
     teardown_duplicate_results()
 end

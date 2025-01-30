@@ -18,10 +18,18 @@ make_system_metric_from_entry(
         eval_fn = (res::IS.Results; kwargs...) ->
             read_system_result(res, key, kwargs...))
 
-"Compute the mean of `values` weighted by the corresponding entries of `weights`."
-function weighted_mean(values, weights)  # Made quite finnicky by the need to broadcast in two dimensions (or am I just new to this?)
-    new_values = @. broadcast(ifelse, (.==)(weights, 0), 0.0, values)  # Allow 0 weight to cancel out NaN value
-    return sum((.*).(new_values, weights)) ./ sum(weights)
+"""
+Compute the mean of `values` weighted by the corresponding entries of `weights`. Arguments
+may be vectors or vectors of vectors. A weight of 0 cancels out a value of NaN.
+"""
+function weighted_mean(vals, weights)
+    # Handle NaNs by replacing values with weight 0 with 0
+    new_values = zero(vals)
+    is_zeros = broadcast.(iszero, weights)
+    new_values = broadcast.(ifelse, is_zeros, new_values, vals)
+
+    weighted_values = broadcast.(*, new_values, weights)
+    return sum(weighted_values) ./ sum(weights)
 end
 
 weighted_mean(empty) =
