@@ -11,7 +11,7 @@ using PowerAnalytics
 using PowerAnalytics.Selectors
 using PowerAnalytics.Metrics
 using PowerSimulations
-using GLPK
+using HiGHS
 using TimeSeries
 using StorageSystemsSimulations
 using HydroPowerSimulations

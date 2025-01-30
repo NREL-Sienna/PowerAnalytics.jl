@@ -122,8 +122,7 @@ function _execute_simulation(base_path, sim_name)
     add_re!(c_sys5_hy_uc)
     add_re!(c_sys5_hy_ed)
 
-    GLPK_optimizer =
-        optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)
+    highs_optimizer = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 
     template_hydro_st_uc =
         ProblemTemplate(NetworkModel(CopperPlatePowerModel; use_slacks = false))
@@ -171,14 +170,14 @@ function _execute_simulation(base_path, sim_name)
             DecisionModel(
                 template_hydro_st_uc,
                 c_sys5_hy_uc;
-                optimizer = GLPK_optimizer,
+                optimizer = highs_optimizer,
                 name = "UC",
                 system_to_file = true,
             ),
             DecisionModel(
                 template_hydro_st_ed,
                 c_sys5_hy_ed;
-                optimizer = GLPK_optimizer,
+                optimizer = highs_optimizer,
                 name = "ED",
                 system_to_file = true,
             ),
@@ -257,8 +256,7 @@ end
 function run_test_prob()
     c_sys5_hy_uc = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
     add_re!(c_sys5_hy_uc)
-    GLPK_optimizer =
-        optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)
+    highs_optimizer = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 
     template_hydro_st_uc = template_unit_commitment()
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
@@ -271,7 +269,7 @@ function run_test_prob()
     prob = DecisionModel(
         template_hydro_st_uc,
         c_sys5_hy_uc;
-        optimizer = GLPK_optimizer,
+        optimizer = highs_optimizer,
         horizon = Hour(12),
     )
     build!(prob; output_dir = mktempdir())
