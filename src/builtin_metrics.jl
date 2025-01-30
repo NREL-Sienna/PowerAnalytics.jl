@@ -63,10 +63,10 @@ import
     ..SystemTimedMetric,
     ..Component,
     ..compute,
-    ..data_vec,
-    ..data_cols,
+    ..get_data_vec,
+    ..get_data_cols,
     ..set_agg_meta!,
-    ..time_vec,
+    ..get_time_vec,
     ..weighted_mean,
     ..unweighted_sum,
     ..mean,
@@ -150,7 +150,7 @@ const calc_load_forecast = ComponentTimedMetric(;
     # NOTE if we had our own time-indexed dataframe type we could overload multiplication with a scalar and simplify this
     eval_fn = (args...) -> let
         val = compute(calc_active_power_forecast, args...)
-        data_vec(val) .*= -1
+        get_data_vec(val) .*= -1
         return val
     end,
 )
@@ -197,11 +197,11 @@ const calc_curtailment_frac = ComponentTimedMetric(;
         ) -> let
             result = compute(calc_curtailment, res, comp; kwargs...)
             power = collect(
-                data_vec(
+                get_data_vec(
                     compute(calc_active_power_forecast, res, comp; kwargs...),
                 ),
             )
-            data_vec(result) ./= power
+            get_data_vec(result) ./= power
             set_agg_meta!(result, power)
             return result
         end
@@ -222,9 +222,9 @@ const calc_integration = ComponentTimedMetric(;
             result = compute(calc_active_power, res, comp; kwargs...)
             # TODO does not check date alignment, maybe use hcat_timed
             denom = (.+)(
-                (_integration_denoms(res; kwargs...) .|> data_vec .|> collect)...,
+                (_integration_denoms(res; kwargs...) .|> get_data_vec .|> collect)...,
             )
-            data_vec(result) ./= denom
+            get_data_vec(result) ./= denom
             set_agg_meta!(result, denom)
             return result
         end
@@ -234,10 +234,10 @@ const calc_integration = ComponentTimedMetric(;
     eval_zero = (res::IS.Results; kwargs...) -> let
         denoms = _integration_denoms(res; kwargs...)
         # TODO does not check date alignment, maybe use hcat_timed
-        time_col = time_vec(first(denoms))
+        time_col = get_time_vec(first(denoms))
         data_col = repeat([0.0], length(time_col))
         result = DataFrame(DATETIME_COL => time_col, "" => data_col)
-        set_agg_meta!(result, (.+)((denoms .|> data_vec .|> collect)...))
+        set_agg_meta!(result, (.+)((denoms .|> get_data_vec .|> collect)...))
     end,
 )
 
@@ -249,8 +249,8 @@ const calc_capacity_factor = ComponentTimedMetric(;
         (res::IS.Results, comp::Component; kwargs...) -> let
             result = compute(calc_active_power_forecast, res, comp; kwargs...)
             rating = PSY.get_rating(comp)
-            data_vec(result) ./= rating
-            set_agg_meta!(result, repeat([rating], length(data_vec(result))))
+            get_data_vec(result) ./= rating
+            set_agg_meta!(result, repeat([rating], length(get_data_vec(result))))
             return result
         end
     ), component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
@@ -263,7 +263,7 @@ const calc_startup_cost = ComponentTimedMetric(;
         (res::IS.Results, comp::Component; kwargs...) -> let
             val = read_component_result(res, PSI.StartVariable, comp; kwargs...)
             start_cost = PSY.get_start_up(PSY.get_operation_cost(comp))
-            data_vec(val) .*= start_cost
+            get_data_vec(val) .*= start_cost
             return val
         end
     ),
@@ -276,7 +276,7 @@ const calc_shutdown_cost = ComponentTimedMetric(;
         (res::IS.Results, comp::Component; kwargs...) -> let
             val = read_component_result(res, PSI.StartVariable, comp; kwargs...)
             stop_cost = PSY.get_shut_down(PSY.get_operation_cost(comp))
-            data_vec(val) .*= stop_cost
+            get_data_vec(val) .*= stop_cost
             return val
         end
     ),
@@ -288,17 +288,16 @@ const calc_total_cost = ComponentTimedMetric(;
     eval_fn = (args...) -> let
         production = compute(calc_production_cost, args...)
         startup = try
-            data_vec(compute(calc_startup_cost, args...))
+            get_data_vec(compute(calc_startup_cost, args...))
         catch
             repeat([0.0], size(production, 1))
         end
         shutdown = try
-            data_vec(compute(calc_shutdown_cost, args...))
+            get_data_vec(compute(calc_shutdown_cost, args...))
         catch
             repeat([0.0], size(production, 1))
         end
-        # NOTE if I ever make my own type for timed dataframes, should do custom setindex! to make this less painful
-        production[!, first(data_cols(production))] += startup + shutdown
+        production[!, first(get_data_cols(production))] += startup + shutdown
         return production
     end,
 )
@@ -315,7 +314,7 @@ const calc_discharge_cycles = ComponentTimedMetric(;
             soc_limits = PSY.get_storage_level_limits(comp)
             soc_range =
                 PSY.get_storage_capacity(comp) * (soc_limits.max - soc_limits.min)
-            data_vec(val) ./= soc_range
+            get_data_vec(val) ./= soc_range
             return val
         end
     ),
@@ -335,8 +334,8 @@ make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(;
     name = "IsSlackUp($threshold)",
     eval_fn = (args...) -> let
         val = compute(calc_system_slack_up, args...)
-        val[!, first(data_cols(val))] =
-            abs.(val[!, first(data_cols(val))]) .> threshold
+        val[!, first(get_data_cols(val))] =
+            abs.(val[!, first(get_data_cols(val))]) .> threshold
         return val
     end,
 )

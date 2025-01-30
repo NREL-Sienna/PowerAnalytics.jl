@@ -266,7 +266,7 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
         end
     else
         time_col = _extract_common_time(vals...)
-        data_vecs = [data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
+        data_vecs = [get_data_vec(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
         agg_metas = get_agg_meta.(vals)
         is_agg_meta = !all(isnothing.(agg_metas))
         data_col = is_agg_meta ? agg_fn(data_vecs, agg_metas) : agg_fn(data_vecs)
@@ -325,7 +325,7 @@ function _common_compute_all(results, metrics, selectors, col_names; kwargs)
     return [
         let
             computed = compute(metric, results, selector; kwargs...)
-            old_name = first(data_cols(computed))
+            old_name = first(get_data_cols(computed))
             new_name =
                 isnothing(name) ? metric_selector_to_string(metric, selector) : name
             DataFrames.rename(computed, old_name => new_name)

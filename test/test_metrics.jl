@@ -248,19 +248,19 @@ end
     set_col_meta!(my_df1_copy, "MyComponent", false)
     @test !is_col_meta(my_df1_copy, "MyComponent")
 
-    @test time_df(my_df1) == DataFrame(DATETIME_COL => copy(my_dates))
-    @test time_vec(my_df1) == copy(my_dates)
-    @test data_df(my_df1) == DataFrame(; MyComponent = copy(my_data1))
-    @test data_vec(my_df1) == copy(my_data1)
-    @test data_mat(my_df1) == copy(my_data1)[:, :]
+    @test get_time_df(my_df1) == DataFrame(DATETIME_COL => copy(my_dates))
+    @test get_time_vec(my_df1) == copy(my_dates)
+    @test get_data_df(my_df1) == DataFrame(; MyComponent = copy(my_data1))
+    @test get_data_vec(my_df1) == copy(my_data1)
+    @test get_data_mat(my_df1) == copy(my_data1)[:, :]
 
-    @test data_cols(my_df2) == ["Component1", "Component2"]
-    @test time_df(my_df2) == DataFrame(DATETIME_COL => copy(my_dates))
-    @test time_vec(my_df2) == copy(my_dates)
-    @test data_df(my_df2) ==
+    @test get_data_cols(my_df2) == ["Component1", "Component2"]
+    @test get_time_df(my_df2) == DataFrame(DATETIME_COL => copy(my_dates))
+    @test get_time_vec(my_df2) == copy(my_dates)
+    @test get_data_df(my_df2) ==
           DataFrame("Component1" => copy(my_data1), "Component2" => copy(my_data2))
-    @test_throws ArgumentError data_vec(my_df2)
-    @test data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
+    @test_throws ArgumentError get_data_vec(my_df2)
+    @test get_data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
 
     @test hcat_timed(my_df1, DataFrames.rename(my_df1, "MyComponent" => "YourComponent")) ==
           DataFrame(
@@ -322,7 +322,7 @@ end
     day_agg_2 = aggregate_time(my_df3; groupby_fn = Date, groupby_col = "day", agg_fn = sum)
     @test "day" in names(day_agg_2)
     @test is_col_meta(day_agg_2, "day")
-    @test day_agg_2[!, "day"] == Date.(time_vec(day_agg_2))
+    @test day_agg_2[!, "day"] == Date.(get_time_vec(day_agg_2))
 end
 
 @testset "Test ComponentTimedMetric on Components" begin
@@ -345,11 +345,11 @@ end
             component_name = get_name(first(get_components(sel, get_system(res))))
             base_computed_alltime, base_computed_sometime =
                 comp_results[(label, component_name)]
-            @test time_df(computed_alltime) == time_df(base_computed_alltime)
-            # Using data_vec because the column names are allowed to differ
-            @test data_vec(computed_alltime) == data_vec(base_computed_alltime)
-            @test time_df(computed_sometime) == time_df(base_computed_sometime)
-            @test data_vec(computed_sometime) == data_vec(base_computed_sometime)
+            @test get_time_df(computed_alltime) == get_time_df(base_computed_alltime)
+            # Using get_data_vec because the column names are allowed to differ
+            @test get_data_vec(computed_alltime) == get_data_vec(base_computed_alltime)
+            @test get_time_df(computed_sometime) == get_time_df(base_computed_sometime)
+            @test get_data_vec(computed_sometime) == get_data_vec(base_computed_sometime)
         end
     end
 end
@@ -369,20 +369,21 @@ end
 
             component_names = get_name.(get_components(sel, get_system(res)))
             if length(component_names) == 0
-                @test isequal(time_vec(computed_alltime),
+                @test isequal(get_time_vec(computed_alltime),
                     Vector{Union{Missing, Dates.DateTime}}([missing]))
-                @test data_vec(computed_alltime) ==
+                @test get_data_vec(computed_alltime) ==
                       [get_component_agg_fn(my_test_metric)(Vector{Float64}())]
             else
                 (base_computed_alltimes, base_computed_sometimes) =
                     zip([comp_results[(label, cn)] for cn in component_names]...)
-                @test time_df(computed_alltime) == time_df(first(base_computed_alltimes))
-                @test data_vec(computed_alltime) ==
-                      sum([data_vec(sub) for sub in base_computed_alltimes])
-                @test time_df(computed_sometime) ==
-                      time_df(first(base_computed_sometimes))
-                @test data_vec(computed_sometime) ==
-                      sum([data_vec(sub) for sub in base_computed_sometimes])
+                @test get_time_df(computed_alltime) ==
+                      get_time_df(first(base_computed_alltimes))
+                @test get_data_vec(computed_alltime) ==
+                      sum([get_data_vec(sub) for sub in base_computed_alltimes])
+                @test get_time_df(computed_sometime) ==
+                      get_time_df(first(base_computed_sometimes))
+                @test get_data_vec(computed_sometime) ==
+                      sum([get_data_vec(sub) for sub in base_computed_sometimes])
             end
         end
     end
@@ -404,7 +405,7 @@ end
     mymet = test_calc_active_power
     for (label, res) in pairs(resultses)
         computed_alltime = compute(mymet, res, combo_selector)
-        cols = data_cols(computed_alltime)
+        cols = get_data_cols(computed_alltime)
         sels = colmetadata.(Ref(computed_alltime), cols, "ComponentSelector")
         @test all(sels .== test_selectors)  # One column for each subselector in the input
         @test all(cols .== get_name.(sels))  # Named properly
@@ -432,10 +433,10 @@ end
 
             base_computed_alltime, base_computed_sometime =
                 comp_results[(label, get_name(first(this_components)))]
-            @test time_df(computed_alltime) == time_df(base_computed_alltime)
-            @test computed_alltime[!, col_name] == data_vec(base_computed_alltime)
-            @test time_df(computed_sometime) == time_df(base_computed_sometime)
-            @test computed_sometime[!, col_name] == data_vec(base_computed_sometime)
+            @test get_time_df(computed_alltime) == get_time_df(base_computed_alltime)
+            @test computed_alltime[!, col_name] == get_data_vec(base_computed_alltime)
+            @test get_time_df(computed_sometime) == get_time_df(base_computed_sometime)
+            @test computed_sometime[!, col_name] == get_data_vec(base_computed_sometime)
         end
     end
 end
@@ -453,9 +454,9 @@ end
 
     for (metric, selector) in zip(my_metrics, my_selectors)
         one_result = compute(metric, results_uc, selector)
-        @test time_df(all_result) == time_df(one_result)
+        @test get_time_df(all_result) == get_time_df(one_result)
         @test all_result[!, metric_selector_to_string(metric, selector)] ==
-              data_vec(one_result)
+              get_data_vec(one_result)
         @test get(metadata(all_result), "results", nothing) ==
               get(metadata(one_result), "results", nothing)
         # Comparing the components iterators with == gives false failures
@@ -485,8 +486,8 @@ end
     my_names = ["Thermal Power", "Renewable Power", "Thermal Cost", "Renewable Cost"]
     all_result_named = compute_all(results_uc, my_metrics, my_selectors, my_names)
     @test names(all_result_named) == vcat(DATETIME_COL, my_names...)
-    @test time_df(all_result_named) == time_df(all_result)
-    @test data_mat(all_result_named) == data_mat(all_result)
+    @test get_time_df(all_result_named) == get_time_df(all_result)
+    @test get_data_mat(all_result_named) == get_data_mat(all_result)
 
     @test_throws ArgumentError compute_all(results_uc, my_metrics, my_selectors[2:end])
     @test_throws ArgumentError compute_all(results_uc, my_metrics, my_selectors,
@@ -495,8 +496,8 @@ end
     for (label, res) in pairs(resultses)
         @test compute_all(res, [test_calc_sum_objective_value, test_calc_sum_solve_time],
             nothing, ["Met1", "Met2"]) == DataFrame(
-            "Met1" => first(data_mat(compute(test_calc_sum_objective_value, res))),
-            "Met2" => first(data_mat(compute(test_calc_sum_solve_time, res))))
+            "Met1" => first(get_data_mat(compute(test_calc_sum_objective_value, res))),
+            "Met2" => first(get_data_mat(compute(test_calc_sum_solve_time, res))))
     end
 
     broadcasted_compute_all = compute_all(
@@ -641,13 +642,13 @@ end
         [thermal_sel, wind_sel, make_selector(make_selector(thermal_sel, wind_sel))],
         ["thermal", "wind", "combo"])
     @test isapprox(
-        data_mat(results2),
+        get_data_mat(results2),
         [thermal_vals other_vals weighted_mean(
             [thermal_vals, other_vals],
             [thermal_weights, other_weights],
         )],
     )
-    @test get_agg_meta.(Ref(results2), data_cols(results2)) ==
+    @test get_agg_meta.(Ref(results2), get_data_cols(results2)) ==
           [thermal_weights, other_weights, sum([thermal_weights, other_weights])]
 end
 

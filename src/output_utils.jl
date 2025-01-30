@@ -1,7 +1,7 @@
 """
 Column metadata key whose value signifies whether the column is metadata. Metadata columns
-are excluded from `data_cols` and similar and can be used to represent things like a time
-aggregation.
+are excluded from `get_data_cols` and similar and can be used to represent things like a
+time aggregation.
 """
 const META_COL_KEY = "meta_col"
 
@@ -26,7 +26,7 @@ get_agg_meta(df, colname) = get(colmetadata(df, colname), AGG_META_KEY, nothing)
 
 "Get the single data column's aggregation metadata; error on multiple data columns."
 function get_agg_meta(df)
-    my_data_cols = data_cols(df)
+    my_data_cols = get_data_cols(df)
     (length(my_data_cols) == 1) && return get_agg_meta(df, first(my_data_cols))
     throw(
         ArgumentError(
@@ -41,7 +41,7 @@ set_agg_meta!(df, colname, val) =
 
 "Set the single data column's aggregation metadata; error on multiple data columns."
 function set_agg_meta!(df, val)
-    my_data_cols = data_cols(df)
+    my_data_cols = get_data_cols(df)
     (length(my_data_cols) == 1) && return set_agg_meta!(df, first(my_data_cols), val)
     throw(
         ArgumentError(
@@ -52,17 +52,17 @@ end
 
 # TODO test that mutating the selection mutates the original
 "Select the `DateTime` column of the `DataFrame` as a one-column `DataFrame` without copying."
-time_df(df::DataFrames.AbstractDataFrame) =
+get_time_df(df::DataFrames.AbstractDataFrame) =
     DataFrames.select(df, DATETIME_COL; copycols = false)
 
 "Select the `DateTime` column of the `DataFrame` as a `Vector` without copying."
-time_vec(df::DataFrames.AbstractDataFrame) = df[!, DATETIME_COL]
+get_time_vec(df::DataFrames.AbstractDataFrame) = df[!, DATETIME_COL]
 
 """
 Select the names of the data columns of the `DataFrame`, i.e., those that are not `DateTime`
 and not metadata.
 """
-data_cols(df::DataFrames.AbstractDataFrame) =
+get_data_cols(df::DataFrames.AbstractDataFrame) =
     filter(
         (
             colname ->
@@ -72,12 +72,12 @@ data_cols(df::DataFrames.AbstractDataFrame) =
         names(df))
 
 "Select the data columns of the `DataFrame` as a `DataFrame` without copying."
-data_df(df::DataFrames.AbstractDataFrame) =
-    DataFrames.select(df, data_cols(df); copycols = false)
+get_data_df(df::DataFrames.AbstractDataFrame) =
+    DataFrames.select(df, get_data_cols(df); copycols = false)
 
 "Select the data column of the `DataFrame` as a vector without copying, errors if more than one."
-function data_vec(df::DataFrames.AbstractDataFrame)
-    the_data = data_df(df)
+function get_data_vec(df::DataFrames.AbstractDataFrame)
+    the_data = get_data_df(df)
     (size(the_data, 2) > 1) && throw(
         ArgumentError(
             "DataFrame has $(size(the_data, 2)) columns of data, consider using data_mat",
@@ -87,11 +87,11 @@ function data_vec(df::DataFrames.AbstractDataFrame)
 end
 
 "Select the data columns of the `DataFrame` as a `Matrix` with copying."
-data_mat(df::DataFrames.AbstractDataFrame) = Matrix(data_df(df))
+get_data_mat(df::DataFrames.AbstractDataFrame) = Matrix(get_data_df(df))
 
 # TODO test allow_missing behavior
 function _extract_common_time(dfs::DataFrames.AbstractDataFrame...;
-    allow_missing = true, ex_fn::Function = time_vec)
+    allow_missing = true, ex_fn::Function = get_time_vec)
     time_cols = ex_fn.(dfs)
     allow_missing || !any([any(ismissing.(ex_fn(tc))) for tc in time_cols]) ||
         throw(ErrorException("Missing time columns"))
@@ -108,11 +108,11 @@ function _extract_common_time(dfs::DataFrames.AbstractDataFrame...;
 end
 
 # TODO test
-function _broadcast_time(data_cols, time_col; allow_unitary = true)
-    size(data_cols, 1) == size(time_col, 1) && return data_cols
-    (allow_unitary && size(data_cols, 1) == 1) ||
+function _broadcast_time(the_data_cols, time_col; allow_unitary = true)
+    size(the_data_cols, 1) == size(time_col, 1) && return the_data_cols
+    (allow_unitary && size(the_data_cols, 1) == 1) ||
         throw(ErrorException("Individual data column does not match aggregate time column"))
-    return repeat(data_cols, size(time_col, 1))  # Preserves metadata
+    return repeat(the_data_cols, size(time_col, 1))  # Preserves metadata
 end
 
 """
@@ -120,8 +120,8 @@ If the time axes match across all the `DataFrames`, horizontally concatenate the
 the duplicate time axes. If not, throw an error
 """
 function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
-    time_col = _extract_common_time(vals...; ex_fn = time_df)
-    broadcasted_vals = [data_df(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
+    time_col = _extract_common_time(vals...; ex_fn = get_time_df)
+    broadcasted_vals = [get_data_df(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
     return hcat(time_col, broadcasted_vals...)
 end
 
@@ -209,14 +209,14 @@ function aggregate_time(
 
     # Find all aggregation metadata
     # TODO should metadata columns be allowed to have aggregation metadata? Probably.
-    agg_metas = Dict(varname => get_agg_meta(df, varname) for varname in data_cols(df))
+    agg_metas = Dict(varname => get_agg_meta(df, varname) for varname in get_data_cols(df))
 
     # Create column names for non-nothing aggregation metadata
     existing_cols = vcat(names(df), groupby_col)
     agg_meta_colnames = Dict(
         varname =>
             _make_unique_col_name(existing_cols; initial_try = varname * "_meta")
-        for varname in data_cols(df) if agg_metas[varname] !== nothing)
+        for varname in get_data_cols(df) if agg_metas[varname] !== nothing)
     cols_with_agg_meta = collect(keys(agg_meta_colnames))
 
     # TODO currently we can only handle Vector aggregation metadata (eventually we'll

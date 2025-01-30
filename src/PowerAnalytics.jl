@@ -14,10 +14,10 @@ export Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric,
     ComponentTimedMetric,
     SystemTimedMetric, ResultsTimelessMetric, CustomTimedMetric
 export DATETIME_COL, META_COL_KEY, SYSTEM_COL, RESULTS_COL, AGG_META_KEY
-export is_col_meta, set_col_meta, set_col_meta!, time_df, time_vec, data_cols, data_df,
-    data_vec, data_mat, get_description, get_component_agg_fn, get_time_agg_fn,
-    with_component_agg_fn, with_time_agg_fn, metric_selector_to_string, get_agg_meta,
-    set_agg_meta!, rebuild_metric
+export is_col_meta, set_col_meta, set_col_meta!, get_time_df, get_time_vec, get_data_cols,
+    get_data_df, get_data_vec, get_data_mat, get_description, get_component_agg_fn,
+    get_time_agg_fn, with_component_agg_fn, with_time_agg_fn, metric_selector_to_string,
+    get_agg_meta, set_agg_meta!, rebuild_metric
 export compute, compute_all, hcat_timed, aggregate_time, compose_metrics
 export create_problem_results_dict
 export parse_generator_mapping_file, parse_injector_categories, parse_generator_categories
