@@ -5,20 +5,10 @@ sim_results = SimulationResults(TEST_RESULT_DIR, TEST_SIM_NAME)
 decision_problem_names = ("UC", "ED")
 my_results_sets = get_decision_problem_results.(Ref(sim_results), decision_problem_names)
 
-# TODO is there a better way?
-function test_system_equivalence(sys1::System, sys2::System)
-    @test ==(((sys1, sys2) .|> IS.get_internal .|> IS.get_uuid)...)
-    @test sort(get_name.(get_components(Component, sys1))) ==
-          sort(get_name.(get_components(Component, sys2)))
-end
-
 @testset "Test results function" begin
     for (my_results, stock_results) in
         zip(my_results_sets, stock_decision_results_sets)
-        test_system_equivalence(
-            get_system!(my_results),
-            get_system(stock_results),
-        )
+        @test IS.compare_values(get_system!(my_results), get_system(stock_results))
     end
 end
 
@@ -57,10 +47,7 @@ end
         @test Set(keys(scenarios)) == Set(scenario_names)
         scenarios = create_problem_results_dict(TEST_RESULT_DIR, problem, scenario_names)
         @test Set(keys(scenarios)) == Set(scenario_names)
-        test_system_equivalence(
-            get_system!(scenarios[TEST_SIM_NAME]),
-            get_system(stock_results),
-        )
+        @test IS.compare_values(get_system!(scenarios[TEST_SIM_NAME]), get_system(stock_results))
     end
     teardown_duplicate_results()
 end
