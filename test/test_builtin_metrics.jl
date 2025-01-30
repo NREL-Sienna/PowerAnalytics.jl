@@ -121,5 +121,6 @@ all_metric_names = filter(x -> getproperty(PowerAnalytics.Metrics, x) isa Metric
     names(PowerAnalytics.Metrics))
 
 @testset for metric_name in all_metric_names
+    @test isconst(PowerAnalytics.Metrics, metric_name)
     test_metric(Val(metric_name))
 end
