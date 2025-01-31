@@ -299,7 +299,7 @@ function compute(metric::ComponentTimedMetric, results::IS.Results,
     selector::ComponentSelector; kwargs...)
     subents = get_groups(selector, results)
     subcomputations = [_compute_one(metric, results, sub; kwargs...) for sub in subents]
-    return hcat_timed(subcomputations...)
+    return hcat_timed_dfs(subcomputations...)
 end
 
 # COMPUTE_ALL()
@@ -356,7 +356,7 @@ compute_all(results::IS.Results,
     selectors::Union{Nothing, Component, ComponentSelector, Vector} = nothing,
     col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing;
     kwargs...,
-) = hcat_timed(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
+) = hcat_timed_dfs(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
 
 """
 For each (metric, col_name) tuple in `zip(metrics, col_names)`, call [`compute`](@ref) and

@@ -119,7 +119,7 @@ end
 If the time axes match across all the `DataFrames`, horizontally concatenate them and remove
 the duplicate time axes. If not, throw an error
 """
-function hcat_timed(vals::DataFrame...)  # TODO incorporate allow_missing
+function hcat_timed_dfs(vals::DataFrame...)  # TODO incorporate allow_missing
     time_col = _extract_common_time(vals...; ex_fn = get_time_df)
     broadcasted_vals = [get_data_df(sub) for sub in _broadcast_time.(vals, Ref(time_col))]
     return hcat(time_col, broadcasted_vals...)

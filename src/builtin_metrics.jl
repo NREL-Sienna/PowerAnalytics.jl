@@ -1,4 +1,3 @@
-# TODO test
 "Convenience function to convert an EntryType to a function and make a ComponentTimedMetric from it"
 make_component_metric_from_entry(
     name::String,
@@ -8,7 +7,6 @@ make_component_metric_from_entry(
         eval_fn = (res::IS.Results, comp::Component; kwargs...) ->
             read_component_result(res, key, comp; kwargs...))
 
-# TODO test
 "Convenience function to convert a SystemEntryType to a function and make a SystemTimedMetric from it"
 make_system_metric_from_entry(
     name::String,
@@ -222,7 +220,7 @@ const calc_integration = ComponentTimedMetric(;
         (res::IS.Results, comp::Component; kwargs...
         ) -> let
             result = compute(calc_active_power, res, comp; kwargs...)
-            # TODO does not check date alignment, maybe use hcat_timed
+            # TODO does not check date alignment, maybe use hcat_timed_dfs
             denom = (.+)(
                 (_integration_denoms(res; kwargs...) .|> get_data_vec .|> collect)...,
             )
@@ -235,7 +233,7 @@ const calc_integration = ComponentTimedMetric(;
     # We use a custom eval_zero to put the weight in there even when there are no components
     eval_zero = (res::IS.Results; kwargs...) -> let
         denoms = _integration_denoms(res; kwargs...)
-        # TODO does not check date alignment, maybe use hcat_timed
+        # TODO does not check date alignment, maybe use hcat_timed_dfs
         time_col = get_time_vec(first(denoms))
         data_col = repeat([0.0], length(time_col))
         result = DataFrame(DATETIME_COL => time_col, "" => data_col)
@@ -345,7 +343,7 @@ make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(;
 )
 
 # TODO is this the appropriate place to put a default threshold (and is it the appropriate default)?
-const DEFAULT_SLACK_UP_THRESHOLD = 1e-3
+const DEFAULT_SLACK_UP_THRESHOLD = 1e-4
 "Calculate whether the given time period has system balance slack up of magnitude greater than $DEFAULT_SLACK_UP_THRESHOLD"
 const calc_is_slack_up = make_calc_is_slack_up(DEFAULT_SLACK_UP_THRESHOLD)
 

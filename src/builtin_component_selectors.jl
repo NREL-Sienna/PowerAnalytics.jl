@@ -94,7 +94,7 @@ function parse_generator_mapping_file(
         # A subselector will be nothing if it doesn't fit under root_type
         subselectors = filter(!isnothing, subselectors)
         # Omit the category entirely if root_type causes elimination of all subselectors
-        length(in_data[top_level]) > 0 && length(subselectors) == 0 && continue
+        (length(in_data[top_level]) > 0 && isempty(subselectors)) && continue
         mappings[top_level] = make_selector(subselectors...; name = top_level)
     end
     return mappings, get(in_data, FUEL_TYPES_META_KEY, nothing)

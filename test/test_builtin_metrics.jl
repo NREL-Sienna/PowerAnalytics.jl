@@ -5,6 +5,28 @@
 (results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR, TEST_SIM_NAME)
 const ResultType = AbstractDataFrame
 
+@testset "Test make_component_metric_from_entry" begin
+    entry = PSI.ActivePowerVariable
+    my_calc_active_power = PA.make_component_metric_from_entry("MyActivePower", entry)
+    @test get_name(my_calc_active_power) == "MyActivePower"
+    comp = get_component(ThermalStandard, get_system(results_uc), "Solitude")
+    my_result = my_calc_active_power(make_selector(comp), results_uc)
+    existing_result = PA.read_component_result(results_uc, entry, comp)
+    @test get_time_vec(my_result) == get_time_vec(existing_result)
+    @test get_data_vec(my_result) == get_data_vec(existing_result)
+end
+
+@testset "Test make_system_metric_from_entry" begin
+    entry = PSI.SystemBalanceSlackUp
+    my_calc_system_slack_up = PA.make_system_metric_from_entry("MySystemSlackUp", entry)
+    @test get_name(my_calc_system_slack_up) == "MySystemSlackUp"
+    my_result = my_calc_system_slack_up(results_ed)
+    existing_result = PA.read_system_result(results_ed, entry)
+    @test get_time_vec(my_result) == get_time_vec(existing_result)
+    @test get_data_vec(my_result) == get_data_vec(existing_result)
+end
+
+# TEST EACH BUILT-IN METRIC INDIVIDUALLY
 # Future implementers of built-in metrics must add tests as shown below or this will trigger
 function test_metric(::Val{metric_name}) where {metric_name}
     throw("Could not find test for $metric_name")

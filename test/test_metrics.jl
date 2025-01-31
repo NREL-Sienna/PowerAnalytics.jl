@@ -262,7 +262,10 @@ end
     @test_throws ArgumentError get_data_vec(my_df2)
     @test get_data_mat(my_df2) == hcat(copy(my_data1), copy(my_data2))
 
-    @test hcat_timed(my_df1, DataFrames.rename(my_df1, "MyComponent" => "YourComponent")) ==
+    @test hcat_timed_dfs(
+        my_df1,
+        DataFrames.rename(my_df1, "MyComponent" => "YourComponent"),
+    ) ==
           DataFrame(
         DATETIME_COL => my_dates,
         "MyComponent" => my_data1,
