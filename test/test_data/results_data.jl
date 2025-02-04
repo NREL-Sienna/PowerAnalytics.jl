@@ -11,7 +11,7 @@ function linear_fuel_to_linear_cost(fc::FuelCurve{LinearCurve})
 end
 
 function add_re!(sys)
-    re = RenewableDispatch(
+    re1 = RenewableDispatch(
         "WindBusA",
         true,
         get_component(ACBus, sys, "bus5"),
@@ -22,10 +22,26 @@ function add_re!(sys)
         (min = 0.0, max = 0.0),
         1.0,
         RenewableGenerationCost(CostCurve(LinearCurve(0.220))),
-        100.0,
+        10.0,
     )
-    add_component!(sys, re)
-    copy_time_series!(re, get_component(PowerLoad, sys, "bus2"))
+    add_component!(sys, re1)
+    copy_time_series!(re1, get_component(PowerLoad, sys, "bus2"))
+
+    re2 = RenewableDispatch(
+        "SolarBusC",
+        true,
+        get_component(ACBus, sys, "bus1"),
+        0.0,
+        0.0,
+        1.200,
+        PrimeMovers.PVe,
+        (min = 0.0, max = 0.0),
+        1.0,
+        RenewableGenerationCost(CostCurve(LinearCurve(0.220))),
+        2.0,
+    )
+    add_component!(sys, re2)
+    copy_time_series!(re2, get_component(PowerLoad, sys, "bus3"))
 
     fx = RenewableNonDispatch(
         "RoofTopSolar",
@@ -78,9 +94,8 @@ function add_re!(sys)
     add_component!(sys, batt)
 end
 
-function run_test_sim(result_dir::String)
+function run_test_sim(result_dir::String, sim_name::String)
     mkpath(result_dir)
-    sim_name = "results_sim"
     sim_path = joinpath(result_dir, sim_name)
 
     results = _try_load_simulation_results(sim_path)
@@ -107,8 +122,7 @@ function _execute_simulation(base_path, sim_name)
     add_re!(c_sys5_hy_uc)
     add_re!(c_sys5_hy_ed)
 
-    GLPK_optimizer =
-        optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)
+    highs_optimizer = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 
     template_hydro_st_uc =
         ProblemTemplate(NetworkModel(CopperPlatePowerModel; use_slacks = false))
@@ -156,14 +170,14 @@ function _execute_simulation(base_path, sim_name)
             DecisionModel(
                 template_hydro_st_uc,
                 c_sys5_hy_uc;
-                optimizer = GLPK_optimizer,
+                optimizer = highs_optimizer,
                 name = "UC",
                 system_to_file = true,
             ),
             DecisionModel(
                 template_hydro_st_ed,
                 c_sys5_hy_ed;
-                optimizer = GLPK_optimizer,
+                optimizer = highs_optimizer,
                 name = "ED",
                 system_to_file = true,
             ),
@@ -242,8 +256,7 @@ end
 function run_test_prob()
     c_sys5_hy_uc = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
     add_re!(c_sys5_hy_uc)
-    GLPK_optimizer =
-        optimizer_with_attributes(GLPK.Optimizer, "msg_lev" => GLPK.GLP_MSG_OFF)
+    highs_optimizer = optimizer_with_attributes(HiGHS.Optimizer, "mip_rel_gap" => 0.01)
 
     template_hydro_st_uc = template_unit_commitment()
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
@@ -256,7 +269,7 @@ function run_test_prob()
     prob = DecisionModel(
         template_hydro_st_uc,
         c_sys5_hy_uc;
-        optimizer = GLPK_optimizer,
+        optimizer = highs_optimizer,
         horizon = Hour(12),
     )
     build!(prob; output_dir = mktempdir())

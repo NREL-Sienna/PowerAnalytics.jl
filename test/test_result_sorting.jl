@@ -1,4 +1,4 @@
-(results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR)
+(results_uc, results_ed) = run_test_sim(TEST_RESULT_DIR, TEST_SIM_NAME)
 problem_results = run_test_prob()
 
 @testset "test filter results" begin

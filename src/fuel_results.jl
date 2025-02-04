@@ -10,6 +10,7 @@ function get_generator_mapping(filename = nothing)
 
     mappings = Dict{NamedTuple, String}()
     for (gen_type, vals) in genmap
+        (gen_type == "__META") && continue
         for val in vals
             pm = get(val, "primemover", nothing)
             pm = isnothing(pm) ? nothing : uppercase(string(pm))
@@ -92,22 +93,17 @@ function make_fuel_dictionary(
     for category in unique(values(mapping))
         gen_categories["$category"] = []
     end
-    gen_categories["Load"] = []
 
     for gen in generators
-        if gen isa PSY.ElectricLoad
-            category = "Load"
-        else
-            fuel = hasmethod(PSY.get_fuel, Tuple{typeof(gen)}) ? PSY.get_fuel(gen) : nothing
-            pm =
-                if hasmethod(PSY.get_prime_mover_type, Tuple{typeof(gen)})
-                    PSY.get_prime_mover_type(gen)
-                else
-                    nothing
-                end
-            ext = get(PSY.get_ext(gen), "ext_category", nothing)
-            category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
-        end
+        fuel = hasmethod(PSY.get_fuel, Tuple{typeof(gen)}) ? PSY.get_fuel(gen) : nothing
+        pm =
+            if hasmethod(PSY.get_prime_mover_type, Tuple{typeof(gen)})
+                PSY.get_prime_mover_type(gen)
+            else
+                nothing
+            end
+        ext = get(PSY.get_ext(gen), "ext_category", nothing)
+        category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
         push!(gen_categories["$category"], (string(nameof(typeof(gen))), PSY.get_name(gen)))
     end
     [delete!(gen_categories, "$k") for (k, v) in gen_categories if isempty(v)]
