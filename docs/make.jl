@@ -16,8 +16,6 @@ pages = OrderedDict(
 )
 
 
-
-
 makedocs(
     modules = [PowerAnalytics],
     format = Documenter.HTML(
