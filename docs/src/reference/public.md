@@ -1,6 +1,8 @@
 ## Exported
 
 ```@autodocs
-Modules = [PowerAnalytics]
+Modules = [PowerAnalytics,
+PowerAnalytics.Metrics,
+PowerAnalytics.Selectors]
 Private = false
 ```

@@ -1,6 +1,8 @@
 ## Internal
 
 ```@autodocs
-Modules = [PowerAnalytics]
+Modules = [PowerAnalytics,
+PowerAnalytics.Metrics,
+PowerAnalytics.Selectors]
 Public = false
 ```
