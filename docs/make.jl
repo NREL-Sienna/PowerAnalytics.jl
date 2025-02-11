@@ -25,8 +25,8 @@ makedocs(
         prettyurls = haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold = nothing,),
     sitename = "PowerAnalytics.jl",
-    authors = "Clayton Barrows",
-    pages = Any[p for p in pages],
+    authors = authors = ["Gabriel Konar-Steenberg <gabriel.konarsteenberg@nrel.gov>", "cbarrows <clayton.barrows@nrel.gov>"],
+    pages = pages,
     draft = false,
 )
 
@@ -40,15 +40,3 @@ deploydocs(
     push_preview=true,
     versions=["stable" => "v^", "v#.#"],
 )
-
-
-
-
-
-
-
-
-
-
-
-

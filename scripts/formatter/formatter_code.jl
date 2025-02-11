@@ -27,4 +27,3 @@ for main_path in main_paths
     end
 end
 
-
