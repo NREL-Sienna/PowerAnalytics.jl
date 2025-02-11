@@ -22,7 +22,7 @@ makedocs(
         prettyurls = haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold = nothing,),
     sitename = "PowerAnalytics.jl",
-    authors = "Gabriel Konar-Steenberg <gabriel.konarsteenberg@nrel.gov>, cbarrows <clayton.barrows@nrel.gov>",
+    authors = "Gabriel Konar-Steenberg and Clayton Barrows
     pages = Any[p for p in pages],
     draft = false,
 )
