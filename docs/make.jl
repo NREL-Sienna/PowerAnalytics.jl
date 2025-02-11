@@ -1,11 +1,8 @@
 using Documenter
 using PowerAnalytics
 import DataStructures: OrderedDict
-using DocumenterInterLinks
 
-links = InterLinks(
-  "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/"
-)
+
 pages = OrderedDict(
     "Welcome Page" => "index.md",
     "Tutorials" => Any["stub" => "tutorials/stub.md"],
@@ -25,8 +22,8 @@ makedocs(
         prettyurls = haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold = nothing,),
     sitename = "PowerAnalytics.jl",
-    authors = authors = ["Gabriel Konar-Steenberg <gabriel.konarsteenberg@nrel.gov>", "cbarrows <clayton.barrows@nrel.gov>"],
-    pages = pages,
+    authors = "Gabriel Konar-Steenberg <gabriel.konarsteenberg@nrel.gov>, cbarrows <clayton.barrows@nrel.gov>",
+    pages = Any[p for p in pages],
     draft = false,
 )
 

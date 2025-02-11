@@ -11,7 +11,7 @@ values are loaded results datasets.
  - `scenarios::Union{Vector{AbstractString}, Nothing} = nothing`: a list of scenario
    subdirectories to load, or `nothing` to load all the subdirectories
  - `kwargs...`: keyword arguments to pass through to
-   [`PowerSimulations.get_decision_problem_results`](@extref)
+   `get_decision_problem_results`
 """
 function create_problem_results_dict(
     results_dir::AbstractString,
