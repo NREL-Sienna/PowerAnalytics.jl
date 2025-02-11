@@ -1,8 +1,11 @@
 using Documenter
 using PowerAnalytics
 import DataStructures: OrderedDict
+using DocumenterInterLinks
 
-
+links = InterLinks(
+  "PSI" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/"
+)
 pages = OrderedDict(
     "Welcome Page" => "index.md",
     "Tutorials" => Any["stub" => "tutorials/stub.md"],
