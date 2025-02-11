@@ -22,14 +22,14 @@ makedocs(
         prettyurls = haskey(ENV, "GITHUB_ACTIONS"),
         size_threshold = nothing,),
     sitename = "PowerAnalytics.jl",
-    authors = "Gabriel Konar-Steenberg and Clayton Barrows
+    authors = "Gabriel Konar-Steenberg and Clayton Barrows",
     pages = Any[p for p in pages],
     draft = false,
 )
 
 
 deploydocs(
-    repo="github.com/NREL-Sienna/PowerAnalytics.jl",
+    repo= "github.com/NREL-Sienna/PowerAnalytics.jl",
     target="build",
     branch="gh-pages",
     devbranch="main",
