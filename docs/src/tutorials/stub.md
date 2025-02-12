@@ -1,1 +1,3 @@
-Please refer to the [Tutorial](https://diataxis.fr/tutorials/) section of the diataxis framework.
+## Tutorials
+
+Refer here for step-by-step tutorials that will guide you through the different capabilities of `PowerAnalytics`. 

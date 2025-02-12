@@ -1,1 +1,3 @@
-Please refer to the [How-to-Guides](https://diataxis.fr/how-to-guides/) section of the diataxis framework.
+## How-to Guides
+
+How-to's can be be referenced when looking for guidance for specific scenarios and issues in `PowerAnalytics`.  
