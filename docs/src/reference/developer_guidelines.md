@@ -1,6 +1,6 @@
 # Developer Guidelines
 
-In order to contribute to `PowerSystems.jl` repository please read the following sections of
+In order to contribute to the `PowerAnalytics.jl` repository please read the following sections of
 [`InfrastructureSystems.jl`](https://github.com/NREL-Sienna/InfrastructureSystems.jl) and [`SiennaTemplate.jl`](https://github.com/NREL-Sienna/SiennaTemplate.jl)
 documentation in detail:
 
