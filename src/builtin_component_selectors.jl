@@ -120,7 +120,20 @@ function parse_generator_categories(filename;
 end
 
 # SELECTORS MODULE
-"`PowerAnalytics` built-in `ComponentSelector`s. Use `names` to list what is available."
+"""
+PowerAnalytics built-in `ComponentSelector`s. Use `names` to list what is available.
+
+# Examples
+
+```julia
+using PowerAnalytics
+names(PowerAnalytics.Selectors)  # lists built-in selectors
+PowerAnalytics.Selectors.all_loads  # by default, must prefix built-in selectors with the module name
+@isdefined all_loads  # -> false
+using PowerAnalytics.Selectors
+@isdefined all_loads  # -> true, can now refer to built-in selectors without the prefix
+```
+"""
 module Selectors
 import
     ..make_selector,
@@ -138,10 +151,10 @@ export
     categorized_injectors,
     categorized_generators
 
-"A ComponentSelector representing all the electric load in a System"
+"A `ComponentSelector` representing all the electric load in a `System`"
 const all_loads::ComponentSelector = make_selector(PSY.ElectricLoad)
 
-"A ComponentSelector representing all the storage in a System"
+"A `ComponentSelector` representing all the storage in a `System`"
 const all_storage::ComponentSelector = make_selector(PSY.Storage)
 
 """

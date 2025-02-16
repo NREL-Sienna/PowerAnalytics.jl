@@ -1,4 +1,4 @@
-"Convenience function to convert an EntryType to a function and make a ComponentTimedMetric from it"
+"Convenience function to convert an `EntryType` to a function and make a `ComponentTimedMetric` from it"
 make_component_metric_from_entry(
     name::String,
     key::Type{<:EntryType},
@@ -7,7 +7,7 @@ make_component_metric_from_entry(
         eval_fn = (res::IS.Results, comp::Component; kwargs...) ->
             read_component_result(res, key, comp; kwargs...))
 
-"Convenience function to convert a SystemEntryType to a function and make a SystemTimedMetric from it"
+"Convenience function to convert a `SystemEntryType` to a function and make a `SystemTimedMetric` from it"
 make_system_metric_from_entry(
     name::String,
     key::Type{<:SystemEntryType},
@@ -18,7 +18,7 @@ make_system_metric_from_entry(
 
 """
 Compute the mean of `values` weighted by the corresponding entries of `weights`. Arguments
-may be vectors or vectors of vectors. A weight of 0 cancels out a value of NaN.
+may be vectors or vectors of vectors. A weight of `0` cancels out a value of `NaN`.
 """
 function weighted_mean(vals, weights)
     # Handle NaNs by replacing values with weight 0 with 0
@@ -46,7 +46,20 @@ unweighted_sum(x) = sum(x)
 unweighted_sum(x, y) = sum(x)
 
 # METRICS MODULE
-"`PowerAnalytics` built-in `Metric`s. Use `names` to list what is available."
+"""
+PowerAnalytics built-in `Metric`s. Use `names` to list what is available.
+
+# Examples
+
+```julia
+using PowerAnalytics
+names(PowerAnalytics.Metrics)  # lists built-in Metrics
+PowerAnalytics.Metrics.calc_active_power  # by default, must prefix built-in Metrics with the module name
+@isdefined calc_active_power  # -> false
+using PowerAnalytics.Metrics
+@isdefined calc_active_power  # -> true, can now refer to built-in Metrics without the prefix
+```
+"""
 module Metrics
 import
     ..make_component_metric_from_entry,
@@ -101,49 +114,49 @@ export calc_active_power,
 
 # NOTE ActivePowerVariable is in units of megawatts per simulation time period, so it's
 # actually energy and it makes sense to sum it up.
-"Calculate the active power of the specified ComponentSelector"
+"Calculate the active power of the specified `ComponentSelector`"
 const calc_active_power = make_component_metric_from_entry(
     "ActivePower",
     PSI.ActivePowerVariable,
 )
 
-"Calculate the active power output of the specified ComponentSelector"
+"Calculate the active power output of the specified `ComponentSelector`"
 const calc_production_cost = make_component_metric_from_entry(
     "ProductionCost",
     PSI.ProductionCostExpression,
 )
 
-"Calculate the active power input to the specified (storage) ComponentSelector"
+"Calculate the active power input to the specified (storage) `ComponentSelector`"
 const calc_active_power_in = make_component_metric_from_entry(
     "ActivePowerIn",
     PSI.ActivePowerInVariable,
 )
 
-"Calculate the active power output of the specified (storage) ComponentSelector"
+"Calculate the active power output of the specified (storage) `ComponentSelector`"
 const calc_active_power_out = make_component_metric_from_entry(
     "ActivePowerOut",
     PSI.ActivePowerOutVariable,
 )
 
-"Calculate the energy stored in the specified (storage) ComponentSelector"
+"Calculate the energy stored in the specified (storage) `ComponentSelector`"
 const calc_stored_energy = make_component_metric_from_entry(
     "StoredEnergy",
     PSI.EnergyVariable,
 )
 
-"Calculate the ActivePowerIn minus the ActivePowerOut of the specified (storage) ComponentSelector"
+"Calculate the `ActivePowerIn` minus the `ActivePowerOut` of the specified (storage) `ComponentSelector`"
 const calc_load_from_storage = compose_metrics(
     "LoadFromStorage",
     (-),
     calc_active_power_in, calc_active_power_out)
 
-"Fetch the forecast active power of the specified ComponentSelector"
+"Fetch the forecast active power of the specified `ComponentSelector`"
 const calc_active_power_forecast = make_component_metric_from_entry(
     "ActivePowerForecast",
     PSI.ActivePowerTimeSeriesParameter,
 )
 
-"Fetch the forecast active load of the specified ComponentSelector"
+"Fetch the forecast active load of the specified `ComponentSelector`"
 const calc_load_forecast = ComponentTimedMetric(;
     name = "LoadForecast",
     # Load is negative power
@@ -155,7 +168,7 @@ const calc_load_forecast = ComponentTimedMetric(;
     end,
 )
 
-"Fetch the forecast active load of all the ElectricLoad Components in the system"
+"Fetch the forecast active load of all the `ElectricLoad` `Component`s in the system"
 const calc_system_load_forecast = SystemTimedMetric(;
     name = "SystemLoadForecast",
     eval_fn = (res::IS.Results; kwargs...) ->
@@ -163,7 +176,7 @@ const calc_system_load_forecast = SystemTimedMetric(;
             rebuild_selector(all_loads; groupby = :all); kwargs...),
 )
 
-"Fetch the LoadFromStorage of all storage in the system"
+"Fetch the `LoadFromStorage` of all storage in the system"
 const calc_system_load_from_storage = let
     SystemTimedMetric(;
         name = "SystemLoadFromStorage",
@@ -175,21 +188,21 @@ const calc_system_load_from_storage = let
     )
 end
 
-"SystemLoadForecast minus ActivePowerForecast of the given ComponentSelector"
+"`SystemLoadForecast` minus `ActivePowerForecast` of the given `ComponentSelector`"
 const calc_net_load_forecast = compose_metrics(
     "NetLoadForecast",
     # (intentionally done with forecast to inform how storage should be used, among other reasons)
     (-),
     calc_system_load_forecast, calc_active_power_forecast)
 
-"Calculate the ActivePowerForecast minus the ActivePower of the given ComponentSelector"
+"Calculate the `ActivePowerForecast` minus the `ActivePower` of the given `ComponentSelector`"
 const calc_curtailment = compose_metrics(
     "Curtailment",
     (-),
     calc_active_power_forecast, calc_active_power,
 )
 
-"Calculate the Curtailment as a fraction of the ActivePowerForecast of the given ComponentSelector"
+"Calculate the curtailment as a fraction of the `ActivePowerForecast` of the given `ComponentSelector`"
 const calc_curtailment_frac = ComponentTimedMetric(;
     name = "CurtailmentFrac",
     eval_fn = (
@@ -213,7 +226,7 @@ _integration_denoms(res; kwargs...) =
     compute(calc_system_load_forecast, res; kwargs...),
     compute(calc_system_load_from_storage, res; kwargs...)
 
-"Calculate the ActivePower of the given ComponentSelector over the sum of the SystemLoadForecast and the SystemLoadFromStorage"
+"Calculate the `ActivePower` of the given `ComponentSelector` over the sum of the `SystemLoadForecast` and the `SystemLoadFromStorage`"
 const calc_integration = ComponentTimedMetric(;
     name = "Integration",
     eval_fn = (
@@ -241,7 +254,7 @@ const calc_integration = ComponentTimedMetric(;
     end,
 )
 
-"Calculate the capacity factor (actual production/rated production) of the specified ComponentSelector"
+"Calculate the capacity factor (actual production/rated production) of the specified `ComponentSelector`"
 const calc_capacity_factor = ComponentTimedMetric(;
     name = "CapacityFactor",
     # (intentionally done with forecast to serve as sanity check -- solar capacity factor shouldn't exceed 20%, etc.)
@@ -256,7 +269,7 @@ const calc_capacity_factor = ComponentTimedMetric(;
     ), component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
 )
 
-"Calculate the startup cost of the specified ComponentSelector"
+"Calculate the startup cost of the specified `ComponentSelector`"
 const calc_startup_cost = ComponentTimedMetric(;
     name = "StartupCost",
     eval_fn = (
@@ -269,7 +282,7 @@ const calc_startup_cost = ComponentTimedMetric(;
     ),
 )
 
-"Calculate the shutdown cost of the specified ComponentSelector"
+"Calculate the shutdown cost of the specified `ComponentSelector`"
 const calc_shutdown_cost = ComponentTimedMetric(;
     name = "ShutdownCost",
     eval_fn = (
@@ -289,7 +302,7 @@ _has_startup_shutdown_costs(::PSY.MarketBidCost) = true
 _has_startup_shutdown_costs(component::PSY.Component) =
     _has_startup_shutdown_costs(PSY.get_operation_cost(component))
 
-"Calculate the production cost of the specified ComponentSelector, plus the startup and shutdown costs if they are defined"
+"Calculate the production cost of the specified `ComponentSelector`, plus the startup and shutdown costs if they are defined"
 const calc_total_cost = ComponentTimedMetric(;
     name = "TotalCost",
     eval_fn = (args...) -> let
@@ -329,7 +342,7 @@ const calc_system_slack_up = make_system_metric_from_entry(
 )
 
 """
-Create a boolean Metric for whether the given time period has system balance slack up of
+Create a boolean `Metric` for whether the given time period has system balance slack up of
 magnitude greater than the `threshold` argument
 """
 make_calc_is_slack_up(threshold::Real) = SystemTimedMetric(;
