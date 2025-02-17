@@ -4,11 +4,14 @@ A PowerAnalytics `Metric` specifies how to compute a useful quantity, like activ
 curtailment, from a set of results. Many but not all metrics require a `ComponentSelector`
 to specify which available components of the system the quantity should be computed on, and
 many but not all `Metric`s return time series results. In addition to how to compute the
-output -- which may be as simple as looking up a variable or parameter in the results but
-may involve actual computation -- `Metric`s encapsulate default component-wise and time-wise
-aggregation behaviors. Metrics can be "called" like functions. PowerAnalytics provides a
-library of pre-built metrics, [`PowerAnalytics.Metrics`](@ref); users may also build their
-own.
+output — which may be as simple as looking up a variable or parameter in the results but may
+involve actual computation — `Metric`s encapsulate default component-wise and time-wise
+aggregation behaviors. Metrics can be "called" like functions.
+
+PowerAnalytics provides a library of pre-built metrics, [`PowerAnalytics.Metrics`](@ref);
+users may also build their own. In most cases of custom metric creation, it should suffice
+to instantiate one of the concrete `Metric` subtypes below; in special cases, the user can
+create their own subtype that implements [`compute`](@ref).
 
 # Examples
 
@@ -211,32 +214,61 @@ function _compute_component_timed_helper(metric::ComponentSelectorTimedMetric,
 end
 
 """
-Compute the given metric on the given component within the given set of results, returning a
-`DataFrame` with a `DateTime` column and a data column labeled with the component's name.
+The `compute` function is the most important part of the [`Metric`](@ref) interface. Calling
+a metric as if it were a function is syntactic sugar for calling `compute`:
+
+```julia
+# this:
+my_metric1(selector, results; kwargs)
+# is the same as this:
+compute(my_metric1, results, selector; kwargs)
+
+# and this:
+my_metric2(results; kwargs)
+# is the same as this:
+compute(my_metric2; kwargs)
+```
+
+Exact keyword arguments and formatting of the resulting `DataFrame` are documented for each
+of the methods, below.
+"""
+function compute end  # For the unified docstring
+
+"""
+Like [`compute(metric::ComponentTimedMetric, results::IS.Results,
+selector::ComponentSelector; kwargs...)`](@ref) method but for `Component`s rather than
+`ComponentSelector`s, used in the implementation of that method. Compute the given metric on
+the given component within the given set of results, returning a `DataFrame` with a
+`DateTime` column and a data column labeled with the component's name.
 
 # Arguments
  - `metric::ComponentTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
  - `comp::Component`: the component on which to compute the metric
- - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
-   time series should begin
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting time
+   series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
+
+See also: [`compute`](@ref) unified function documentation
 """
 compute(metric::ComponentTimedMetric, results::IS.Results, comp::Component; kwargs...) =
     _compute_component_timed_helper(metric, results, comp; kwargs...)
 
 """
-Compute the given metric on the given component within the given set of results, returning a
-`DataFrame` with a `DateTime` column and a data column labeled with the component's name.
-Exclude components marked as not available.
+[`compute`](@ref) method for [`CustomTimedMetric`](@ref). Compute the given metric on the
+given component within the given set of results, returning a `DataFrame` with a `DateTime`
+column and a data column labeled with the component's name. Exclude components marked as not
+available.
 
 # Arguments
  - `metric::CustomTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
  - `comp::Component`: the component on which to compute the metric
- - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
-   time series should begin
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting time
+   series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
+
+See also: [`compute`](@ref) unified function documentation
 """
 compute(metric::CustomTimedMetric, results::IS.Results,
     comp::Union{Component, ComponentSelector};
@@ -244,15 +276,18 @@ compute(metric::CustomTimedMetric, results::IS.Results,
     _compute_component_timed_helper(metric, results, comp; kwargs...)
 
 """
-Compute the given metric on the `System` associated with the given set of results, returning
-a `DataFrame` with a `DateTime` column and a data column.
+[`compute`](@ref) method for [`SystemTimedMetric`](@ref). Compute the given metric on the
+`System` associated with the given set of results, returning a `DataFrame` with a `DateTime`
+column and a data column.
 
 # Arguments
  - `metric::SystemTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
- - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
-   time series should begin
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting time
+   series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
+
+See also: [`compute`](@ref) unified function documentation
 """
 function compute(metric::SystemTimedMetric, results::IS.Results; kwargs...)
     val = get_eval_fn(metric)(results; kwargs...)
@@ -261,12 +296,15 @@ function compute(metric::SystemTimedMetric, results::IS.Results; kwargs...)
 end
 
 """
-Compute the given metric on the given set of results, returning a `DataFrame` with a single
-cell. Exclude components marked as not available.
+[`compute`](@ref) method for [`ResultsTimelessMetric`](@ref). Compute the given metric on
+the given set of results, returning a `DataFrame` with a single cell. Exclude components
+marked as not available.
 
 # Arguments
  - `metric::ResultsTimelessMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
+
+See also: [`compute`](@ref) unified function documentation
 """
 function compute(metric::ResultsTimelessMetric, results::IS.Results)
     val = DataFrame(RESULTS_COL => [get_eval_fn(metric)(results)])
@@ -274,11 +312,25 @@ function compute(metric::ResultsTimelessMetric, results::IS.Results)
     return val
 end
 
-"Convenience method for `compute_all`; returns `compute(metric, results)`"
+# TODO test link
+"""
+Convenience method that ignores the `selector` argument and redirects to
+[`compute(metric::ResultsTimelessMetric, results::IS.Results; kwargs...)`](@ref) for the
+purposes of [`compute_all`](@ref).
+
+See also: [`compute`](@ref) unified function documentation
+"""
 compute(metric::ResultsTimelessMetric, results::IS.Results, selector::Nothing) =
     compute(metric, results)
 
-"Convenience method for `compute_all`; returns `compute(metric, results; kwargs...)`"
+# TODO test link
+"""
+Convenience method that ignores the `selector` argument and redirects to
+[`compute(metric::SystemTimedMetric, results::IS.Results; kwargs...)`](@ref) for the
+purposes of [`compute_all`](@ref).
+
+See also: [`compute`](@ref) unified function documentation
+"""
 compute(metric::SystemTimedMetric, results::IS.Results, selector::Nothing; kwargs...) =
     compute(metric, results; kwargs...)
 
@@ -319,18 +371,21 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
 end
 
 """
-Compute the given metric on the groups of the given `ComponentSelector` within the given set
-of results, returning a `DataFrame` with a `DateTime` column and a data column for each
-group. Exclude components marked as not available.
+[`compute`](@ref) method for [`ComponentTimedMetric`](@ref). Compute the given metric on the
+groups of the given `ComponentSelector` within the given set of results, returning a
+`DataFrame` with a $DATETIME_COL column and a data column for each group. Exclude components
+marked as not available.
 
 # Arguments
  - `metric::ComponentTimedMetric`: the metric to compute
  - `results::IS.Results`: the results from which to fetch data
  - `selector::ComponentSelector`: the `ComponentSelector` on whose subselectors to compute
    the metric
- - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting
-   time series should begin
+ - `start_time::Union{Nothing, DateTime} = nothing`: the time at which the resulting time
+   series should begin
  - `len::Union{Int, Nothing} = nothing`: the number of steps in the resulting time series
+
+See also: [`compute`](@ref) unified function documentation
 """
 function compute(metric::ComponentTimedMetric, results::IS.Results,
     selector::ComponentSelector; kwargs...)
@@ -474,6 +529,7 @@ const calc_load_from_storage = compose_metrics(
 """
 function compose_metrics end  # For the unified docstring
 
+"[`compose_metrics`](@ref) method for [`ComponentSelectorTimedMetric`](@ref)."
 compose_metrics(
     name::String,
     reduce_fn,
@@ -490,6 +546,7 @@ compose_metrics(
         ),
 )
 
+"[`compose_metrics`](@ref) method for [`SystemTimedMetric`](@ref)."
 compose_metrics(
     name::String,
     reduce_fn,
@@ -505,6 +562,7 @@ compose_metrics(
         ),
 )
 
+"[`compose_metrics`](@ref) method for [`ResultsTimelessMetric`](@ref)."
 compose_metrics(
     name::String,
     reduce_fn,
@@ -531,6 +589,7 @@ component_selector_metric_from_system_metric(in_metric::SystemTimedMetric) =
 # This one only gets triggered when we have at least one ComponentSelectorTimedMetric *and*
 # at least one SystemTimedMetric, in which case the behavior is to treat the
 # SystemTimedMetrics as if they applied to the selector
+"[`compose_metrics`](@ref) method for a mix of [`ComponentSelectorTimedMetric`](@ref) and [`SystemTimedMetric`](@ref)."
 function compose_metrics(
     name::String,
     reduce_fn,
