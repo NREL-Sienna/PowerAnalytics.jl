@@ -17,8 +17,6 @@ create their own subtype that implements [`compute`](@ref).
 
 Given a `SimulationProblemResults` `results`:
 ```julia
-using PowerSystems
-using PowerAnalytics
 using PowerAnalytics.Metrics
 
 # Call the built-in `Metric` `calc_active_power` on a `ComponentSelector` to get a
@@ -154,15 +152,17 @@ get_component_meta_agg_fn(m::ComponentTimedMetric) = m.component_meta_agg_fn
 get_eval_zero(m::ComponentTimedMetric) = m.eval_zero
 
 """
-Returns a `Metric` identical to the input `metric` except with the changes to its
-fields specified in the keyword arguments.
+Returns a new [`Metric`](@ref) identical to the input `metric` except with the changes to
+its fields specified in the keyword arguments. See the `Metric` constructors (e.g.,
+[`ComponentTimedMetric`](@ref)) for available fields to alter.
 
 # Examples
 Make a variant of `calc_active_power` that averages across components rather than summing:
 ```julia
 using PowerAnalytics.Metrics
-calc_active_power_mean = rebuild_metric(calc_active_power; component_agg_fn = mean)
-# (now calc_active_power_mean works as a standalone, callable metric)
+const calc_active_power_mean = rebuild_metric(calc_active_power; component_agg_fn = mean)
+# Now calc_active_power_mean works as a standalone, callable metric:
+calc_active_power_mean(make_selector(RenewableDispatch), results)
 ```
 """
 function rebuild_metric(metric::T; kwargs...) where {T <: Metric}

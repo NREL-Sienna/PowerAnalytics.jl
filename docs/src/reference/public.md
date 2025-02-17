@@ -23,7 +23,7 @@ Modules = [PowerAnalytics]
 Pages   = ["metrics.jl"]
 Order = [:module, :type, :function, :macro]
 Private = false
-Filter = t -> !(t in [Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric, unweighted_sum, weighted_mean])
+Filter = t -> !(t in [Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric, unweighted_sum, weighted_mean, metric_selector_to_string])
 ```
 
 ## Post-Metric Utilities
@@ -39,6 +39,7 @@ Private = false
 ```@docs
 unweighted_sum
 weighted_mean
+metric_selector_to_string
 ```
 ```@autodocs
 Modules = [PowerAnalytics]
