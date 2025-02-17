@@ -7,11 +7,26 @@ values are loaded results datasets.
 
 # Arguments
  - `results_dir::AbstractString`: the directory where results subdirectories can be found
- - `problem::String`: the name of the problem to load (e.g., "UC", "ED")
+ - `problem::String`: the name of the problem to load (e.g., `UC`, `ED`)
  - `scenarios::Union{Vector{AbstractString}, Nothing} = nothing`: a list of scenario
    subdirectories to load, or `nothing` to load all the subdirectories
- - `kwargs...`: keyword arguments to pass through to
-   `get_decision_problem_results`
+ - `populate_system::Bool = false`: whether to automatically load and attach the system;
+   errors if `true` and the system has not been saved with the results. **This keyword
+   argument is `false` by default for backwards compatibility, but most PowerAnalytics
+   functionality requires results to have an attached system, so users should typically pass
+   `populate_system = true`.**
+ - `kwargs...`: further keyword arguments to pass through to `get_decision_problem_results`
+
+# Examples
+Suppose we have the directory `data_root` with subdirectories `results1`, `results2`, and
+`results3`, where each of these subdirectories contains `problems/UC/system-[...].json`.
+Then:
+```julia
+# Load results for only `results1` and `results2`:
+create_problem_results_dict(data_root, "UC", ["results1", "results2"]; populate_system = true)
+# Load results for all three scenarios:
+create_problem_results_dict(data_root, "UC"; populate_system = true)
+```
 """
 function create_problem_results_dict(
     results_dir::AbstractString,

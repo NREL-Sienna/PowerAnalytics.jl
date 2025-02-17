@@ -8,23 +8,42 @@ PowerAnalytics depends heavily on the `ComponentSelector` feature of PowerSystem
 ```@autodocs
 Modules = [PowerAnalytics]
 Pages   = ["input_utils.jl"]
-Order = [:module, :type, :function, :macro, :constant]
+Order = [:module, :type, :function, :macro]
 Private = false
 ```
 
 ### Metric Interface
+```@docs
+Metric
+TimedMetric
+TimelessMetric
+ComponentSelectorTimedMetric
+```
 ```@autodocs
 Modules = [PowerAnalytics]
 Pages   = ["metrics.jl"]
-Order = [:module, :type, :function, :macro, :constant]
+Order = [:module, :type, :function, :macro]
 Private = false
+Filter = t -> !(t in [Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric, unweighted_sum, weighted_mean])
 ```
 
 ### Post-Metric Utilities
+These are functions that can be called on the specially formatted `DataFrame`s that [`Metric`](@ref)s produce.
 ```@autodocs
 Modules = [PowerAnalytics]
 Pages   = ["output_utils.jl"]
-Order = [:module, :type, :function, :macro, :constant]
+Order = [:module, :type, :function, :macro]
+Private = false
+```
+
+### Miscellaneous
+```@docs
+unweighted_sum
+weighted_mean
+```
+```@autodocs
+Modules = [PowerAnalytics]
+Order = [:constant]
 Private = false
 ```
 
