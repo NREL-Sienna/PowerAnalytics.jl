@@ -19,8 +19,8 @@ values are loaded results datasets.
 
 # Examples
 Suppose we have the directory `data_root` with subdirectories `results1`, `results2`, and
-`results3`, where each of these subdirectories contains `problems/UC/system-[...].json`.
-Then:
+`results3`, where each of these subdirectories contains `problems/UC`. Then:
+
 ```julia
 # Load results for only `results1` and `results2`:
 create_problem_results_dict(data_root, "UC", ["results1", "results2"]; populate_system = true)

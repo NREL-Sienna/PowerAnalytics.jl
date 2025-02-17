@@ -236,7 +236,7 @@ function compute end  # For the unified docstring
 
 """
 Like [`compute(metric::ComponentTimedMetric, results::IS.Results,
-selector::ComponentSelector; kwargs...)`](@ref) method but for `Component`s rather than
+selector::ComponentSelector; kwargs...)`](@ref) but for `Component`s rather than
 `ComponentSelector`s, used in the implementation of that method. Compute the given metric on
 the given component within the given set of results, returning a `DataFrame` with a
 `DateTime` column and a data column labeled with the component's name.
@@ -427,9 +427,21 @@ function _common_compute_all(results, metrics, selectors, col_names; kwargs)
 end
 
 """
-For each `(metric, selector, col_name)` tuple in `zip(metrics, selectors, col_names)`, call
-[`compute`](@ref) and collect the results in a `DataFrame` with a single `DateTime` column.
-All selectors must yield exactly one group.
+`compute_all` takes several metrics, single-group `ComponentSelector`s if relevant, and
+optionally column names and produces a single table with all the output for a given results
+set. It can be useful to quickly put together a summary statistics table.
+
+# Examples
+
+See the methods.
+"""
+function compute_all end  # For the unified docstring
+
+"""
+Methods of [`compute_all`] for [`TimedMetric`]s. For each `(metric, selector, col_name)`
+tuple in `zip(metrics, selectors, col_names)`, call [`compute`](@ref) and collect the
+results in a `DataFrame` with a single `DateTime` column. All selectors must yield exactly
+one group.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
@@ -438,10 +450,23 @@ All selectors must yield exactly one group.
    selectors on which to compute the metrics, or nothing for system/results metrics;
    broadcast if scalar
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
-   of names for the columns of ouput data. Entries of `nothing` default to the result of
+   of names for the columns of output data. Entries of `nothing` default to the result of
    [`metric_selector_to_string`](@ref); `names = nothing` is equivalent to an entire vector
    of `nothing`
  - `kwargs...`: pass through to each [`compute`](@ref) call
+
+# Examples
+
+Given a `results` with the proper data:
+
+```julia
+using PowerAnalytics.Metrics
+compute_all(results,
+    [calc_active_power, calc_curtailment],
+    [make_selector(ThermalStandard; groupby = :all), make_selector(RenewableDispatch; groupby = :all)],
+    ["thermal_power", "renewable_curtailment"]
+)  # returns an 8760x3 DataFrame with columns `$DATETIME_COL`, `thermal_power`, and `renewable_curtailment`
+```
 """
 compute_all(results::IS.Results,
     metrics::Vector{<:TimedMetric},
@@ -451,8 +476,9 @@ compute_all(results::IS.Results,
 ) = hcat_timed_dfs(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
 
 """
-For each (metric, col_name) tuple in `zip(metrics, col_names)`, call [`compute`](@ref) and
-collect the results in a `DataFrame`.
+Methods of [`compute_all`] for [`TimelessMetric`]s. For each `(metric, selector, col_name)`
+tuple in `zip(metrics, selectors, col_names)`, call [`compute`](@ref) and collect the
+results in a `DataFrame`. All selectors must yield exactly one group.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
@@ -461,10 +487,23 @@ collect the results in a `DataFrame`.
    selectors on which to compute the metrics, or nothing for system/results metrics;
    broadcast if scalar
  - `col_names::Union{Nothing, Vector{<:Union{Nothing, AbstractString}}} = nothing`: a vector
-   of names for the columns of ouput data. Entries of `nothing` default to the result of
-   [`metric_selector_to_string`](@ref); `names = nothing` is equivalent to an entire vector of
-   `nothing`
-   - `kwargs...`: pass through to each [`compute`](@ref) call
+   of names for the columns of output data. Entries of `nothing` default to the result of
+   [`metric_selector_to_string`](@ref); `names = nothing` is equivalent to an entire vector
+   of `nothing`
+ - `kwargs...`: pass through to each [`compute`](@ref) call
+
+# Examples
+
+Given a `results` with the proper data:
+
+```julia
+using PowerAnalytics.Metrics
+compute_all(results,
+    [calc_sum_objective_value, calc_sum_solve_time],
+    [nothing, nothing],
+    ["objective_value", "solve_time"]
+)  # returns an 1x2 DataFrame with columns `objective_value` and `solve_time`
+```
 """
 compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
     selectors::Union{Nothing, Component, ComponentSelector, Vector} = nothing,
@@ -475,9 +514,8 @@ compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
 const ComputationTuple =
     Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
 """
-For each (metric, selector, col_name) tuple in `computations`, call [`compute`](@ref) and
-collect the results in a `DataFrame` with a single `DateTime` column. All selectors must
-yield exactly one group.
+For convenience, a variant signature of [`compute_all`] where the metrics, selectors, and
+column names are specified as a list of tuples rather than three separate lists.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
@@ -487,6 +525,25 @@ yield exactly one group.
    on which to compute the metric or `nothing` if not relevant, and `col_name` is the name
    for the output column of data or nothing to use the default
    - `kwargs...`: pass through to each [`compute`](@ref) call
+
+# Examples
+
+Given a `results` with the proper data:
+
+```julia
+my_computations = [
+    (calc_active_power, make_selector(ThermalStandard; groupby = :all), "thermal_power"),
+    (calc_curtailment, make_selector(RenewableDispatch; groupby = :all), "renewable_curtailment")
+]
+compute_all(results, my_computations...)
+
+# The above is equivalent to
+compute_all(results,
+    [calc_active_power, calc_curtailment],
+    [make_selector(ThermalStandard; groupby = :all), make_selector(RenewableDispatch; groupby = :all)],
+    ["thermal_power", "renewable_curtailment"]
+)
+```
 """
 compute_all(results::IS.Results, computations::ComputationTuple...; kwargs...) =
     compute_all(results, collect.(zip(computations...))...; kwargs...)
