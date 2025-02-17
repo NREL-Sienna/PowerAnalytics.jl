@@ -77,7 +77,13 @@ end
 # Based on old PowerAnalytics' get_generator_mapping
 """
 Parse a `generator_mapping.yaml` file into a dictionary of `ComponentSelector`s and a
-dictionary of metadata if present
+dictionary of metadata if present.
+
+# Arguments
+
+  - `filename`: the path to the `generator_mapping.yaml` file
+  - `root_type::Type{<:Component} = PSY.StaticInjection`: the `Component` type assumed in
+    cases where there is no more precise information
 """
 function parse_generator_mapping_file(
     filename;
@@ -90,7 +96,7 @@ function parse_generator_mapping_file(
         (top_level == FUEL_TYPES_META_KEY) && continue
         subselectors =
             make_fuel_component_selector.(
-                in_data[top_level]; root_type = PSY.StaticInjection)
+                in_data[top_level]; root_type = root_type)
         # A subselector will be nothing if it doesn't fit under root_type
         subselectors = filter(!isnothing, subselectors)
         # Omit the category entirely if root_type causes elimination of all subselectors
@@ -102,15 +108,31 @@ end
 
 """
 Use [`parse_generator_mapping_file`](@ref) to parse a `generator_mapping.yaml` file into a
-dictionary of all `ComponentSelector`s
+dictionary of all `ComponentSelector`s.
+
+# Arguments
+
+  - `filename`: the path to the `generator_mapping.yaml` file
+  - `root_type::Type{<:Component} = PSY.StaticInjection`: the `Component` type assumed in
+    cases where there is no more precise information
+
+See also: [`parse_generator_categories`](@ref) if only generators are desired
 """
 parse_injector_categories(filename; root_type::Type{<:Component} = PSY.StaticInjection) =
     first(parse_generator_mapping_file(filename; root_type = root_type))
 
 """
 Use [`parse_generator_mapping_file`](@ref) to parse a `generator_mapping.yaml` file into a
-dictionary of `ComponentSelector`, excluding categories in the 'non_generators' list in
-metadata
+dictionary of `ComponentSelector`s, excluding categories in the 'non_generators' list in
+metadata.
+
+# Arguments
+
+  - `filename`: the path to the `generator_mapping.yaml` file
+  - `root_type::Type{<:Component} = PSY.StaticInjection`: the `Component` type assumed in
+    cases where there is no more precise information
+
+See also: [`parse_injector_categories`](@ref) if all injectors are desired
 """
 function parse_generator_categories(filename;
     root_type::Type{<:Component} = PSY.StaticInjection)

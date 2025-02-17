@@ -47,10 +47,10 @@ end
 
 # READING KEYS FROM RESULTS
 # TODO move `DATETIME_COL` to PowerSimulations to replace its hardcoding of :DateTime
-"Name of the column that represents the time axis in computed DataFrames"
+"Name of the column that represents the time axis in computed DataFrames. Currently equal to `$DATETIME_COL`."
 const DATETIME_COL = "DateTime"
 
-"Name of a column that represents whole-of-`System` data"
+"Name of a column that represents whole-of-`System` data. Currently equal to `$SYSTEM_COL`."
 const SYSTEM_COL = "System"
 
 "The various key entry types that can work with a System"

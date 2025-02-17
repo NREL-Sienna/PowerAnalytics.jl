@@ -41,7 +41,7 @@ weighted_mean(empty) =
         )
     end
 
-"A version of `sum` that ignores a second argument, for use where aggregation metadata is at play"
+"A version of `sum` that ignores a second argument, for use where aggregation metadata is at play."
 unweighted_sum(x) = sum(x)
 unweighted_sum(x, y) = sum(x)
 

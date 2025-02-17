@@ -5,7 +5,7 @@ time aggregation.
 """
 const META_COL_KEY = "meta_col"
 
-"Name of a column that represents whole-of-`Results` data"
+"Name of a column that represents whole-of-`Results` data. Currently equal to `$RESULTS_COL`."
 const RESULTS_COL = "Results"
 
 """
@@ -14,10 +14,10 @@ aggregation functions. Values of `nothing` are equivalent to absence of the entr
 """
 const AGG_META_KEY = "agg_meta"
 
-"Check whether a column is metadata"
+"Check whether a column is metadata."
 is_col_meta(df, colname) = get(colmetadata(df, colname), META_COL_KEY, false)
 
-"Mark a column as metadata"
+"Mark a column as metadata."
 set_col_meta!(df, colname, val = true) =
     colmetadata!(df, colname, META_COL_KEY, val; style = :note)
 
@@ -51,16 +51,16 @@ function set_agg_meta!(df, val)
 end
 
 # TODO test that mutating the selection mutates the original
-"Select the `DateTime` column of the `DataFrame` as a one-column `DataFrame` without copying."
+"Select the `$DATETIME_COL` column of the `DataFrame` as a one-column `DataFrame` without copying."
 get_time_df(df::DataFrames.AbstractDataFrame) =
     DataFrames.select(df, DATETIME_COL; copycols = false)
 
-"Select the `DateTime` column of the `DataFrame` as a `Vector` without copying."
+"Select the `$DATETIME_COL` column of the `DataFrame` as a `Vector` without copying."
 get_time_vec(df::DataFrames.AbstractDataFrame) = df[!, DATETIME_COL]
 
 """
-Select the names of the data columns of the `DataFrame`, i.e., those that are not `DateTime`
-and not metadata.
+Select the names of the data columns of the `DataFrame`, i.e., those that are not
+`$DATETIME_COL` and not metadata.
 """
 get_data_cols(df::DataFrames.AbstractDataFrame) =
     filter(
@@ -117,7 +117,7 @@ end
 
 """
 If the time axes match across all the `DataFrames`, horizontally concatenate them and remove
-the duplicate time axes. If not, throw an error
+the duplicate time axes. If not, throw an error.
 """
 function hcat_timed_dfs(vals::DataFrame...)  # TODO incorporate allow_missing
     time_col = _extract_common_time(vals...; ex_fn = get_time_df)
@@ -164,22 +164,50 @@ function _construct_meta_aggregation(df, col_name, meta_colname)
 end
 
 """
-Given a DataFrame like that produced by [`compute_all`](@ref), group by a function of the
-time axis, apply a reduction, and report the resulting aggregation indexed by the first
-timestamp in each group.
+Given a `DataFrame` like that produced by a [`TimedMetric`](@ref) or the timed version of
+[`compute_all`](@ref), group by a function of the time axis, apply a reduction, and report
+the resulting aggregation indexed by the first timestamp in each group.
 
 # Arguments
  - `df::DataFrames.AbstractDataFrame`: the DataFrame to operate upon
- - `groupby_fn = nothing`: a callable that can be passed a DateTime; two rows will be in the
-   same group iff their timestamps produce the same result under `groupby_fn`. Note that
-   `groupby_fn = month` puts January 2023 and January 2024 into the same group whereas
-   `groupby_fn=(x -> (year(x), month(x)))` does not.
+ - `groupby_fn = nothing`: a function that can be passed a `DateTime`; two rows will be in
+   the same group if their timestamps produce the same result under `groupby_fn`. Note that
+   `groupby_fn = month` puts January 2024 and January 2025 into the same group whereas
+   `groupby_fn = (x -> (year(x), month(x)))` does not. Passing `nothing` groups all rows in
+   the `DataFrame` together.
  - `groupby_col::Union{Nothing, AbstractString, Symbol} = nothing`: specify a column name to
    report the result of `groupby_fn` in the output DataFrame, or `nothing` to not
  - `agg_fn = nothing`: by default, the aggregation function (`sum`/`mean`/etc.) is specified
    by the Metric, which is read from the metadata of each column. If this metadata isn't
    found, one can specify a default aggregation function like `sum` here; if nothing, an
    error will be thrown.
+
+# Examples
+
+```julia
+using Dates
+using PowerAnalytics.Metrics
+# Setup: create a `DataFrame` to work with
+my_computations = [
+    (calc_active_power, make_selector(ThermalStandard; groupby = :all), "thermal_power"),
+    (calc_curtailment, make_selector(RenewableDispatch; groupby = :all), "renewable_curtailment")
+]
+my_8760 = compute_all(results, my_computations...)
+# Now (given a certain simulation setup) `my_8760` is an 8760x3 DataFrame
+# with columns `$DATETIME_COL`, `thermal_power`, and `renewable_curtailment`
+
+# Aggregate across the entire time period; result is 1x3:
+aggregate_time(my_8760)
+
+# Aggregate all January results together, all February results together, etc.; result is 12x3:
+aggregate_time(my_8760; groupby_fn = Dates.month)
+
+# Same as above but create a column 'month_n' with 1 for January, 2 for February, etc.; result is 12x4:
+aggregate_time(my_8760; groupby_fn = Dates.month, groupby_col = "month_n")
+
+# Custom `groupby_fn`: put all weekday timestamps together and all weekend timestamps together; result is 2x4:
+aggregate_time(my_8760; groupby_fn = x -> (Dates.dayofweek(x) in [6, 7]) ? "weekend" : "weekday", groupby_col = "day_type")
+```
 """
 function aggregate_time(
     df::DataFrames.AbstractDataFrame;
