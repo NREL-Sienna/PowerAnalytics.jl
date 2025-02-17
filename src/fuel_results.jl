@@ -70,15 +70,20 @@ end
 This function makes a dictionary of fuel type and the generators associated.
 
 # Arguments
-- `sys::PSY.System`: the system that is used to create the results
-- `results::IS.Results`: results
 
-# Key Words
-- `categories::Dict{String, NamedTuple}`: if stacking by a different category is desired
+  - `sys::PSY.System`: the system that is used to create the results
+  - `results::IS.Results`: results
 
-# Example
+# Keyword Arguments
+
+  - `categories::Dict{String, NamedTuple}`: if stacking by a different category is desired
+
+# Examples
+
+```julia
 results = solve_op_model!(OpModel)
 generators = make_fuel_dictionary(sys)
+```
 
 """
 function make_fuel_dictionary(

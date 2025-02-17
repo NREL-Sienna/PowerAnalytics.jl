@@ -2,13 +2,13 @@
 """
 A PowerAnalytics `Metric` specifies how to compute a useful quantity, like active power or
 curtailment, from a set of results. Many but not all metrics require a `ComponentSelector`
-to specify which components of the system the quantity should be computed on, and many but
-not all `Metric`s return time series results. In addition to how to compute the output ---
-which may be as simple as looking up a variable or parameter in the results but may involve
-actual computation --- `Metric`s encapsulate default component-wise and time-wise
-aggregation behaviors. PowerAnalytics provides a library of pre-built metrics,
-[`PowerAnalytics.Metrics`](@ref); users may also build their own. Metrics can be "called"
-like functions.
+to specify which available components of the system the quantity should be computed on, and
+many but not all `Metric`s return time series results. In addition to how to compute the
+output -- which may be as simple as looking up a variable or parameter in the results but
+may involve actual computation -- `Metric`s encapsulate default component-wise and time-wise
+aggregation behaviors. Metrics can be "called" like functions. PowerAnalytics provides a
+library of pre-built metrics, [`PowerAnalytics.Metrics`](@ref); users may also build their
+own.
 
 # Examples
 
@@ -451,13 +451,26 @@ create a new metric that computes the sub-metrics and applies the function to pr
 own result.
 
 # Arguments
- - `name::String`: the name of the new `Metric`
- - `reduce_fn`: a callable that takes one value from each of the input `Metric`s and returns
+ - `name::String`: the name of the new [`Metric`](@ref)
+ - `reduce_fn`: a function that takes one value from each of the input `Metric`s and returns
    a single value that will be the result of this `Metric`. "Value" means a vector (not a
-   `DataFrame`) in the case of `TimedMetrics` and a scalar for `TimelessMetrics`.
- - `metrics`: the input `Metrics`. It is currently not possible to combine `TimedMetrics`
-   with `TimelessMetrics`, though it is possible to combine `ComponentSelectorTimedMetrics`
-   with `SystemTimedMetrics`.
+   `DataFrame`) in the case of [`TimedMetric`](@ref)s and a scalar for
+   [`TimelessMetric`](@ref)s.
+ - `metrics`: the input `Metric`s. It is currently not possible to combine `TimedMetric`s
+   with `TimelessMetric`s, though it is possible to combine `ComponentSelectorTimedMetric`s
+   with `SystemTimedMetric`s.
+
+# Examples
+
+This is the implementation of the built-in metric [`calc_load_from_storage`](@ref), which
+computes the preexisting built-in metrics [`calc_active_power_in`](@ref) and
+[`calc_active_power_out`](@ref) and combines them by subtraction:
+```julia
+const calc_load_from_storage = compose_metrics(
+    "LoadFromStorage",
+    (-),
+    calc_active_power_in, calc_active_power_out)
+```
 """
 function compose_metrics end  # For the unified docstring
 

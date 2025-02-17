@@ -3,8 +3,7 @@
 ## `ComponentSelector`
 PowerAnalytics depends heavily on the `ComponentSelector` feature of PowerSystems.jl. `ComponentSelector` documentation can be found [here](https://nrel-sienna.github.io/PowerSystems.jl/stable/api/public/#InfrastructureSystems.ComponentSelector).
 
-## PowerAnalytics Core
-### Input Utilities
+## Input Utilities
 ```@autodocs
 Modules = [PowerAnalytics]
 Pages   = ["input_utils.jl"]
@@ -12,7 +11,7 @@ Order = [:module, :type, :function, :macro]
 Private = false
 ```
 
-### Metric Interface
+## Metric Interface
 ```@docs
 Metric
 TimedMetric
@@ -27,7 +26,7 @@ Private = false
 Filter = t -> !(t in [Metric, TimedMetric, TimelessMetric, ComponentSelectorTimedMetric, unweighted_sum, weighted_mean])
 ```
 
-### Post-Metric Utilities
+## Post-Metric Utilities
 These are functions that can be called on the specially formatted `DataFrame`s that [`Metric`](@ref)s produce.
 ```@autodocs
 Modules = [PowerAnalytics]
@@ -36,7 +35,7 @@ Order = [:module, :type, :function, :macro]
 Private = false
 ```
 
-### Miscellaneous
+## Miscellaneous
 ```@docs
 unweighted_sum
 weighted_mean
