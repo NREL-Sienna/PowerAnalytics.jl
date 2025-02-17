@@ -55,6 +55,14 @@ const PSY = PowerSystems
 const IS = InfrastructureSystems
 const PSI = PowerSimulations
 
+# DOCUMENTATION CONFIG
+using DocStringExtensions
+
+@template (FUNCTIONS, METHODS) = """
+                                 $(TYPEDSIGNATURES)
+                                 $(DOCSTRING)
+                                 """
+
 # INCLUDES
 # Old PowerAnalytics
 include("definitions.jl")
