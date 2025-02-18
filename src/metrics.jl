@@ -476,7 +476,7 @@ compute_all(results::IS.Results,
 ) = hcat_timed_dfs(_common_compute_all(results, metrics, selectors, col_names; kwargs)...)
 
 """
-Methods of [`compute_all`] for [`TimelessMetric`]s. For each `(metric, selector, col_name)`
+Methods of [`compute_all`](@ref) for [`TimelessMetric`](@ref)s. For each `(metric, selector, col_name)`
 tuple in `zip(metrics, selectors, col_names)`, call [`compute`](@ref) and collect the
 results in a `DataFrame`. All selectors must yield exactly one group.
 
