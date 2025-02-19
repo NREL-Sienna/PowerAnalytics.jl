@@ -178,9 +178,9 @@ the resulting aggregation indexed by the first timestamp in each group.
  - `groupby_col::Union{Nothing, AbstractString, Symbol} = nothing`: specify a column name to
    report the result of `groupby_fn` in the output DataFrame, or `nothing` to not
  - `agg_fn = nothing`: by default, the aggregation function (`sum`/`mean`/etc.) is specified
-   by the Metric, which is read from the metadata of each column. If this metadata isn't
-   found, one can specify a default aggregation function like `sum` here; if nothing, an
-   error will be thrown.
+   by the [`Metric`](@ref), which is read from the metadata of each column. If this metadata
+   isn't found, one can specify a default aggregation function like `sum` here; if nothing,
+   an error will be thrown.
 
 # Examples
 

@@ -2,8 +2,8 @@
 """
 Accept a directory that contains several results subdirectories (that each contain
 `results`, `problems`, etc. sub-subdirectories) and construct a sorted dictionary from
-`String` to `SimulationProblemResults` where the keys are the subdirectory names and the
-values are loaded results datasets.
+`String` to `PowerSimulations.SimulationProblemResults` where the keys are the subdirectory
+names and the values are loaded results datasets.
 
 # Arguments
  - `results_dir::AbstractString`: the directory where results subdirectories can be found

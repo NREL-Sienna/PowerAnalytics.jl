@@ -1,21 +1,21 @@
 # TYPE DEFINITIONS
 """
 A PowerAnalytics `Metric` specifies how to compute a useful quantity, like active power or
-curtailment, from a set of results. Many but not all metrics require a `ComponentSelector`
+curtailment, from a set of results. Many but not all `Metric`s require a `ComponentSelector`
 to specify which available components of the system the quantity should be computed on, and
 many but not all `Metric`s return time series results. In addition to how to compute the
 output — which may be as simple as looking up a variable or parameter in the results but may
 involve actual computation — `Metric`s encapsulate default component-wise and time-wise
 aggregation behaviors. Metrics can be "called" like functions.
 
-PowerAnalytics provides a library of pre-built metrics, [`PowerAnalytics.Metrics`](@ref);
+PowerAnalytics provides a library of pre-built `Metric`s, [`PowerAnalytics.Metrics`](@ref);
 users may also build their own. In most cases of custom metric creation, it should suffice
 to instantiate one of the concrete `Metric` subtypes below; in special cases, the user can
 create their own subtype that implements [`compute`](@ref).
 
 # Examples
 
-Given a `SimulationProblemResults` `results`:
+Given a `PowerSimulations.SimulationProblemResults` `results`:
 ```julia
 using PowerAnalytics.Metrics
 
@@ -157,7 +157,8 @@ its fields specified in the keyword arguments. See the `Metric` constructors (e.
 [`ComponentTimedMetric`](@ref)) for available fields to alter.
 
 # Examples
-Make a variant of `calc_active_power` that averages across components rather than summing:
+Make a variant of [`calc_active_power`](@ref) that averages across components rather than
+summing:
 ```julia
 using PowerAnalytics.Metrics
 const calc_active_power_mean = rebuild_metric(calc_active_power; component_agg_fn = mean)
@@ -514,14 +515,14 @@ compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
 const ComputationTuple =
     Tuple{<:T, Any, Any} where {T <: Union{TimedMetric, TimelessMetric}}
 """
-For convenience, a variant signature of [`compute_all`] where the metrics, selectors, and
-column names are specified as a list of tuples rather than three separate lists.
+For convenience, a variant signature of [`compute_all`](@ref) where the metrics, selectors,
+and column names are specified as a list of tuples rather than three separate lists.
 
 # Arguments
  - `results::IS.Results`: the results from which to fetch data
  - `computations::(Tuple{<:T, Any, Any} where T <: Union{TimedMetric, TimelessMetric})...`:
    a list of the computations to perform, where each element is a `(metric, selector,
-   col_name)`` where `metric` is the metric to compute, `selector` is the ComponentSelector
+   col_name)` where `metric` is the metric to compute, `selector` is the ComponentSelector
    on which to compute the metric or `nothing` if not relevant, and `col_name` is the name
    for the output column of data or nothing to use the default
    - `kwargs...`: pass through to each [`compute`](@ref) call

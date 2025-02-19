@@ -5,9 +5,10 @@ import DataStructures: OrderedDict
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
-    "Tutorials" => Any["stub" => "tutorials/stub.md"],
-    "How to..." => Any["stub" => "how_to_guides/stub.md"],
-    "Explanation" => Any["stub" => "explanation/stub.md"],
+    # TODO flesh out the tutorials, how-tos, explanation
+    "Tutorials" => Any[#="stub" => "tutorials/stub.md"=#],
+    "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
+    "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
     "Reference" => Any[ 
         "Public API" => "reference/public.md",
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
