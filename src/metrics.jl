@@ -10,8 +10,8 @@ aggregation behaviors. Metrics can be "called" like functions.
 
 PowerAnalytics provides a library of pre-built `Metric`s, [`PowerAnalytics.Metrics`](@ref);
 users may also build their own. In most cases of custom metric creation, it should suffice
-to instantiate one of the concrete `Metric` subtypes below; in special cases, the user can
-create their own subtype that implements [`compute`](@ref).
+to instantiate one of the concrete `Metric` subtypes PowerAnalytics provides; in special
+cases, the user can create their own subtype that implements [`compute`](@ref).
 
 # Examples
 
@@ -231,7 +231,7 @@ compute(my_metric2; kwargs)
 ```
 
 Exact keyword arguments and formatting of the resulting `DataFrame` are documented for each
-of the methods, below.
+of the existing methods, below. Custom `Metric` subtypes must implement this function.
 """
 function compute end  # For the unified docstring
 
@@ -439,7 +439,7 @@ See the methods.
 function compute_all end  # For the unified docstring
 
 """
-Methods of [`compute_all`] for [`TimedMetric`]s. For each `(metric, selector, col_name)`
+Methods of [`compute_all`](@ref) for [`TimedMetric`](@ref)s. For each `(metric, selector, col_name)`
 tuple in `zip(metrics, selectors, col_names)`, call [`compute`](@ref) and collect the
 results in a `DataFrame` with a single `DateTime` column. All selectors must yield exactly
 one group.
