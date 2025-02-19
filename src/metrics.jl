@@ -489,6 +489,10 @@ compute_all(results,
     ["thermal_power", "renewable_curtailment"]
 )  # returns an 8760x3 DataFrame with columns `$DATETIME_COL`, `thermal_power`, and `renewable_curtailment`
 ```
+
+See also: [`compute_all` tuple-based interface](@ref compute_all(
+    results::InfrastructureSystems.Results, computations::Tuple{Union{TimedMetric,
+    TimelessMetric}, Any, Any}...; kwargs... ))
 """
 compute_all(results::IS.Results,
     metrics::Vector{<:TimedMetric},
@@ -526,6 +530,10 @@ compute_all(results,
     ["objective_value", "solve_time"]
 )  # returns an 1x2 DataFrame with columns `objective_value` and `solve_time`
 ```
+
+See also: [`compute_all` tuple-based interface](@ref compute_all(
+    results::InfrastructureSystems.Results, computations::Tuple{Union{TimedMetric,
+    TimelessMetric}, Any, Any}...; kwargs... ))
 """
 compute_all(results::IS.Results, metrics::Vector{<:TimelessMetric},
     selectors::Union{Nothing, Component, ComponentSelector, Vector} = nothing,
@@ -566,6 +574,8 @@ compute_all(results,
     ["thermal_power", "renewable_curtailment"]
 )
 ```
+
+See also: [`compute_all` non-tuple-based interface](@ref compute_all)
 """
 compute_all(results::IS.Results, computations::ComputationTuple...; kwargs...) =
     compute_all(results, collect.(zip(computations...))...; kwargs...)

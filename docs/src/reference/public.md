@@ -19,7 +19,7 @@ Private = false
 
 ## Basic Metric Interface
 The basic [`Metric`](@ref) interface consists of calling a `Metric` itself, for computing
-one `Metric` at a time, and the `compute_all` function for bulk computation. Combined with
+one `Metric` at a time, and the [`compute_all`](@ref) function for bulk computation. Combined with
 PowerAnalytics' [built-in metrics](@ref Built-in-Metrics), this is enough to execute many
 common computations. See [Advanced Metrics Interface](@ref) for the interface to create
 custom `Metric`s.
