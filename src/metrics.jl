@@ -111,7 +111,8 @@ end
     SystemTimedMetric(name::String, eval_fn::Function, time_agg_fn::Function, time_meta_agg_fn::Function)
     SystemTimedMetric(; name, eval_fn, time_agg_fn, time_meta_agg_fn)
 
-A [`TimedMetric`](@ref) defined on a `System`.
+A [`TimedMetric`](@ref) that calculates an output for an entire `System` embedded in a set
+of results.
 
 # Arguments
 
