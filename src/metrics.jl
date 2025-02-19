@@ -48,6 +48,9 @@ abstract type ComponentSelectorTimedMetric <: TimedMetric end
 
 # STRUCT DEFINITIONS
 """
+    ComponentTimedMetric(name::String, eval_fn::Function, component_agg_fn::Function, time_agg_fn::Function, component_meta_agg_fn::Function, time_meta_agg_fn::Function, eval_zero::Union{Nothing, Function})
+    ComponentTimedMetric(; name, eval_fn, component_agg_fn, time_agg_fn, component_meta_agg_fn, time_meta_agg_fn, eval_zero)
+
 A [`ComponentSelectorTimedMetric`](@ref) implemented by evaluating a function on each
 `Component`.
 
@@ -81,6 +84,9 @@ end
 
 # TODO test CustomTimedMetric
 """
+    CustomTimedMetric(name::String, eval_fn::Function, time_agg_fn::Function, time_meta_agg_fn::Function)
+    CustomTimedMetric(; name, eval_fn, time_agg_fn, time_meta_agg_fn)
+
 A [`ComponentSelectorTimedMetric`](@ref) implemented without drilling down to the base
 `Component`s, just calls the `eval_fn` directly on the `ComponentSelector`.
 
@@ -102,6 +108,9 @@ A [`ComponentSelectorTimedMetric`](@ref) implemented without drilling down to th
 end
 
 """
+    SystemTimedMetric(name::String, eval_fn::Function, time_agg_fn::Function, time_meta_agg_fn::Function)
+    SystemTimedMetric(; name, eval_fn, time_agg_fn, time_meta_agg_fn)
+
 A [`TimedMetric`](@ref) defined on a `System`.
 
 # Arguments
@@ -121,6 +130,9 @@ A [`TimedMetric`](@ref) defined on a `System`.
 end
 
 """
+    ResultsTimelessMetric(name::String, eval_fn::Function)
+    ResultsTimelessMetric(; name, eval_fn)
+
 A [`TimelessMetric`](@ref) with a single value per `IS.Results` instance.
 
 # Arguments
@@ -135,6 +147,8 @@ A [`TimelessMetric`](@ref) with a single value per `IS.Results` instance.
 end
 
 """
+    PowerAnalytics.NoResultError(msg::AbstractString)
+
 Signifies that the metric does not have a result for the
 `Component`/`ComponentSelector`/etc. on which it is being called.
 """
