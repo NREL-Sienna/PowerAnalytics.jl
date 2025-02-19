@@ -5,7 +5,7 @@ time aggregation.
 """
 const META_COL_KEY = "meta_col"
 
-"Name of a column that represents whole-of-`Results` data. Currently equal to `$RESULTS_COL`."
+"Name of a column that represents whole-of-`Results` data. Currently equal to `\"$RESULTS_COL\"`."
 const RESULTS_COL = "Results"
 
 """

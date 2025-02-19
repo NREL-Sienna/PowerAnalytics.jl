@@ -2,8 +2,8 @@
 """
 Accept a directory that contains several results subdirectories (that each contain
 `results`, `problems`, etc. sub-subdirectories) and construct a sorted dictionary from
-`String` to `PowerSimulations.SimulationProblemResults` where the keys are the subdirectory
-names and the values are loaded results datasets.
+`String` to [`PowerSimulations.SimulationProblemResults`](@extref) where the keys are the
+subdirectory names and the values are loaded results datasets.
 
 # Arguments
  - `results_dir::AbstractString`: the directory where results subdirectories can be found
@@ -59,10 +59,10 @@ end
 
 # READING KEYS FROM RESULTS
 # TODO move `DATETIME_COL` to PowerSimulations to replace its hardcoding of :DateTime
-"Name of the column that represents the time axis in computed DataFrames. Currently equal to `$DATETIME_COL`."
+"Name of the column that represents the time axis in computed DataFrames. Currently equal to `\"$DATETIME_COL\"`."
 const DATETIME_COL = "DateTime"
 
-"Name of a column that represents whole-of-`System` data. Currently equal to `$SYSTEM_COL`."
+"Name of a column that represents whole-of-`System` data. Currently equal to `\"$SYSTEM_COL\"`."
 const SYSTEM_COL = "System"
 
 "The various key entry types that can work with a System"

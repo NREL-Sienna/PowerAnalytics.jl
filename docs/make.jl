@@ -1,7 +1,14 @@
 using Documenter
 using PowerAnalytics
 import DataStructures: OrderedDict
+using DocumenterInterLinks
 
+links = InterLinks(
+    "Julia" => "https://docs.julialang.org/en/v1/",
+    "InfrastructureSystems" => "https://nrel-sienna.github.io/InfrastructureSystems.jl/stable/",
+    "PowerSystems" => "https://nrel-sienna.github.io/PowerSystems.jl/stable/",
+    "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/latest/",
+)
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
@@ -26,6 +33,7 @@ makedocs(
     authors = "Gabriel Konar-Steenberg and Clayton Barrows",
     pages = Any[p for p in pages],
     draft = false,
+    plugins = [links]
 )
 
 

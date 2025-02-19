@@ -82,8 +82,8 @@ dictionary of metadata if present.
 # Arguments
 
   - `filename`: the path to the `generator_mapping.yaml` file
-  - `root_type::Type{<:Component} = PSY.StaticInjection`: the `Component` type assumed in
-    cases where there is no more precise information
+  - `root_type::Type{<:Component} = PSY.StaticInjection`: the [`Component`](@extref
+    PowerSystems.Component) type assumed in cases where there is no more precise information
 """
 function parse_generator_mapping_file(
     filename;
@@ -113,8 +113,8 @@ dictionary of all `ComponentSelector`s.
 # Arguments
 
   - `filename`: the path to the `generator_mapping.yaml` file
-  - `root_type::Type{<:Component} = PSY.StaticInjection`: the `Component` type assumed in
-    cases where there is no more precise information
+  - `root_type::Type{<:Component} = PSY.StaticInjection`: the [`Component`](@extref
+    PowerSystems.Component) type assumed in cases where there is no more precise information
 
 See also: [`parse_generator_categories`](@ref) if only generators are desired
 """
@@ -129,8 +129,8 @@ metadata.
 # Arguments
 
   - `filename`: the path to the `generator_mapping.yaml` file
-  - `root_type::Type{<:Component} = PSY.StaticInjection`: the `Component` type assumed in
-    cases where there is no more precise information
+  - `root_type::Type{<:Component} = PSY.StaticInjection`: the [`Component`](@extref
+    PowerSystems.Component) type assumed in cases where there is no more precise information
 
 See also: [`parse_injector_categories`](@ref) if all injectors are desired
 """
@@ -173,10 +173,10 @@ export
     categorized_injectors,
     categorized_generators
 
-"A `ComponentSelector` representing all the electric load in a `System`"
+"A `ComponentSelector` representing all the electric load in a [`System`](@extref PowerSystems.System)"
 const all_loads::ComponentSelector = make_selector(PSY.ElectricLoad)
 
-"A `ComponentSelector` representing all the storage in a `System`"
+"A `ComponentSelector` representing all the storage in a [`System`](@extref PowerSystems.System)"
 const all_storage::ComponentSelector = make_selector(PSY.Storage)
 
 """
@@ -198,15 +198,16 @@ const generator_categories::Union{AbstractDict{String, ComponentSelector}, Nothi
 end
 
 """
-A single `ComponentSelector` representing the static injectors in a `System` grouped by the
-categories in `generator_mapping.yaml`
+A single `ComponentSelector` representing the static injectors in a [`System`](@extref
+PowerSystems.System) grouped by the categories in `generator_mapping.yaml`
 """
 const categorized_injectors::ComponentSelector =
     make_selector(values(injector_categories)...)
 
 """
-A single `ComponentSelector` representing the generators in a `System` (no storage or load)
-grouped by the categories in `generator_mapping.yaml`
+A single `ComponentSelector` representing the generators in a [`System`](@extref
+PowerSystems.System) (no storage or load) grouped by the categories in
+`generator_mapping.yaml`
 """
 const categorized_generators::Union{ComponentSelector, Nothing} =
     if isnothing(generator_categories)

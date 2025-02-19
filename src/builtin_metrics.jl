@@ -168,7 +168,7 @@ const calc_load_forecast = ComponentTimedMetric(;
     end,
 )
 
-"Fetch the forecast active load of all the `ElectricLoad` `Component`s in the system"
+"Fetch the forecast active load of all the [`ElectricLoad`](@extref PowerSystems.ElectricLoad) [`Component`](@extref PowerSystems.Component)s in the system"
 const calc_system_load_forecast = SystemTimedMetric(;
     name = "SystemLoadForecast",
     eval_fn = (res::IS.Results; kwargs...) ->
