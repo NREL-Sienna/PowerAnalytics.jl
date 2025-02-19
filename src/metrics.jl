@@ -61,12 +61,14 @@ A [`ComponentSelectorTimedMetric`](@ref) implemented by evaluating a function on
     start_time::Union{Nothing, DateTime}, len::Union{Int, Nothing})` that returns a
     `DataFrame` representing the results for that `Component`
   - `component_agg_fn`: optional, a function to aggregate results between
-    [`Component`](@extref PowerSystems.Component)s/`ComponentSelector`s, defaults to `sum`
-  - `time_agg_fn`: optional, a function to aggregate results across time, defaults to `sum`
+    [`Component`](@extref PowerSystems.Component)s/`ComponentSelector`s, defaults to
+    [`sum`](@extref Base.sum)
+  - `time_agg_fn`: optional, a function to aggregate results across time, defaults to
+    [`sum`](@extref Base.sum)
   - `component_meta_agg_fn`: optional, a function to aggregate metadata across components,
-    defaults to `sum`
+    defaults to [`sum`](@extref Base.sum)
   - `time_meta_agg_fn`: optional, a function to aggregate metadata across time, defaults to
-    `sum`
+    [`sum`](@extref Base.sum)
   - `eval_zero`: optional and rarely filled in, specifies what to do in the case where there
     are no components to contribute to a particular group; defaults to `nothing`, in which
     case the data is filled in from the identity element of `component_agg_fn`
@@ -97,9 +99,10 @@ A [`ComponentSelectorTimedMetric`](@ref) implemented without drilling down to th
   - `eval_fn`: a function with signature `(::IS.Results, ::Union{ComponentSelector,
     Component}; start_time::Union{Nothing, DateTime}, len::Union{Int, Nothing})` that
     returns a `DataFrame` representing the results for that `Component`
-  - `time_agg_fn`: optional, a function to aggregate results across time, defaults to `sum`
+  - `time_agg_fn`: optional, a function to aggregate results across time, defaults to
+    [`sum`](@extref Base.sum)
   - `time_meta_agg_fn`: optional, a function to aggregate metadata across time, defaults to
-    `sum`
+    [`sum`](@extref Base.sum)
 """
 @kwdef struct CustomTimedMetric <: ComponentSelectorTimedMetric
     name::String
@@ -120,9 +123,10 @@ PowerSystems.System) embedded in a set of results.
  - `name::String`: the name of the `Metric`
  - `eval_fn`: a function with signature `(::IS.Results; start_time::Union{Nothing,
    DateTime}, len::Union{Int, Nothing})` that returns a `DataFrame` representing the results
- - `time_agg_fn`: optional, a function to aggregate results across time, defaults to `sum`
+ - `time_agg_fn`: optional, a function to aggregate results across time, defaults to
+   [`sum`](@extref Base.sum)
  - `time_meta_agg_fn`: optional, a function to aggregate metadata across time, defaults to
-   `sum`
+   [`sum`](@extref Base.sum)
 """
 @kwdef struct SystemTimedMetric <: TimedMetric
     name::String
