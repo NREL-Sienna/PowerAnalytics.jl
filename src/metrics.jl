@@ -15,7 +15,7 @@ cases, the user can create their own subtype that implements [`compute`](@ref).
 
 # Examples
 
-Given a `PowerSimulations.SimulationProblemResults` `results`:
+Given a [`PowerSimulations.SimulationProblemResults`](@extref) `results`:
 ```julia
 using PowerAnalytics.Metrics
 

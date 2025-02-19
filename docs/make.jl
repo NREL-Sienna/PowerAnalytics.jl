@@ -7,15 +7,15 @@ links = InterLinks(
     "Julia" => "https://docs.julialang.org/en/v1/",
     "InfrastructureSystems" => "https://nrel-sienna.github.io/InfrastructureSystems.jl/stable/",
     "PowerSystems" => "https://nrel-sienna.github.io/PowerSystems.jl/stable/",
-    "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/latest/",
+    "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/",
 )
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
     # TODO flesh out the tutorials, how-tos, explanation
-    "Tutorials" => Any[#="stub" => "tutorials/stub.md"=#],
-    "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
-    "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
+    # "Tutorials" => Any[#="stub" => "tutorials/stub.md"=#],
+    # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
+    # "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
     "Reference" => Any[ 
         "Public API" => "reference/public.md",
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
