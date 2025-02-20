@@ -2,16 +2,44 @@
 """
 Accept a directory that contains several results subdirectories (that each contain
 `results`, `problems`, etc. sub-subdirectories) and construct a sorted dictionary from
-`String` to `SimulationProblemResults` where the keys are the subdirectory names and the
-values are loaded results datasets.
+`String` to [`PowerSimulations.SimulationProblemResults`](@extref) where the keys are the
+subdirectory names and the values are loaded results datasets.
 
 # Arguments
  - `results_dir::AbstractString`: the directory where results subdirectories can be found
- - `problem::String`: the name of the problem to load (e.g., "UC", "ED")
+ - `problem::String`: the name of the problem to load (e.g., `UC`, `ED`)
  - `scenarios::Union{Vector{AbstractString}, Nothing} = nothing`: a list of scenario
    subdirectories to load, or `nothing` to load all the subdirectories
- - `kwargs...`: keyword arguments to pass through to
-   `get_decision_problem_results`
+ - `populate_system::Bool = false`: whether to automatically load and attach the system;
+   errors if `true` and the system has not been saved with the results. **This keyword
+   argument is `false` by default for backwards compatibility, but most PowerAnalytics
+   functionality requires results to have an attached system, so users should typically pass
+   `populate_system = true`.**
+ - `kwargs...`: further keyword arguments to pass through to `get_decision_problem_results`
+
+# Examples
+Suppose we have the directory `data_root` with subdirectories `results1`, `results2`, and
+`results3`, where each of these subdirectories contains `problems/UC`. Then:
+
+```julia
+# Load results for only `results1` and `results2`:
+create_problem_results_dict(data_root, "UC", ["results1", "results2"]; populate_system = true)
+# Load results for all three scenarios:
+create_problem_results_dict(data_root, "UC"; populate_system = true)
+```
+
+# See also
+`create_problem_results_dict` is a convenience function that calls public interface in
+[`PowerSimulations.jl`](https://nrel-sienna.github.io/PowerSimulations.jl/stable/). To read
+one results set, or several of them that are not all in the same parent directory, invoke
+that interface directly as needed:
+
+```julia
+# Load a single results set
+PowerSimulations.get_decision_problem_results(
+    PowerSimulations.SimulationResults(path_to_individual_results),
+    problem_name; populate_system = true)
+```
 """
 function create_problem_results_dict(
     results_dir::AbstractString,
@@ -32,10 +60,10 @@ end
 
 # READING KEYS FROM RESULTS
 # TODO move `DATETIME_COL` to PowerSimulations to replace its hardcoding of :DateTime
-"Name of the column that represents the time axis in computed DataFrames"
+"Name of the column that represents the time axis in computed DataFrames. Currently equal to `\"$DATETIME_COL\"`."
 const DATETIME_COL = "DateTime"
 
-"Name of a column that represents whole-of-`System` data"
+"Name of a column that represents whole-of-`System` data. Currently equal to `\"$SYSTEM_COL\"`."
 const SYSTEM_COL = "System"
 
 "The various key entry types that can work with a System"

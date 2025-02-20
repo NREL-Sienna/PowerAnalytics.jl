@@ -17,12 +17,13 @@ pkg> add PowerAnalytics
 
 ## Usage
 
-`PowerAnalytics.jl` uses [PowerSystems.jl](https://github.com/NREL/PowerSystems.jl) and [PowerSimulations.jl](https://github.com/NREL/PowerSimulations.jl) to handle the data and execution power system simulations.
+`PowerAnalytics.jl` uses [PowerSystems.jl](https://github.com/NREL/PowerSystems.jl) and [PowerSimulations.jl](https://github.com/NREL/PowerSimulations.jl) to handle the data structures related to and execution of power system simulations.
 
 ```julia
 using PowerAnalytics
+using PowerSystems
 # where "res" is a PowerSimulations.SimulationResults object
-gen = get_generation_data(res)
+renewable_generation = calc_active_power(make_selector(RenewableGen), res)
 ```
 
 ## Development
