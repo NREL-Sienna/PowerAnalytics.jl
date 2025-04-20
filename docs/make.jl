@@ -12,8 +12,10 @@ links = InterLinks(
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
+    "Tutorials" => Any[
+        "Power Analytics Tutorial" => "tutorials/PA_workflow_tutorial.md",
+    ],
     # TODO flesh out the tutorials, how-tos, explanation
-    # "Tutorials" => Any[#="stub" => "tutorials/stub.md"=#],
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
     # "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
     "Reference" => Any[ 
