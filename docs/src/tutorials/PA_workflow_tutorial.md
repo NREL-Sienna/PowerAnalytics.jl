@@ -67,7 +67,11 @@ const PA = PowerAnalytics
 To begin our analysis, we first specify the directory where the simulation results are stored. In our case, the results of both simulation scenarios have been saved within the same directory. 
 
 ```@repl tutorial
-results_dir = "simulation_results_RTS"
+pwd()
+```
+
+```@repl tutorial
+results_dir = "_simulation_results_RTS"
 ```
 
 Once we have defined the directory containing our simulation results, the next step is to load them into a structured format for our analysis. 
@@ -84,7 +88,7 @@ results_all = create_problem_results_dict(results_dir, "UC"; populate_system=tru
 
 In this section of the tutorial, we focus on the results of a single simulation scenario. Since the `results_all` dictionary contains entries for multiple scenarios, we can extract the results for the first one using: 
 
-```@repl
+```@repl tutorial
 results_uc = first(values(results_all))
 ```
 
@@ -157,6 +161,7 @@ Finally, we sort the daily values in descending order and create a bar plot usin
 
 ```@repl tutorial
 using Plots
+gr()
 
 df_sorted = sort(df_day, :ThermalStandard, rev=true)
 
@@ -305,7 +310,8 @@ end
 We run the `post_processing` routine with our multi-scenario results we previously defined. We can see the final summary table including all scenarios below:
 
 ```@repl tutorial
-post_processing(results_all)
+df = post_processing(results_all);
+show(df; allcols=true)
 ```
 
 Looking at the final dataframe, we can now easily compare the aggregated results of the selected metrics between the two simulation scenarios. 

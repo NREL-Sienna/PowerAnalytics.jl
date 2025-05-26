@@ -2,6 +2,9 @@ using Documenter
 using PowerAnalytics
 import DataStructures: OrderedDict
 using DocumenterInterLinks
+using Dates
+
+ENV["GKSwstype"] = "100"  # Prevent GR from opening gksqt GUI
 
 links = InterLinks(
     "Julia" => "https://docs.julialang.org/en/v1/",
@@ -24,6 +27,9 @@ pages = OrderedDict(
         "Internals" => "reference/internal.md"]]
      
 )
+
+# Run simulation scenarios for RTS
+include(joinpath(@__DIR__, "src", "tutorials", "_run_scenarios_RTS_Tutorial.jl"))
 
 
 makedocs(
