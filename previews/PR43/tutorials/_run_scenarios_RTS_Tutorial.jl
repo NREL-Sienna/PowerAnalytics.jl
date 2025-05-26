@@ -16,7 +16,7 @@ function get_optimizer_highs()
         HiGHS.Optimizer,
         "time_limit" => 1500.0, 
         "log_to_console" => true,
-        "mip_rel_gap" => 1e-1,
+        "mip_rel_gap" => 1e-2,
     )
     return solver
 end
