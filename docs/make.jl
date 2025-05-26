@@ -11,12 +11,14 @@ links = InterLinks(
     "InfrastructureSystems" => "https://nrel-sienna.github.io/InfrastructureSystems.jl/stable/",
     "PowerSystems" => "https://nrel-sienna.github.io/PowerSystems.jl/stable/",
     "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/",
+    "StorageSystemsSimulations" => "https://nrel-sienna.github.io/StorageSystemsSimulations.jl/stable/",
+    "HydroPowerSimulations" => "https://nrel-sienna.github.io/HydroPowerSimulations.jl/dev/",
 )
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
     "Tutorials" => Any[
-        "Power Analytics Tutorial" => "tutorials/PA_workflow_tutorial.md",
+        "Simulation Scenarios Analysis" => "tutorials/PA_workflow_tutorial.md",
     ],
     # TODO flesh out the tutorials, how-tos, explanation
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
@@ -28,7 +30,7 @@ pages = OrderedDict(
      
 )
 
-# Run simulation scenarios for RTS
+# Run simulation scenarios for RTS-GMLC Tutorial
 include(joinpath(@__DIR__, "src", "tutorials", "_run_scenarios_RTS_Tutorial.jl"))
 
 
