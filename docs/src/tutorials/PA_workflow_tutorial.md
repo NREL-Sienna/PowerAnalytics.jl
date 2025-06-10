@@ -163,15 +163,20 @@ gr()
 
 df_sorted = sort(df_day, :ThermalStandard, rev=true)
 
-bar(
+p = bar(
     string.(df_sorted.agg_day), 
     df_sorted.ThermalStandard, 
     xlabel="Day of the Week Index", 
     ylabel="Daily System Thermal Generation (MWh)",
     legend=false
-)
+);
 ```
 
+```@repl tutorial;
+savefig(p, "bar_plot_day_of_week.png"); #hide
+```
+
+![Bar Plot](bar_plot_day_of_week.png)
 
 ### Identify the top 10 hours of the month with the highest storage charging values for each Area
 Spatially aggregating results by [`Area`](@extref) can reveal important spatial infromation and is frequently used for example in cases of transmission flow analysis. [`Area`](@extref) components often represent municipalities, villages or regional balancing areas of the real power system.
