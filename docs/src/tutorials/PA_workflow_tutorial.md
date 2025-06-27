@@ -202,11 +202,22 @@ We can reuse the `storage_area_selector` defined in the previous subsection to p
 
 ```@repl tutorial
 df = compute_all(results_uc,
-    [
-        (calc_active_power_in, rebuild_selector(storage_area_selector, groupby = :all), "Storage Charging"),
-        (calc_active_power_out, rebuild_selector(storage_area_selector, groupby = :all), "Storage Discharging"),
-        (calc_stored_energy, rebuild_selector(storage_area_selector, groupby = :all), "Stored Energy"),
-    ]...);
+    (
+        calc_active_power_in,
+        rebuild_selector(storage_area_selector; groupby = :all),
+        "Storage Charging",
+    ),
+    (
+        calc_active_power_out,
+        rebuild_selector(storage_area_selector; groupby = :all),
+        "Storage Discharging",
+    ),
+    (
+        calc_stored_energy,
+        rebuild_selector(storage_area_selector; groupby = :all),
+        "Stored Energy",
+    ),
+);
 show(df; allcols = true)
 ```
 
