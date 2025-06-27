@@ -18,6 +18,7 @@ Private = false
 ```
 
 ## Basic Metric Interface
+
 The basic [`Metric`](@ref) interface consists of calling a `Metric` itself, for computing
 one `Metric` at a time, and the [`compute_all`](@ref) function for bulk computation. Combined with
 PowerAnalytics' [built-in metrics](@ref Built-in-Metrics), this is enough to execute many
@@ -39,6 +40,7 @@ Filter = t -> t in [compute_all]
 ```
 
 ## Built-in Metrics
+
 ### `Metrics` Submodule
 
 Here is defined a "library" of built-in metrics to execute many common power systems
@@ -139,6 +141,7 @@ Private = false
 ## Old PowerAnalytics
 
 This interface predates the `1.0` version and will [eventually](https://github.com/NREL-Sienna/PowerAnalytics.jl/issues/28) be deprecated.
+
 ```@autodocs
 Modules = [PowerAnalytics]
 Pages   = ["get_data.jl", "fuel_results.jl"]

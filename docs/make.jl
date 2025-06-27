@@ -20,7 +20,7 @@ pages = OrderedDict(
     "Tutorials" => Any[
         "Simulation Scenarios Analysis" => "tutorials/PA_workflow_tutorial.md",
     ],
-    # TODO flesh out the tutorials, how-tos, explanation
+    # TODO flesh out the how-tos, explanation
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
     # "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
     "Reference" => Any[ 
