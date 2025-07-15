@@ -107,6 +107,7 @@ jobs:
             pkgs = split(ENV["SIENNA_PKGS"])
             upload_dir = ENV["UPLOAD_DIR"]
             # Dev all main packages
+            Pkg.activate(".")
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
             Pkg.update()
           '
