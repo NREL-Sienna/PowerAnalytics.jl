@@ -20,10 +20,49 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Clone Sienna packages
+        working-directory: ../../
+        run: |
+          # Function to choose appropriate branch
+          select_branch() {
+            local repo="$1"
+            local source_branch="$2"
+            local target_branch="$3"
+            local fallback_branch="main"
+
+            if git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$source_branch" | grep -q "$source_branch"; then
+              echo "$source_branch"
+            elif git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$target_branch" | grep -q "$target_branch"; then
+              echo "$target_branch"
+            else
+              echo "$fallback_branch"
+            fi
+          }
+
+          # Set source/target branches from GitHub context
+          source_branch="${{ github.head_ref }}"
+          target_branch="${{ github.base_ref }}"
+
+          # List of repositories to clone
+          repos=("InfrastructureSystems" "PowerSimulations" "PowerSystems")
+
+          # Clone each repo using selected branch
+          for repo in "${repos[@]}"; do
+            branch=$(select_branch "$repo" "$source_branch" "$target_branch")
+            echo " - Cloning $repo on branch $branch..."
+            git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
+          done
+
       - uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
+
+      - name: Dev Sienna packages
+        run: |
+          julia -e 'using Pkg; for p in ["InfrastructureSystems", "PowerSimulations", "PowerSystems"]; Pkg.develop(PackageSpec(path="../../$p")); end; Pkg.update()'
+          
       - uses: julia-actions/julia-buildpkg@latest
         env:
           PYTHON: ""
