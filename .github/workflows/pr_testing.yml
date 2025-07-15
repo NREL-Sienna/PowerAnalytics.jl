@@ -49,6 +49,8 @@ jobs:
           done
 
       - name: Dev Sienna packages
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
           julia -e '
           using Pkg
@@ -62,6 +64,7 @@ jobs:
           Pkg.deactivate()
           end
           '
+
       - name: Upload Sienna packages
         uses: actions/upload-artifact@v4
         with:
