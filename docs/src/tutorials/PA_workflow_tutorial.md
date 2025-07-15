@@ -96,18 +96,18 @@ Notice that in the output, the names of the realized auxiliary variables, proble
 
 After confirming that the key `ActivePowerVariable__ThermalStandard` is present among the realized variables, we can now extract the generation time series for all the thermal ([`ThermalStandard`](@extref)) generators in our system. To achieve this, we follow two steps:
 
-  - Create a [`ComponentSelector`](@extref InfrastructureSystems.ComponentSelector) that identifies the component type we are interested in (in this case [`ThermalStandard`](@extref)), similarly to how one would call [`get_components`](@extref PowerSystems.get_components).
+ 1. Create a [`ComponentSelector`](@extref InfrastructureSystems.ComponentSelector) that identifies the component type we are interested in (in this case [`ThermalStandard`](@extref)), similarly to how one would call [`get_components`](@extref PowerSystems.get_components).
+    
+    ```@repl tutorial
+    thermal_standard_selector = make_selector(ThermalStandard)
+    ```
 
-```@repl tutorial
-thermal_standard_selector = make_selector(ThermalStandard)
-```
-
-  - Calculate the active power for the corresponding generators of this type using one of `PowerAnalytics.jl` defined metrics, namely [`calc_active_power`](@ref PowerAnalytics.Metrics.calc_active_power), which retrieves the generation time series from the results.
-
-```@repl tutorial
-df = calc_active_power(thermal_standard_selector, results_uc);
-show(df; allcols = true)
-```
+ 2. Calculate the active power for the corresponding generators of this type using one of `PowerAnalytics.jl` defined metrics, namely [`calc_active_power`](@ref PowerAnalytics.Metrics.calc_active_power), which retrieves the generation time series from the results.
+    
+    ```@repl tutorial
+    df = calc_active_power(thermal_standard_selector, results_uc);
+    show(df; allcols = true)
+    ```
 
 Notice that in the resulting dataframe, each column represents the time series of an individual component. This behavior follows from the default settings of [`make_selector`](@ref), since we have not specified any additional arguments to modify the default grouping.
 
@@ -221,7 +221,7 @@ df = compute_all(results_uc,
 show(df; allcols = true)
 ```
 
-## Multiple Scenarios Results
+## Multiple Scenarios' Results
 
 In this section, instead of focusing on a single simulation scenario, we compare results across multiple scenarios. This allows us to explore how changing system component parameters can influence the simulation results.
 
