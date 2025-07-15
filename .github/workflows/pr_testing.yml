@@ -59,7 +59,7 @@ jobs:
           for pkg in pkgs
           Pkg.activate("../../dependencies/$pkg")
           others = filter(p -> p != pkg, pkgs)
-          Pkg.develop([PackageSpec(path=joinpath("..", other)) for other in others])
+          Pkg.develop([PackageSpec(path="../../dependencies/$other" for other in others])
           Pkg.update()
           end
           # Activate the main project at the end
@@ -73,6 +73,7 @@ jobs:
           retention-days: 1
 
   test:
+    needs: prepare
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -112,6 +113,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
     
   test_powersystems:
+    needs: prepare
     name: Test PowerSystems.jl
     runs-on: ubuntu-latest
     steps:
