@@ -45,11 +45,10 @@ jobs:
           target_branch="${{ github.base_ref }}"
 
           # List of repositories to clone
-          repos=("InfrastructureSystems") # "PowerSimulations" "PowerSystems")
+          repos=("InfrastructureSystems.jl" "PowerSystems.jl" "PowerSimulations.jl")
 
           # Clone each repo using selected branch
           for repo in "${repos[@]}"; do
-            echo " > repo $repo branches: $source_branch, $target_branch"
             branch=$(select_branch "$repo" "$source_branch" "$target_branch")
             echo " - Cloning $repo on branch $branch..."
             git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
