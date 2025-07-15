@@ -46,7 +46,7 @@ jobs:
           target_branch="${{ github.base_ref }}"
 
           # List of repositories to clone
-          repos=("InfrastructureSystems.jl" "PowerSystems.jl" "PowerSystemCaseBuilder.jl" "PowerNetworkMatrices.jl" "HydroPowerSimulations.jl" "StorageSystemsSimulations" "PowerFlows.jl" "PowerSimulations.jl")
+          repos=("InfrastructureSystems.jl" "PowerSystems.jl" "PowerSystemCaseBuilder.jl" "PowerNetworkMatrices.jl" "HydroPowerSimulations.jl" "StorageSystemsSimulations.jl" "PowerFlows.jl" "PowerSimulations.jl")
 
           # Clone each repo using selected branch
           for repo in "${repos[@]}"; do
@@ -62,7 +62,7 @@ jobs:
 
       - name: Dev Sienna packages
         run: |
-          julia -e 'using Pkg; for p in ["InfrastructureSystems.jl", "PowerSystems.jl", "PowerSystemCaseBuilder.jl", "PowerNetworkMatrices.jl", "HydroPowerSimulations.jl", "StorageSystemsSimulations", "PowerFlows.jl", "PowerSimulations.jl"]; Pkg.develop(PackageSpec(path="../../$p")); end; Pkg.update()'
+          julia -e 'using Pkg; for p in ["InfrastructureSystems.jl", "PowerSystems.jl", "PowerSystemCaseBuilder.jl", "PowerNetworkMatrices.jl", "HydroPowerSimulations.jl", "StorageSystemsSimulations.jl", "PowerFlows.jl", "PowerSimulations.jl"]; Pkg.develop(PackageSpec(path="../../$p")); end; Pkg.update()'
 
       - uses: julia-actions/julia-buildpkg@latest
         env:
