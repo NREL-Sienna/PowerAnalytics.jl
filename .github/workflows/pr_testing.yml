@@ -59,7 +59,7 @@ jobs:
           for pkg in pkgs
           Pkg.activate("../../dependencies/$pkg")
           others = filter(p -> p != pkg, pkgs)
-          Pkg.develop([PackageSpec(path="../../dependencies/$other" for other in others])
+          Pkg.develop([PackageSpec(path="../../dependencies/$other" for other in others]))
           Pkg.update()
           end
           # Activate the main project at the end
