@@ -1,6 +1,7 @@
 name: Test-CI
 env:
   SIENNA_PKGS: 'InfrastructureSystems.jl PowerSystems.jl PowerSystemCaseBuilder.jl PowerNetworkMatrices.jl HydroPowerSimulations.jl StorageSystemsSimulations.jl PowerFlows.jl PowerSimulations.jl'
+  UPLOAD_DIR: upload/dependencies
   GKS_ENCODING: "utf8"
   GKSwstype: "100"
 on:
@@ -21,8 +22,9 @@ jobs:
 
       - name: Clone Sienna packages
         run: |
-          mkdir -p ../../dependencies
-          cd ../../dependencies
+          rm -rf "${UPLOAD_DIR}"
+          mkdir -p "${UPLOAD_DIR}"
+          cd "${UPLOAD_DIR}"
           # Function to choose appropriate branch
           select_branch() {
             local repo="$1"
@@ -55,11 +57,12 @@ jobs:
           julia -e '
           using Pkg
           pkgs = split(ENV["SIENNA_PKGS"])
+          upload_dir = ENV["UPLOAD_DIR"]
           # For each package, dev all other packages (not itself), all at once
           for pkg in pkgs
-          Pkg.activate("../../dependencies/$pkg")
+          Pkg.activate(joinpath(upload_dir, pkg))
           others = filter(p -> p != pkg, pkgs)
-          Pkg.develop([PackageSpec(path="../../dependencies/$other") for other in others])
+          Pkg.develop([PackageSpec(path=joinpath(upload_dir, other)) for other in others])
           end
           '
 
@@ -67,7 +70,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sienna-packages
-          path: ../../dependencies
+          path: ${{ env.UPLOAD_DIR }}
+          overwrite: true
           retention-days: 1
 
   test:
@@ -86,14 +90,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sienna-packages
-          path: ../../dependencies
+          path: ${{ env.UPLOAD_DIR }}
       - name: Dev Sienna packages
         run: |
           julia -e '
             using Pkg
             pkgs = split(ENV["SIENNA_PKGS"])
+            upload_dir = ENV["UPLOAD_DIR"]
             # Dev all main packages
-            Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
             Pkg.update()
           '
       - uses: julia-actions/julia-buildpkg@latest
@@ -121,22 +126,22 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sienna-packages
-          path: ../../dependencies
+          path: ${{ env.UPLOAD_DIR }}
 
       - name: Dev PowerSystems.jl
         run: |
           julia -e '
             using Pkg
             pkgs = split(ENV["SIENNA_PKGS"])
-            Pkg.activate("../../dependencies/PowerSystems.jl")
+            upload_dir = ENV["UPLOAD_DIR"]
+            Pkg.activate(joinpath(upload_dir, "PowerSystems.jl"))
             others = filter(p -> p != "PowerSystems.jl", pkgs)
-            Pkg.develop([PackageSpec(path="../../dependencies/$other") for other in others])
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, other)) for other in others])
             Pkg.update()
           '
       - name: Run PowerSystems.jl tests
-        run: |
-          julia -e '
-            using Pkg
-            Pkg.activate("../../dependencies/PowerSystems.jl")
-            Pkg.test()
-          '
+        uses: julia-actions/julia-runtest@latest
+        with:
+          project: ${{ env.UPLOAD_DIR }}/PowerSystems.jl
+        env:
+          PYTHON: ""
