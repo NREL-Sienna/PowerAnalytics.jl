@@ -55,11 +55,11 @@ jobs:
           pkgs = split(ENV["SIENNA_PKGS"])
           # For each package, dev all other packages (not itself), all at once
           for pkg in pkgs
-            Pkg.activate("../../dependencies/$pkg")
-            others = filter(p -> p != pkg, pkgs)
-            Pkg.develop([PackageSpec(path="../../dependencies/$other") for other in others])
-            Pkg.update()
-            Pkg.deactivate()
+          Pkg.activate("../../dependencies/$pkg")
+          others = filter(p -> p != pkg, pkgs)
+          Pkg.develop([PackageSpec(path="../../dependencies/$other") for other in others])
+          Pkg.update()
+          Pkg.deactivate()
           end
           '
       - name: Upload Sienna packages
