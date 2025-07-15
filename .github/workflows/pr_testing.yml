@@ -24,8 +24,6 @@ jobs:
       - name: Clone Sienna packages
         working-directory: ../../
         run: |
-          # show current directory
-          tree
           # Function to choose appropriate branch
           select_branch() {
             local repo="$1"
@@ -47,7 +45,7 @@ jobs:
           target_branch="${{ github.base_ref }}"
 
           # List of repositories to clone
-          repos=("InfrastructureSystems" "PowerSimulations" "PowerSystems")
+          repos=("InfrastructureSystems") # "PowerSimulations" "PowerSystems")
 
           # Clone each repo using selected branch
           for repo in "${repos[@]}"; do
