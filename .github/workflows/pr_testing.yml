@@ -60,8 +60,6 @@ jobs:
           Pkg.activate("../../dependencies/$pkg")
           others = filter(p -> p != pkg, pkgs)
           Pkg.develop([PackageSpec(path="../../dependencies/$other") for other in others])
-          Pkg.update()
-          Pkg.deactivate()
           end
           '
 
@@ -96,6 +94,7 @@ jobs:
             pkgs = split(ENV["SIENNA_PKGS"])
             # Dev all main packages
             Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
+            Pkg.update()
           '
       - uses: julia-actions/julia-buildpkg@latest
         env:
@@ -123,14 +122,18 @@ jobs:
         with:
           name: sienna-packages
           path: ../../dependencies
-      - name: Dev Sienna packages
+
+      - name: Dev PowerSystems.jl
         run: |
           julia -e '
             using Pkg
             pkgs = split(ENV["SIENNA_PKGS"])
-            Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
+            Pkg.activate("../../dependencies/PowerSystems.jl")
+            others = filter(p -> p != "PowerSystems.jl", pkgs)
+            Pkg.develop([PackageSpec(path="../../dependencies/$other") for other in others])
+            Pkg.update()
           '
-      - name: Run PowerSystems tests
+      - name: Run PowerSystems.jl tests
         run: |
           julia -e '
             using Pkg
