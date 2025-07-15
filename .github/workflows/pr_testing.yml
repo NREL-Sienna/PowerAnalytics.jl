@@ -23,6 +23,7 @@ jobs:
 
       - name: Clone Sienna packages
         working-directory: ../../
+        shell: bash
         run: |
           # Function to choose appropriate branch
           select_branch() {
