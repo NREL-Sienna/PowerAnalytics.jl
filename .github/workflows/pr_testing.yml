@@ -153,6 +153,7 @@ jobs:
             others = filter(p -> p != "PowerSystems.jl", pkgs)
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, other)) for other in others])
             Pkg.update()
+            Pkg.status()
           '
       - name: Run PowerSystems.jl tests
         uses: julia-actions/julia-runtest@latest
