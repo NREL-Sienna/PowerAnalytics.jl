@@ -1,139 +1,137 @@
 name: Test-CI
 env:
   SIENNA_PKGS: 'InfrastructureSystems.jl PowerSystems.jl PowerSystemCaseBuilder.jl PowerNetworkMatrices.jl HydroPowerSimulations.jl StorageSystemsSimulations.jl PowerFlows.jl PowerSimulations.jl'
+  GKS_ENCODING: "utf8"
+  GKSwstype: "100"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-    jobs:
-      prepare:
-        runs-on: ubuntu-latest
-        outputs:
-          cache-key: ${{ steps.cache-key.outputs.key }}
-        steps:
-          - uses: actions/checkout@v2
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v2
 
-          - name: Generate cache key
-            id: cache-key
-            run: echo "key=env-${{ github.sha }}" >> $GITHUB_OUTPUT
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=env-${{ github.sha }}" >> $GITHUB_OUTPUT
 
-          - name: Clone Sienna packages
-            run: |
-              mkdir -p ../../dependencies
-              cd ../../dependencies
-              # Function to choose appropriate branch
-              select_branch() {
-                local repo="$1"
-                local source_branch="$2"
-                local target_branch="$3"
-                local fallback_branch="main"
+      - name: Clone Sienna packages
+        run: |
+          mkdir -p ../../dependencies
+          cd ../../dependencies
+          # Function to choose appropriate branch
+          select_branch() {
+            local repo="$1"
+            local source_branch="$2"
+            local target_branch="$3"
+            local fallback_branch="main"
 
-                if git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$source_branch" | grep -q "$source_branch"; then
-                  echo "$source_branch"
-                elif git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$target_branch" | grep -q "$target_branch"; then
-                  echo "$target_branch"
-                else
-                  echo "$fallback_branch"
-                fi
-              }
+            if git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$source_branch" | grep -q "$source_branch"; then
+              echo "$source_branch"
+            elif git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$target_branch" | grep -q "$target_branch"; then
+              echo "$target_branch"
+            else
+              echo "$fallback_branch"
+            fi
+          }
 
-              source_branch="${{ github.head_ref }}"
-              target_branch="${{ github.base_ref }}"
-              IFS=' ' read -r -a repos <<< "$SIENNA_PKGS"
-              for repo in "${repos[@]}"; do
-                branch=$(select_branch "$repo" "$source_branch" "$target_branch")
-                echo " - Cloning $repo on branch $branch..."
-                git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
-              done
+          source_branch="${{ github.head_ref }}"
+          target_branch="${{ github.base_ref }}"
+          IFS=' ' read -r -a repos <<< "$SIENNA_PKGS"
+          for repo in "${repos[@]}"; do
+            branch=$(select_branch "$repo" "$source_branch" "$target_branch")
+            echo " - Cloning $repo on branch $branch..."
+            git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
+          done
 
-          - name: Dev Sienna packages
-            run: |
-              julia -e '
+      - name: Dev Sienna packages
+        run: |
+          julia -e '
+          using Pkg
+          pkgs = split(ENV["SIENNA_PKGS"])
+          # Dev all main packages
+          Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
+          # For each package, dev all other packages (not itself), all at once
+          for pkg in pkgs
+          Pkg.activate("../../dependencies/$pkg")
+          others = filter(p -> p != pkg, pkgs)
+          Pkg.develop([PackageSpec(path=joinpath("..", other)) for other in others])
+          Pkg.update()
+          end
+          # Activate the main project at the end
+          Pkg.activate(".")
+          '
+      - name: Upload Sienna packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: sienna-packages
+          path: ../../dependencies
+          retention-days: 1
+
+  test:
+    name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: ['1']
+        julia-arch: [x64]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download Sienna packages
+        uses: actions/download-artifact@v3
+        with:
+          name: sienna-packages
+          path: ../../dependencies
+      - name: Dev Sienna packages
+        run: |
+          julia -e '
+            using Pkg
+            pkgs = split(ENV["SIENNA_PKGS"])
+            # Dev all main packages
+            Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
+          '
+      - uses: julia-actions/julia-buildpkg@latest
+        env:
+          PYTHON: ""
+      - uses: julia-actions/julia-runtest@latest
+        env:
+          PYTHON: ""
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+    
+    test-powersystems:
+      name: Test PowerSystems.jl
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Download Sienna packages
+          uses: actions/download-artifact@v3
+          with:
+            name: sienna-packages
+            path: ../../dependencies
+        - name: Dev Sienna packages
+          run: |
+            julia -e '
               using Pkg
               pkgs = split(ENV["SIENNA_PKGS"])
-              # Dev all main packages
               Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
-              # For each package, dev all other packages (not itself), all at once
-              for pkg in pkgs
-              Pkg.activate("../../dependencies/$pkg")
-              others = filter(p -> p != pkg, pkgs)
-              Pkg.develop([PackageSpec(path=joinpath("..", other)) for other in others])
-              Pkg.update()
-              end
-              # Activate the main project at the end
-              Pkg.activate(".")
-              '
-          - name: Upload Sienna packages
-            uses: actions/upload-artifact@v3
-            with:
-              name: sienna-packages
-              path: ../../dependencies
-              retention-days: 1
-
-      test:
-        env:
-          GKS_ENCODING: "utf8"
-          GKSwstype: "100"
-
-        name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
-        runs-on: ${{ matrix.os }}
-        strategy:
-          matrix:
-            julia-version: ['1']
-            julia-arch: [x64]
-            os: [ubuntu-latest, windows-latest, macOS-latest]
-
-        steps:
-          - uses: actions/checkout@v2
-          - name: Download Sienna packages
-            uses: actions/download-artifact@v3
-            with:
-              name: sienna-packages
-              path: ../../dependencies
-          - name: Dev Sienna packages
-            run: |
-              julia -e '
-                using Pkg
-                pkgs = split(ENV["SIENNA_PKGS"])
-                # Dev all main packages
-                Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
-              '
-          - uses: julia-actions/julia-buildpkg@latest
-            env:
-              PYTHON: ""
-          - uses: julia-actions/julia-runtest@latest
-            env:
-              PYTHON: ""
-          - uses: julia-actions/julia-processcoverage@v1
-          - uses: codecov/codecov-action@v1
-            with:
-              file: ./lcov.info
-              flags: unittests
-              name: codecov-umbrella
-              fail_ci_if_error: false
-              token: ${{ secrets.CODECOV_TOKEN }}
-        
-        test-powersystems:
-          name: Test PowerSystems.jl
-          runs-on: ubuntu-latest
-          steps:
-            - uses: actions/checkout@v2
-            - name: Download Sienna packages
-              uses: actions/download-artifact@v3
-              with:
-                name: sienna-packages
-                path: ../../dependencies
-            - name: Dev Sienna packages
-              run: |
-                julia -e '
-                  using Pkg
-                  pkgs = split(ENV["SIENNA_PKGS"])
-                  Pkg.develop([PackageSpec(path="../../dependencies/$p") for p in pkgs])
-                '
-            - name: Run PowerSystems tests
-              run: |
-                julia -e '
-                  using Pkg
-                  Pkg.activate("../../dependencies/PowerSystems.jl")
-                  Pkg.test()
-                '
+            '
+        - name: Run PowerSystems tests
+          run: |
+            julia -e '
+              using Pkg
+              Pkg.activate("../../dependencies/PowerSystems.jl")
+              Pkg.test()
+            '
