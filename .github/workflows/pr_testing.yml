@@ -62,7 +62,7 @@ jobs:
 
       - name: Dev Sienna packages
         run: |
-          julia -e 'using Pkg; for p in ["InfrastructureSystems.jl", "PowerSystems.jl", "PowerSystemCaseBuilder.jl", "PowerNetworkMatrices.jl", "HydroPowerSimulations.jl", "StorageSystemsSimulations.jl", "PowerFlows.jl", "PowerSimulations.jl"]; @warn(p); Pkg.develop(PackageSpec(path="../../$p")); end; Pkg.instantiate()'
+            julia -e 'using Pkg; pkgs = ["InfrastructureSystems.jl", "PowerSystems.jl", "PowerSystemCaseBuilder.jl", "PowerNetworkMatrices.jl", "HydroPowerSimulations.jl", "StorageSystemsSimulations.jl", "PowerFlows.jl", "PowerSimulations.jl"]; Pkg.develop([PackageSpec(path="../../$p") for p in pkgs]); Pkg.instantiate()'
 
       - uses: julia-actions/julia-buildpkg@latest
         env:
