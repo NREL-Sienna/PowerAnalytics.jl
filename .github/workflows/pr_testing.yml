@@ -50,6 +50,11 @@ jobs:
             git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
           done
 
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
+
       - name: Dev Sienna packages
         env:
           JULIA_PKG_PRECOMPILE_AUTO: "0"
@@ -86,6 +91,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
       - name: Download Sienna packages
         uses: actions/download-artifact@v4
         with:
@@ -127,6 +136,11 @@ jobs:
         with:
           name: sienna-packages
           path: ${{ env.UPLOAD_DIR }}
+      
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+          arch: x64
 
       - name: Dev PowerSystems.jl
         run: |
