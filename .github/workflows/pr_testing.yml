@@ -104,6 +104,14 @@ jobs:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
 
+      - name: Use Julia cache
+        uses: julia-actions/cache@v2
+
+      - name: Copy Overrides.toml
+        run: |
+          mkdir -p ~/.julia/artifacts
+          cp .github/workflows/Overrides.toml ~/.julia/artifacts/
+
       - uses: julia-actions/julia-buildpkg@latest
         env:
           PYTHON: ""
@@ -125,15 +133,6 @@ jobs:
             
             test_dir = joinpath(".", "test")
             Pkg.activate(test_dir)
-            # test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
-            # test_pkgs = collect(keys(test_proj["deps"]))
-            # pkgs_to_dev = filter(p -> splitext(p)[1] in test_pkgs && p != "PowerAnalytics.jl", pkgs)
-            # if !isempty(pkgs_to_dev)
-            #   @info "Test packages to develop: $pkgs_to_dev"
-            #   Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
-            # else
-            #   @info "No additional test dependencies to develop."
-            # end
             Pkg.develop(PackageSpec(path="."))
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
             Pkg.resolve()
@@ -169,7 +168,7 @@ jobs:
     
   test_sienna_package:
     name: Test ${{ matrix.pkg }}
-    runs-on: ubuntu-latest
+    runs-on: macOS-latest. # change to ubuntu when PSB has the PR #145 merged
     needs: prepare
     strategy:
       fail-fast: false  # we want to know what packages fail and what packages pass
@@ -213,16 +212,6 @@ jobs:
             pkg_name = ENV["PKG_NAME"]
             test_dir = joinpath(upload_dir, pkg_name, "test")
             Pkg.activate(test_dir)
-            # test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
-            # test_pkgs = collect(keys(test_proj["deps"]))
-            # pkgs_to_dev = filter(p -> splitext(p)[1] in test_pkgs && p != pkg_name, pkgs)
-            # if !isempty(pkgs_to_dev)
-            #   @info "Test packages to develop: $pkgs_to_dev"
-            #   Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
-            # else
-            #   @info "No additional test dependencies to develop."
-            # end
-            # Pkg.develop(PackageSpec(path=joinpath(upload_dir, pkg_name)))
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
             Pkg.resolve()
             Pkg.status()
