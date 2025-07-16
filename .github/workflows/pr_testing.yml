@@ -169,7 +169,7 @@ jobs:
     
   test_sienna_package:
     name: Test ${{ matrix.pkg }}
-    runs-on: macOS-latest. # change to ubuntu when PSB has the PR #145 merged
+    runs-on: macOS-latest # change to ubuntu when PSB has the PR #145 merged
     needs: prepare
     strategy:
       fail-fast: false  # we want to know what packages fail and what packages pass
