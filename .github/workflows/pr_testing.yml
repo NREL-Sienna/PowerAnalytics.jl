@@ -121,6 +121,19 @@ jobs:
             using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
             upload_dir = ENV["UPLOAD_DIR"]
+
+            
+            Pkg.activate(".")
+            proj = TOML.parsefile(joinpath(".", "Project.toml"))
+            deps = collect(keys(proj["deps"]))
+            pkgs_to_dev = filter(p -> splitext(p)[1] in deps && p != "PowerAnalytics.jl", pkgs)
+            if !isempty(pkgs_to_dev)
+              @info "Developing additional dependencies for $pkg: $pkgs_to_dev"
+              Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            else
+              @info "No additional dependencies to develop for $pkg."
+            end
+            
             test_dir = joinpath(".", "test")
             Pkg.activate(test_dir)
             # test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
