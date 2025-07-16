@@ -60,14 +60,21 @@ jobs:
           JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
           julia -e '
-          using Pkg
+
+          using Pkg, TOML
           pkgs = split(ENV["SIENNA_PKGS"])
           upload_dir = ENV["UPLOAD_DIR"]
-          # For each package, dev all other packages (not itself), all at once
           for pkg in pkgs
-          Pkg.activate(joinpath(upload_dir, pkg))
-          others = filter(p -> p != pkg, pkgs)
-          Pkg.develop([PackageSpec(path=joinpath(upload_dir, other)) for other in others])
+            Pkg.activate(joinpath(upload_dir, pkg))
+            proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
+            deps = collect(keys(proj["deps"]))
+            pkgs_to_dev = filter(p -> splitext(p)[1] in deps && p != pkg, pkgs)
+            if !isempty(pkgs_to_dev)
+              @info "Developing additional dependencies for $pkg: $pkgs_to_dev"
+              Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            else
+              @info "No additional dependencies to develop for $pkg."
+            end
           end
           '
 
@@ -95,11 +102,13 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
+
       - name: Download Sienna packages
         uses: actions/download-artifact@v4
         with:
           name: sienna-packages
           path: ${{ env.UPLOAD_DIR }}
+
       - name: Dev Sienna packages
         run: |
           julia -e '
@@ -108,21 +117,20 @@ jobs:
             upload_dir = ENV["UPLOAD_DIR"]
             test_dir = joinpath(".", "test")
             Pkg.activate(test_dir)
-            # test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
-            # test_pkgs = collect(keys(test_proj["deps"]))
-            # @info "Test dependencies: $test_pkgs"
-            # pkgs_to_dev = filter(p -> splitext(p)[1] in test_pkgs && p != "PowerAnalytics.jl", pkgs)
-            # @info "Test packages to develop: $pkgs_to_dev"
-            # if !isempty(pkgs_to_dev)
-              # Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
-            # else
-              # @info "No additional test dependencies to develop."
-            # end
-            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
+            test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
+            test_pkgs = collect(keys(test_proj["deps"]))
+            pkgs_to_dev = filter(p -> splitext(p)[1] in test_pkgs && p != "PowerAnalytics.jl", pkgs)
+            if !isempty(pkgs_to_dev)
+              @info "Test packages to develop: $pkgs_to_dev"
+              Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            else
+              @info "No additional test dependencies to develop."
+            end
             Pkg.develop(PackageSpec(path="."))
             Pkg.update()
             Pkg.status()
           '
+
       - uses: julia-actions/julia-buildpkg@latest
         env:
           PYTHON: ""
@@ -163,23 +171,21 @@ jobs:
       - name: Dev dependencies for ${{ matrix.pkg }}
         run: |
           julia -e '
-            using Pkg #, TOML
+            using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
             upload_dir = ENV["UPLOAD_DIR"]
             pkg_name = ENV["PKG_NAME"]
             test_dir = joinpath(upload_dir, pkg_name, "test")
             Pkg.activate(test_dir)
-            # test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
-            # test_pkgs = collect(keys(test_proj["deps"]))
-            # @info "Test dependencies: $test_pkgs"
-            # pkgs_to_dev = filter(p -> splitext(p)[1] in test_pkgs && p != pkg_name, pkgs)
-            # @info "Test packages to develop: $pkgs_to_dev"
-            # if !isempty(pkgs_to_dev)
-              # Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
-            # else
-              # @info "No additional test dependencies to develop."
-            # end
-            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs if p != pkg_name])
+            test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
+            test_pkgs = collect(keys(test_proj["deps"]))
+            pkgs_to_dev = filter(p -> splitext(p)[1] in test_pkgs && p != pkg_name, pkgs)
+            if !isempty(pkgs_to_dev)
+              @info "Test packages to develop: $pkgs_to_dev"
+              Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            else
+              @info "No additional test dependencies to develop."
+            end
             Pkg.develop(PackageSpec(path=joinpath(upload_dir, pkg_name)))
             Pkg.update()
             Pkg.status()
