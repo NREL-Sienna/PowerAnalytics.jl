@@ -31,7 +31,7 @@ function run_scenario(scenario::String)
     transform_single_time_series!(sys, Hour(48), Hour(24))
 
     # Storage Device Parameters
-    comp_storage = first(get_components(EnergyReservoirStorage, sys))
+    comp_storage = get_component(EnergyReservoirStorage, sys, "313_STORAGE_1")
     set_initial_storage_capacity_level!(comp_storage, 0.0) # intital SOC of storage device equal to 0
 
     # Scenario Specific Parameters
