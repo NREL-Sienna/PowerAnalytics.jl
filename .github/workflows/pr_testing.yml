@@ -110,6 +110,7 @@ jobs:
             Pkg.activate(".")
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
             Pkg.update()
+            Pkg.status()
           '
       - uses: julia-actions/julia-buildpkg@latest
         env:
