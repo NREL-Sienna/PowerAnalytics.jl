@@ -50,6 +50,7 @@ jobs:
             git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
           done
           git clone "https://github.com/NREL-Sienna/PowerSystemsTestData.git" PowerSystemsTestData-3.3
+          tree
 
       - uses: julia-actions/setup-julia@latest
         with:
@@ -127,6 +128,7 @@ jobs:
         env:
             JULIA_PKG_PRECOMPILE_AUTO: "0"
         run: |
+          tree
           julia -e '
             using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
@@ -206,6 +208,7 @@ jobs:
 
       - name: Dev dependencies for ${{ matrix.pkg }}
         run: |
+          tree
           julia -e '
             using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
