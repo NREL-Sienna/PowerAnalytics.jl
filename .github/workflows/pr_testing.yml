@@ -49,6 +49,7 @@ jobs:
             echo " - Cloning $repo on branch $branch..."
             git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
           done
+          git clone --branch "$main" --single-branch "https://github.com/NREL-Sienna/PowerSystemsTestData.git" PowerSystemsTestData-3.3
 
       - uses: julia-actions/setup-julia@latest
         with:
@@ -184,6 +185,14 @@ jobs:
         with:
           version: '1'
           arch: x64
+
+      - name: Use Julia cache
+        uses: julia-actions/cache@v2
+        
+      - name: Copy Overrides.toml
+        run: |
+          mkdir -p ~/.julia/artifacts
+          cp .github/workflows/Overrides.toml ~/.julia/artifacts/
 
       - uses: julia-actions/julia-buildpkg@latest
         env:
