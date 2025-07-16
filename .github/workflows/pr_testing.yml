@@ -111,8 +111,10 @@ jobs:
             # Parse Project.toml to get dependencies
             project = TOML.parsefile("Project.toml")
             deps = keys(project["deps"])
+            @info "Dependencies: $deps"
             # Filter packages that are actually dependencies
             pkgs_to_dev = filter(p -> p in deps, pkgs)
+            @info "Packages to develop: $pkgs_to_dev"
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
             Pkg.update()
             Pkg.status()
@@ -121,7 +123,9 @@ jobs:
             Pkg.activate(test_dir)
             test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
             test_pkgs = collect(keys(test_proj["deps"]))
+            @info "Test dependencies: $test_pkgs"
             pkgs_to_dev = filter(p -> p in deps && p != "PowerAnalytics.jl", test_pkgs)
+            @info "Test packages to develop: $pkgs_to_dev"
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
             Pkg.develop(PackageSpec(path=".."))
             Pkg.update()
@@ -170,8 +174,10 @@ jobs:
             # Parse Project.toml to get dependencies
             project = TOML.parsefile("Project.toml")
             deps = keys(project["deps"])
+            @info "Dependencies: $deps"
             # Filter packages that are actually dependencies
             pkgs_to_dev = filter(p -> p in deps, pkgs)
+            @info "Packages to develop: $pkgs_to_dev"
             others = filter(p -> p != "PowerSystems.jl", pkgs_to_dev)
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, other)) for other in others])
             Pkg.update()
@@ -181,7 +187,9 @@ jobs:
             Pkg.activate(test_dir)
             test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
             test_pkgs = collect(keys(test_proj["deps"]))
+            @info "Test dependencies: $test_pkgs"
             pkgs_to_dev = filter(p -> p in deps && p != "PowerSystems.jl", test_pkgs)
+            @info "Test packages to develop: $pkgs_to_dev"
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
             Pkg.develop(PackageSpec(path=".."))
             Pkg.update()
