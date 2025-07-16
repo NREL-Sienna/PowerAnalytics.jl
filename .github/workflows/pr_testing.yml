@@ -1,6 +1,6 @@
 name: Test-CI
 env:
-  SIENNA_PKGS: 'InfrastructureSystems.jl PowerSystems.jl PowerSystemCaseBuilder.jl PowerNetworkMatrices.jl HydroPowerSimulations.jl StorageSystemsSimulations.jl PowerFlows.jl PowerSimulations.jl'
+  SIENNA_PKGS: 'InfrastructureSystems.jl PowerSystems.jl PowerSystemCaseBuilder.jl PowerNetworkMatrices.jl PowerFlows.jl PowerSimulations.jl HydroPowerSimulations.jl StorageSystemsSimulations.jl'
   UPLOAD_DIR: upload/dependencies
   GKS_ENCODING: "utf8"
   GKSwstype: "100"
