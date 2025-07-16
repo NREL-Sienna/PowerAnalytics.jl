@@ -103,12 +103,27 @@ jobs:
       - name: Dev Sienna packages
         run: |
           julia -e '
-            using Pkg
+            using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
             upload_dir = ENV["UPLOAD_DIR"]
             # Dev all main packages
             Pkg.activate(".")
-            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
+            # Parse Project.toml to get dependencies
+            project = TOML.parsefile("Project.toml")
+            deps = keys(project["deps"])
+            # Filter packages that are actually dependencies
+            pkgs_to_dev = filter(p -> p in deps, pkgs)
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            Pkg.update()
+            Pkg.status()
+
+            test_dir = joinpath(".", "test")
+            Pkg.activate(test_dir)
+            test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
+            test_pkgs = collect(keys(test_proj["deps"]))
+            pkgs_to_dev = filter(p -> p in deps && p != "PowerAnalytics.jl", test_pkgs)
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            Pkg.develop(PackageSpec(path=".."))
             Pkg.update()
             Pkg.status()
           '
@@ -147,12 +162,28 @@ jobs:
       - name: Dev PowerSystems.jl
         run: |
           julia -e '
-            using Pkg
+            using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
             upload_dir = ENV["UPLOAD_DIR"]
+            prj_dir = joinpath(upload_dir, "PowerSystems.jl")
             Pkg.activate(joinpath(upload_dir, "PowerSystems.jl"))
-            others = filter(p -> p != "PowerSystems.jl", pkgs)
+            # Parse Project.toml to get dependencies
+            project = TOML.parsefile("Project.toml")
+            deps = keys(project["deps"])
+            # Filter packages that are actually dependencies
+            pkgs_to_dev = filter(p -> p in deps, pkgs)
+            others = filter(p -> p != "PowerSystems.jl", pkgs_to_dev)
             Pkg.develop([PackageSpec(path=joinpath(upload_dir, other)) for other in others])
+            Pkg.update()
+            Pkg.status()
+
+            test_dir = joinpath(prj_dir, "test")
+            Pkg.activate(test_dir)
+            test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
+            test_pkgs = collect(keys(test_proj["deps"]))
+            pkgs_to_dev = filter(p -> p in deps && p != "PowerSystems.jl", test_pkgs)
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            Pkg.develop(PackageSpec(path=".."))
             Pkg.update()
             Pkg.status()
           '
