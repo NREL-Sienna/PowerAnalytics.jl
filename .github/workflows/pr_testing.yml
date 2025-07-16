@@ -66,7 +66,7 @@ jobs:
           upload_dir = ENV["UPLOAD_DIR"]
           for pkg in pkgs
             Pkg.activate(joinpath(upload_dir, pkg))
-            proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
+            proj = TOML.parsefile(joinpath(upload_dir, pkg, "Project.toml"))
             deps = collect(keys(proj["deps"]))
             pkgs_to_dev = filter(p -> splitext(p)[1] in deps && p != pkg, pkgs)
             if !isempty(pkgs_to_dev)
