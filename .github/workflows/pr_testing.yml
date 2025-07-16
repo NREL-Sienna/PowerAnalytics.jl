@@ -68,6 +68,7 @@ jobs:
             Pkg.activate(joinpath(upload_dir, pkg))
             proj = TOML.parsefile(joinpath(upload_dir, pkg, "Project.toml"))
             deps = collect(keys(proj["deps"]))
+            @info "Developing package: $pkg with dependencies: $deps"
             pkgs_to_dev = filter(p -> splitext(p)[1] in deps && p != pkg, pkgs)
             if !isempty(pkgs_to_dev)
               @info "Developing additional dependencies for $pkg: $pkgs_to_dev"
