@@ -121,8 +121,6 @@ jobs:
             using Pkg, TOML
             pkgs = split(ENV["SIENNA_PKGS"])
             upload_dir = ENV["UPLOAD_DIR"]
-
-            
             Pkg.activate(".")
             proj = TOML.parsefile(joinpath(".", "Project.toml"))
             deps = collect(keys(proj["deps"]))
@@ -133,7 +131,6 @@ jobs:
             else
               @info "No additional dependencies to develop for $pkg."
             end
-            
             test_dir = joinpath(".", "test")
             Pkg.activate(test_dir)
             # test_proj = TOML.parsefile(joinpath(test_dir, "Project.toml"))
