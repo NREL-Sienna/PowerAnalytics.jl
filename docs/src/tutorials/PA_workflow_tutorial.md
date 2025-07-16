@@ -121,7 +121,7 @@ It is also important to keep in mind that by default, only the available compone
 
 In some cases, it is more insightful to aggregate generation by `prime_mover_type`, in order to better understand the relative contributions of different generation technologies across the system.
 
-To achieve this, we modify our [`ComponentSelector`](@extref InfrastructureSystems.ComponentSelector) using [`rebuild_selector`](@extref InfrastructureSystems.rebuild_selector), specifying `groupby = get_prime_mover_type`. This restructures the [`ComponentSelector`](@extref InfrastructureSystems.ComponentSelector) so that thermal generators with the same `prime_mover_type` are grouped together.
+To achieve this, we modify our [`ComponentSelector`](@extref InfrastructureSystems.ComponentSelector) using [`rebuild_selector`](@extref InfrastructureSystems.rebuild_selector-Tuple{InfrastructureSystems.ListComponentSelector}), specifying `groupby = get_prime_mover_type`. This restructures the [`ComponentSelector`](@extref InfrastructureSystems.ComponentSelector) so that thermal generators with the same `prime_mover_type` are grouped together.
 
 ```@repl tutorial
 thermal_standard_selector_pm =
@@ -198,7 +198,7 @@ We can efficiently compute multiple metrics and add their time series in the sam
   - [`calc_active_power_out`](@ref PowerAnalytics.Metrics.calc_active_power_out): active power output of the storage device
   - [`calc_stored_energy`](@ref PowerAnalytics.Metrics.calc_stored_energy): amount of energy stored
 
-We can reuse the `storage_area_selector` defined in the previous subsection to perform spatial aggregation by [`Area`](@extref). However, since we need to guarantee that each of the three metrics contributes only a single column to the resulting summary table, we'll adjust the selector’s grouping using [`rebuild_selector`](@extref InfrastructureSystems.rebuild_selector) to aggregate the time series across all storage components in the system, rather than by [`Area`](@extref).
+We can reuse the `storage_area_selector` defined in the previous subsection to perform spatial aggregation by [`Area`](@extref). However, since we need to guarantee that each of the three metrics contributes only a single column to the resulting summary table, we'll adjust the selector’s grouping using [`rebuild_selector`](@extref InfrastructureSystems.rebuild_selector-Tuple{InfrastructureSystems.ListComponentSelector}) to aggregate the time series across all storage components in the system, rather than by [`Area`](@extref).
 
 ```@repl tutorial
 df = compute_all(results_uc,
