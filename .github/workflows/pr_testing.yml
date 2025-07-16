@@ -49,7 +49,7 @@ jobs:
             echo " - Cloning $repo on branch $branch..."
             git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
           done
-          git clone --branch "main" --single-branch "https://github.com/NREL-Sienna/PowerSystemsTestData.git" PowerSystemsTestData-3.3
+          git clone "https://github.com/NREL-Sienna/PowerSystemsTestData.git" PowerSystemsTestData-3.3
 
       - uses: julia-actions/setup-julia@latest
         with:
