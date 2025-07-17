@@ -224,10 +224,15 @@ jobs:
       - name: Print path to PowerSystemsTestData
         run: |
           echo "Current directory: $(pwd)"
-          echo ${{ env.UPLOAD_DIR }}/PowerSystemsTestData-3.3
-          echo realpath(${{ env.UPLOAD_DIR }}/PowerSystemsTestData-3.3)
-          echo realpath(${{ env.UPLOAD_DIR }}/PowerSystemsTestData-3.3/psy_data/generation_cost_function_data.jl)
-          
+          echo "${UPLOAD_DIR}/PowerSystemsTestData-3.3"
+          realpath "${UPLOAD_DIR}/PowerSystemsTestData-3.3"
+          realpath "${UPLOAD_DIR}/PowerSystemsTestData-3.3/psy_data/generation_cost_function_data.jl"
+          cd "${UPLOAD_DIR}/PowerSystemsTestData-3.3/psy_data"
+          echo Current directory: $(pwd)
+          echo "Files in current directory:"
+          ls -l
+        env:
+          UPLOAD_DIR: ${{ env.UPLOAD_DIR }}      
 
       - name: Run ${{ matrix.pkg }} tests
         uses: julia-actions/julia-runtest@latest
