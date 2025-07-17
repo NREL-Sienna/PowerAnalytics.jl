@@ -108,10 +108,29 @@ jobs:
       - name: Use Julia cache
         uses: julia-actions/cache@v2
 
-      - name: Copy Overrides.toml
+      - name: Generate OS-specific Overrides.toml
         run: |
-          mkdir -p ~/.julia/artifacts
-          cp .github/workflows/Overrides.toml ~/.julia/artifacts/
+          julia -e '
+            using TOML
+            # Load the Overrides.toml file
+            overrides = TOML.parsefile(".github/workflows/Overrides.toml")
+            # Get absolute upload dir path from environment
+            upload_dir = abspath(ENV["UPLOAD_DIR"])
+            # Replace variables in override values
+            for (uuid, settings) in overrides
+                for (k, v) in settings
+                    if occursin("\$UPLOAD_DIR", v)
+                        settings[k] = replace(v, "\$UPLOAD_DIR" => upload_dir)
+                    end
+                end
+            end
+            # Write resolved Overrides.toml to artifacts path
+            overrides_path = joinpath(homedir(), ".julia", "artifacts", "Overrides.toml")
+            mkpath(dirname(overrides_path))
+            open(overrides_path, "w") do io
+                TOML.print(io, overrides)
+            end
+          '
 
       - uses: julia-actions/julia-buildpkg@latest
         env:
@@ -169,7 +188,7 @@ jobs:
     
   test_sienna_package:
     name: Test ${{ matrix.pkg }}
-    runs-on: macOS-latest # change to ubuntu when PSB has the PR #145 merged
+    runs-on: ubuntu-latest
     needs: prepare
     strategy:
       fail-fast: false  # we want to know what packages fail and what packages pass
@@ -189,10 +208,29 @@ jobs:
       - name: Use Julia cache
         uses: julia-actions/cache@v2
 
-      - name: Copy Overrides.toml
+      - name: Generate OS-specific Overrides.toml
         run: |
-          mkdir -p ~/.julia/artifacts
-          cp .github/workflows/Overrides.toml ~/.julia/artifacts/
+          julia -e '
+            using TOML
+            # Load the Overrides.toml file
+            overrides = TOML.parsefile(".github/workflows/Overrides.toml")
+            # Get absolute upload dir path from environment
+            upload_dir = abspath(ENV["UPLOAD_DIR"])
+            # Replace variables in override values
+            for (uuid, settings) in overrides
+                for (k, v) in settings
+                    if occursin("\$UPLOAD_DIR", v)
+                        settings[k] = replace(v, "\$UPLOAD_DIR" => upload_dir)
+                    end
+                end
+            end
+            # Write resolved Overrides.toml to artifacts path
+            overrides_path = joinpath(homedir(), ".julia", "artifacts", "Overrides.toml")
+            mkpath(dirname(overrides_path))
+            open(overrides_path, "w") do io
+                TOML.print(io, overrides)
+            end
+          '
 
       - uses: julia-actions/julia-buildpkg@latest
         env:
@@ -220,19 +258,6 @@ jobs:
         env:
           PKG_NAME: ${{ matrix.pkg }}
           JULIA_PKG_PRECOMPILE_AUTO: "0"
-
-      - name: Print path to PowerSystemsTestData
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "${UPLOAD_DIR}/PowerSystemsTestData-3.3"
-          realpath "${UPLOAD_DIR}/PowerSystemsTestData-3.3"
-          realpath "${UPLOAD_DIR}/PowerSystemsTestData-3.3/psy_data/generation_cost_function_data.jl"
-          cd "${UPLOAD_DIR}/PowerSystemsTestData-3.3/psy_data"
-          echo Current directory: $(pwd)
-          echo "Files in current directory:"
-          ls -l
-        env:
-          UPLOAD_DIR: ${{ env.UPLOAD_DIR }}      
 
       - name: Run ${{ matrix.pkg }} tests
         uses: julia-actions/julia-runtest@latest
