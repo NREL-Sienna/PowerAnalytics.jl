@@ -221,6 +221,14 @@ jobs:
           PKG_NAME: ${{ matrix.pkg }}
           JULIA_PKG_PRECOMPILE_AUTO: "0"
 
+      - name: Print path to PowerSystemsTestData
+        run: |
+          echo "Current directory: $(pwd)"
+          echo ${{ env.UPLOAD_DIR }}/PowerSystemsTestData-3.3
+          echo realpath(${{ env.UPLOAD_DIR }}/PowerSystemsTestData-3.3)
+          echo realpath(${{ env.UPLOAD_DIR }}/PowerSystemsTestData-3.3/psy_data/generation_cost_function_data.jl)
+          
+
       - name: Run ${{ matrix.pkg }} tests
         uses: julia-actions/julia-runtest@latest
         with:
