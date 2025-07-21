@@ -2,18 +2,25 @@ using Documenter
 using PowerAnalytics
 import DataStructures: OrderedDict
 using DocumenterInterLinks
+using Dates
+
+ENV["GKSwstype"] = "100"  # Prevent GR from opening gksqt GUI
 
 links = InterLinks(
     "Julia" => "https://docs.julialang.org/en/v1/",
     "InfrastructureSystems" => "https://nrel-sienna.github.io/InfrastructureSystems.jl/stable/",
     "PowerSystems" => "https://nrel-sienna.github.io/PowerSystems.jl/stable/",
     "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/",
+    "StorageSystemsSimulations" => "https://nrel-sienna.github.io/StorageSystemsSimulations.jl/stable/",
+    "HydroPowerSimulations" => "https://nrel-sienna.github.io/HydroPowerSimulations.jl/dev/",
 )
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
-    # TODO flesh out the tutorials, how-tos, explanation
-    # "Tutorials" => Any[#="stub" => "tutorials/stub.md"=#],
+    "Tutorials" => Any[
+        "Simulation Scenarios Analysis" => "tutorials/PA_workflow_tutorial.md",
+    ],
+    # TODO flesh out the how-tos, explanation
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
     # "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
     "Reference" => Any[ 
@@ -22,6 +29,9 @@ pages = OrderedDict(
         "Internals" => "reference/internal.md"]]
      
 )
+
+# Run simulation scenarios for RTS-GMLC Tutorial
+include(joinpath(@__DIR__, "src", "tutorials", "_run_scenarios_RTS_Tutorial.jl"))
 
 
 makedocs(
