@@ -3,7 +3,14 @@ problem_results = run_test_prob()
 
 @testset "test filter results" begin
     gen = PA.get_generation_data(results_uc; curtailment = false)
-    @test length(gen.data) == 7
+    @test keys(gen.data) ==
+          Set([:ActivePowerVariable__HydroTurbine,
+        :ActivePowerOutVariable__EnergyReservoirStorage,
+        :ActivePowerTimeSeriesParameter__RenewableNonDispatch,
+        :ActivePowerVariable__RenewableDispatch,
+        :ActivePowerInVariable__EnergyReservoirStorage,
+        :ActivePowerTimeSeriesParameter__HydroDispatch,
+        :ActivePowerVariable__ThermalStandard])
     @test length(gen.time) == 48
 
     gen = PA.get_generation_data(

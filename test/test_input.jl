@@ -57,7 +57,11 @@ end
         comp = get_component(ThermalStandard, get_system(res), "Solitude")
         my_result = PA.read_component_result(res, entry, comp)
         key = PSI.VariableKey(entry, ThermalStandard)
-        existing_result = only(values(PSI.read_results_with_keys(res, [key])))[
+        existing_result = only(
+            values(
+                PSI.read_results_with_keys(res, [key]; table_format = IS.TableFormat.WIDE),
+            ),
+        )[
             !,
             ["DateTime", "Solitude"],
         ]
@@ -69,7 +73,15 @@ end
     entry = SystemBalanceSlackUp
     my_result = PA.read_system_result(results_ed, entry)
     key = PSI.VariableKey(entry, System)
-    existing_result = only(values(PSI.read_results_with_keys(results_ed, [key])))
+    existing_result = only(
+        values(
+            PSI.read_results_with_keys(
+                results_ed,
+                [key];
+                table_format = IS.TableFormat.WIDE,
+            ),
+        ),
+    )
     @test get_time_vec(my_result) == get_time_vec(existing_result)
     @test get_data_vec(my_result) == get_data_vec(existing_result)
 end
