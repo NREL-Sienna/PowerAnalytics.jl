@@ -7,6 +7,8 @@ function linear_fuel_to_linear_cost(fc::FuelCurve{LinearCurve})
         get_proportional_term(old_vc) * fuel_cost,
         get_constant_term(old_vc) * fuel_cost,
     )
+    iszero(PSY.get_startup_fuel_offtake(fc)) ||
+        throw(IS.NotImplementedError("`startup_fuel_offtake` conversion not implemented"))
     return CostCurve(new_vc, get_power_units(fc), get_vom_cost(fc))
 end
 
@@ -57,20 +59,8 @@ function add_re!(sys)
     add_component!(sys, fx)
     copy_time_series!(fx, get_component(PowerLoad, sys, "bus2"))
 
-    for g in get_components(HydroEnergyReservoir, sys)
-        tpc = get_operation_cost(g)
-        cc = get_variable(tpc)
-        (cc isa FuelCurve) && (cc = linear_fuel_to_linear_cost(cc))
-        smc = StorageCost(;
-            charge_variable_cost = cc,
-            discharge_variable_cost = cc,
-            fixed = PSY.get_fixed(tpc),
-            start_up = 0.0,
-            shut_down = 0.0,
-            energy_shortage_cost = 10.0,
-            energy_surplus_cost = 10.0,
-        )
-        set_operation_cost!(g, smc)
+    for my_reservoir in get_components(HydroReservoir, sys)
+        set_operation_cost!(my_reservoir, HydroReservoirCost(10.0, 10.0, 0.0))
     end
 
     batt = EnergyReservoirStorage(;
@@ -136,11 +126,8 @@ function _execute_simulation(base_path, sim_name)
         EnergyReservoirStorage,
         StorageDispatchWithReserves,
     )
-    set_device_model!(
-        template_hydro_st_uc,
-        HydroEnergyReservoir,
-        HydroDispatchReservoirStorage,
-    )
+    set_device_model!(template_hydro_st_uc, HydroTurbine, HydroTurbineEnergyDispatch)
+    set_device_model!(template_hydro_st_uc, HydroReservoir, HydroEnergyModelReservoir)
     set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)
 
     template_hydro_st_ed = ProblemTemplate(
@@ -160,11 +147,8 @@ function _execute_simulation(base_path, sim_name)
         EnergyReservoirStorage,
         StorageDispatchWithReserves,
     )
-    set_device_model!(
-        template_hydro_st_ed,
-        HydroEnergyReservoir,
-        HydroDispatchReservoirStorage,
-    )
+    set_device_model!(template_hydro_st_ed, HydroTurbine, HydroTurbineEnergyDispatch)
+    set_device_model!(template_hydro_st_ed, HydroReservoir, HydroEnergyModelReservoir)
     models = SimulationModels(;
         decision_models = [
             DecisionModel(
@@ -260,11 +244,8 @@ function run_test_prob()
 
     template_hydro_st_uc = template_unit_commitment()
     set_device_model!(template_hydro_st_uc, HydroDispatch, FixedOutput)
-    set_device_model!(
-        template_hydro_st_uc,
-        HydroEnergyReservoir,
-        HydroDispatchReservoirStorage,
-    )
+    set_device_model!(template_hydro_st_uc, HydroTurbine, HydroTurbineEnergyDispatch)
+    set_device_model!(template_hydro_st_uc, HydroReservoir, HydroEnergyModelReservoir)
 
     prob = DecisionModel(
         template_hydro_st_uc,
