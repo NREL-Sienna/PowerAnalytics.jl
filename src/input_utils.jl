@@ -133,6 +133,7 @@ function _read_results_with_keys_wrapper(
         start_time = start_time,
         len = len,
         cols = cols,
+        table_format = IS.TableFormat.WIDE,
     )
 end
 
@@ -149,6 +150,7 @@ _read_results_with_keys_wrapper(
         [make_key(key_pair...)];
         start_time = start_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
 
 "Given an EntryType and a Component, fetch a single column of results"
@@ -189,12 +191,15 @@ function read_system_result(res::IS.Results, entry::Type{<:SystemEntryType};
     start_time::Union{Nothing, DateTime} = nothing, len::Union{Int, Nothing} = nothing)
     key = make_key(entry, PSY.System)
     res = only(
-        values(PSI.read_results_with_keys(
+        values(
+            PSI.read_results_with_keys(
                 res,
                 [key];
                 start_time = start_time,
                 len = len,
-            )),
+                table_format = IS.TableFormat.WIDE,
+            ),
+        ),
     )
     @assert size(res, 2) == 2 "Expected a time column and a data column in the results for $(PSI.encode_key_as_string(key)), got $(size(res, 2)) columns"
     @assert DATETIME_COL in names(res) "Expected a column named $DATETIME_COL in the results for $(PSI.encode_key_as_string(key)), got $(names(res))"

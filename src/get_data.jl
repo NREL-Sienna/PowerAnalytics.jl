@@ -325,6 +325,7 @@ function get_generation_data(
         injection_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(variables, filter_func, results)
 
@@ -333,6 +334,7 @@ function get_generation_data(
         parameter_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(parameters, filter_func, results)
 
@@ -341,6 +343,7 @@ function get_generation_data(
         aux_variable_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(aux_variables, filter_func, results)
 
@@ -375,6 +378,7 @@ function get_load_data(
         variable_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(variables, filter_func, results)
 
@@ -383,6 +387,7 @@ function get_load_data(
         parameter_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(parameters, filter_func, results)
 
@@ -391,6 +396,7 @@ function get_load_data(
         aux_variable_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(aux_variables, filter_func, results)
 
@@ -508,6 +514,7 @@ function get_service_data(
         variable_keys;
         start_time = initial_time,
         len = len,
+        table_format = IS.TableFormat.WIDE,
     )
     filter_results!(variables, filter_func, results)
 
