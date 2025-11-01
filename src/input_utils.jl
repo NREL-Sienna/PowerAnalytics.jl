@@ -114,7 +114,7 @@ make_entry_kwargs(key_tuples::Vector{<:Tuple}) = [
 
 # SimulationProblemResults has some extra features: the ability to `load_results!` and to specify which columns we want
 function _read_results_with_keys_wrapper(
-    res::PSI.SimulationProblemResults,
+    res::PSI.SimulationProblemResults{PSI.DecisionProblemResults},
     key_pair;
     start_time::Union{Nothing, DateTime} = nothing,
     len::Union{Int, Nothing} = nothing,
