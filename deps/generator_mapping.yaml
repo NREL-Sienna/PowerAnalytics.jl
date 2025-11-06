@@ -29,7 +29,7 @@ Nuclear:
 Geothermal:
   - {gentype: Any, primemover: null, fuel: GEOTHERMAL}
 Biopower:
-  - {gentype: Any, primemover: null, fuel: AG_BIPRODUCT}
+  - {gentype: Any, primemover: null, fuel: AG_BYPRODUCT}
   - {gentype: Any, primemover: null, fuel: WOOD_WASTE_SOLIDS}
   - {gentype: Any, primemover: null, fuel: WOOD_WASTE_LIQUIDS}
 CSP:
