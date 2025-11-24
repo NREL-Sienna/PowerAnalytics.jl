@@ -29,17 +29,17 @@ We have obtained simulation results for the following two simulation scenarios:
 
 The simulations were performed using the [PowerSystems.jl](https://nrel-sienna.github.io/PowerSystems.jl/stable/) and [PowerSimulations.jl](https://nrel-sienna.github.io/PowerSimulations.jl/stable/) packages of Sienna. The [`CopperPlatePowerModel`](@extref) formulation was considered for the [`NetworkModel`](@extref PowerSimulations.NetworkModel), while the formulations chosen for each of the component types we want to include in the simulation are presented in the table below:
 
-| Component Type                      | Formulation                                                                                    |
-|:----------------------------------- |:---------------------------------------------------------------------------------------------- |
-| [`Line`](@extref)                   | [`StaticBranch`](@extref)                                                                      |
-| [`TapTransformer`](@extref)         | [`StaticBranch`](@extref)                                                                      |
-| [`ThermalStandard`](@extref)        | [`ThermalBasicUnitCommitment`](@extref)                                                        |
-| [`RenewableDispatch`](@extref)      | [`RenewableFullDispatch`](@extref)                                                             |
-| [`RenewableNonDispatch`](@extref)   | [`FixedOutput`](@extref)                                                                       |
-| [`HydroDispatch`](@extref)          | [`HydroDispatchRunOfRiver`](@extref)                                                           |
-| [`HydroTurbine`](@extref)           | [`HydroDispatchRunOfRiver`](@extref)                                                           |
-| [`EnergyReservoirStorage`](@extref) | [`StorageDispatchWithReserves`](@extref StorageSystemsSimulations.StorageDispatchWithReserves) |
-| [`PowerLoad`](@extref)              | [`StaticPowerLoad`](@extref)                                                                   |
+| Component Type                                      | Formulation                                                                                    |
+|:--------------------------------------------------- |:---------------------------------------------------------------------------------------------- |
+| [`Line`](@extref)                                   | [`StaticBranch`](@extref)                                                                      |
+| [`TapTransformer`](@extref)                         | [`StaticBranch`](@extref)                                                                      |
+| [`ThermalStandard`](@extref)                        | [`ThermalBasicUnitCommitment`](@extref)                                                        |
+| [`RenewableDispatch`](@extref)                      | [`RenewableFullDispatch`](@extref)                                                             |
+| [`RenewableNonDispatch`](@extref)                   | [`FixedOutput`](@extref)                                                                       |
+| [`HydroDispatch`](@extref)                          | [`HydroDispatchRunOfRiver`](@extref)                                                           |
+| [`HydroTurbine`](@extref PowerSystems.HydroTurbine) | [`HydroDispatchRunOfRiver`](@extref)                                                           |
+| [`EnergyReservoirStorage`](@extref)                 | [`StorageDispatchWithReserves`](@extref StorageSystemsSimulations.StorageDispatchWithReserves) |
+| [`PowerLoad`](@extref)                              | [`StaticPowerLoad`](@extref)                                                                   |
 
 !!! info
     
