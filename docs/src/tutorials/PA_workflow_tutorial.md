@@ -37,7 +37,7 @@ The simulations were performed using the [PowerSystems.jl](https://nrel-sienna.g
 | [`RenewableDispatch`](@extref)      | [`RenewableFullDispatch`](@extref)                                                             |
 | [`RenewableNonDispatch`](@extref)   | [`FixedOutput`](@extref)                                                                       |
 | [`HydroDispatch`](@extref)          | [`HydroDispatchRunOfRiver`](@extref)                                                           |
-| [`HydroEnergyReservoir`](@extref)   | [`HydroDispatchRunOfRiver`](@extref)                                                           |
+| [`HydroTurbine`](@extref)   | [`HydroDispatchRunOfRiver`](@extref)                                                           |
 | [`EnergyReservoirStorage`](@extref) | [`StorageDispatchWithReserves`](@extref StorageSystemsSimulations.StorageDispatchWithReserves) |
 | [`PowerLoad`](@extref)              | [`StaticPowerLoad`](@extref)                                                                   |
 
