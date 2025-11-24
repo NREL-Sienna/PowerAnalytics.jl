@@ -30,26 +30,27 @@ jobs:
             local repo="$1"
             local source_branch="$2"
             local target_branch="$3"
-            local fallback_branch="main"
 
             if git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$source_branch" | grep -q "$source_branch"; then
               echo "$source_branch"
             elif git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$target_branch" | grep -q "$target_branch"; then
               echo "$target_branch"
             else
-              echo "$fallback_branch"
+              # Automatically determine default branch to fall back on
+              git ls-remote --symref "https://github.com/NREL-Sienna/$repo.git" HEAD | awk '/^ref:/ {sub("refs/heads/", "", $2); print $2}'
             fi
           }
 
           source_branch="${{ github.head_ref }}"
           target_branch="${{ github.base_ref }}"
           IFS=' ' read -r -a repos <<< "$SIENNA_PKGS"
+          repos+=("PowerSystemsTestData")  # PowerSystemsTestData is not a package, but is a repo we need to clone
+
           for repo in "${repos[@]}"; do
             branch=$(select_branch "$repo" "$source_branch" "$target_branch")
             echo " - Cloning $repo on branch $branch..."
             git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
           done
-          git clone "https://github.com/NREL-Sienna/PowerSystemsTestData.git" PowerSystemsTestData-3.3
           
       - uses: julia-actions/setup-julia@latest
         with:
