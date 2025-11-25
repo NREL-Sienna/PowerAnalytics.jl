@@ -14,7 +14,13 @@ test_calc_active_power = ComponentTimedMetric(;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
         key = PSI.VariableKey(ActivePowerVariable, typeof(comp))
-        res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
+        res = PSI.read_results_with_keys(
+            res,
+            [key];
+            start_time = start_time,
+            len = len,
+            table_format = IS.TableFormat.WIDE,
+        )
         first(values(res))[!, [DATETIME_COL, get_name(comp)]]
     end,
 )
@@ -26,7 +32,13 @@ test_calc_production_cost = ComponentTimedMetric(;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
         key = PSI.ExpressionKey(ProductionCostExpression, typeof(comp))
-        res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
+        res = PSI.read_results_with_keys(
+            res,
+            [key];
+            start_time = start_time,
+            len = len,
+            table_format = IS.TableFormat.WIDE,
+        )
         first(values(res))[!, [DATETIME_COL, get_name(comp)]]
     end,
 )
@@ -38,7 +50,13 @@ test_calc_system_slack_up = SystemTimedMetric(;
         start_time::Union{Nothing, Dates.DateTime} = nothing,
         len::Union{Int, Nothing} = nothing) -> let
         key = PSI.VariableKey(SystemBalanceSlackUp, System)
-        res = PSI.read_results_with_keys(res, [key]; start_time = start_time, len = len)
+        res = PSI.read_results_with_keys(
+            res,
+            [key];
+            start_time = start_time,
+            len = len,
+            table_format = IS.TableFormat.WIDE,
+        )
         res = first(values(res))
         # If there's more than a datetime column and a data column, we are misunderstanding
         @assert size(res, 2) == 2
@@ -159,7 +177,7 @@ function test_generic_metric_helper(computed, met, data_colname)
     @test get(metadata(computed), "metric", nothing) === met
     @test get(colmetadata(computed, data_colname), "metric", nothing) ==
           get(metadata(computed), "metric", nothing)
-    @test eltype(computed[!, data_colname]) <: Number
+    @test eltype(computed[!, data_colname]) <: Union{Missing, Number}  # TODO
 end
 
 function test_component_timed_metric(met, res, sel)

@@ -120,7 +120,7 @@ const calc_active_power = make_component_metric_from_entry(
     PSI.ActivePowerVariable,
 )
 
-"Calculate the active power output of the specified `ComponentSelector`"
+"Calculate the production cost expression of the specified `ComponentSelector`"
 const calc_production_cost = make_component_metric_from_entry(
     "ProductionCost",
     PSI.ProductionCostExpression,
