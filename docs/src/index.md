@@ -14,6 +14,14 @@ The latest stable release of PowerAnalytics can be installed using the Julia pac
 ] add PowerAnalytics
 ```
 
+!!! note
+    
+    The latest stable release of `PowerAnalytics.jl` supports the `PowerSystems.jl` 5.0
+    ecosystem, except that all results processing is done in wide format rather than long
+    format, which precludes support for greater than two dimensional results. For now,
+    greater than two dimensional results must be processed manually; we are working to add
+    support for these in a future release.
+
 ## About Sienna
 
 `PowerAnalytics.jl` is part of the National Renewable Energy Laboratory's
