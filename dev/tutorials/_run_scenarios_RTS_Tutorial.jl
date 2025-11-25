@@ -65,7 +65,7 @@ function run_scenario(scenario::String)
     set_device_model!(template_uc, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_uc, PowerLoad, StaticPowerLoad)
     set_device_model!(template_uc, HydroDispatch, HydroDispatchRunOfRiver)
-    set_device_model!(template_uc, HydroEnergyReservoir, HydroDispatchRunOfRiver)
+    set_device_model!(template_uc, HydroTurbine, HydroDispatchRunOfRiver)
     set_device_model!(
         template_uc,
         DeviceModel(
