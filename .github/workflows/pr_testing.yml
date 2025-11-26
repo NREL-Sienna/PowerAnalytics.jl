@@ -1,18 +1,99 @@
 name: Test-CI
-
+env:
+  SIENNA_PKGS: 'InfrastructureSystems.jl PowerSystems.jl PowerSystemCaseBuilder.jl PowerNetworkMatrices.jl PowerFlows.jl PowerSimulations.jl HydroPowerSimulations.jl StorageSystemsSimulations.jl'
+  UPLOAD_DIR: upload/dependencies
+  GKS_ENCODING: "utf8"
+  GKSwstype: "100"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  test:
-    env:
-      GKS_ENCODING: "utf8"
-      GKSwstype: "100"
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v2
 
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=env-${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Clone Sienna packages
+        run: |
+          rm -rf "${UPLOAD_DIR}"
+          mkdir -p "${UPLOAD_DIR}"
+          cd "${UPLOAD_DIR}"
+          # Function to choose appropriate branch
+          select_branch() {
+            local repo="$1"
+            local source_branch="$2"
+            local target_branch="$3"
+
+            if git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$source_branch" | grep -q "$source_branch"; then
+              echo "$source_branch"
+            elif git ls-remote --heads "https://github.com/NREL-Sienna/$repo.git" "$target_branch" | grep -q "$target_branch"; then
+              echo "$target_branch"
+            else
+              # Automatically determine default branch to fall back on
+              git ls-remote --symref "https://github.com/NREL-Sienna/$repo.git" HEAD | awk '/^ref:/ {sub("refs/heads/", "", $2); print $2}'
+            fi
+          }
+
+          source_branch="${{ github.head_ref }}"
+          target_branch="${{ github.base_ref }}"
+          IFS=' ' read -r -a repos <<< "$SIENNA_PKGS"
+          repos+=("PowerSystemsTestData")  # PowerSystemsTestData is not a package, but is a repo we need to clone
+
+          for repo in "${repos[@]}"; do
+            branch=$(select_branch "$repo" "$source_branch" "$target_branch")
+            echo " - Cloning $repo on branch $branch..."
+            git clone --branch "$branch" --single-branch "https://github.com/NREL-Sienna/$repo.git"
+          done
+          
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+          arch: x64
+
+      - name: Dev Sienna packages
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
+        run: |
+          julia -e '
+
+          using Pkg, TOML
+          pkgs = split(ENV["SIENNA_PKGS"])
+          upload_dir = ENV["UPLOAD_DIR"]
+          for pkg in pkgs
+            Pkg.activate(joinpath(upload_dir, pkg))
+            proj = TOML.parsefile(joinpath(upload_dir, pkg, "Project.toml"))
+            deps = collect(keys(proj["deps"]))
+            pkgs_to_dev = filter(p -> splitext(p)[1] in deps && p != pkg, pkgs)
+            if !isempty(pkgs_to_dev)
+              @info "Developing additional dependencies for $pkg: $pkgs_to_dev"
+              Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            else
+              @info "No additional dependencies to develop for $pkg."
+            end
+          end
+          '
+
+      - name: Upload Sienna packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: sienna-packages
+          path: ${{ env.UPLOAD_DIR }}
+          overwrite: true
+          retention-days: 1
+
+  test:
+    needs: prepare
     name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         julia-version: ['1']
         julia-arch: [x64]
@@ -24,12 +105,79 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
+
+      - name: Use Julia cache
+        uses: julia-actions/cache@v2
+
+      - name: Generate OS-specific Overrides.toml
+        run: |
+          julia -e '
+            using TOML
+            # Load the Overrides.toml file
+            overrides = TOML.parsefile(".github/workflows/Overrides.toml")
+            # Get absolute upload dir path from environment
+            upload_dir = abspath(ENV["UPLOAD_DIR"])
+            # Replace variables in override values
+            for (uuid, settings) in overrides
+                for (k, v) in settings
+                    if occursin("\$UPLOAD_DIR", v)
+                        settings[k] = replace(v, "\$UPLOAD_DIR" => upload_dir)
+                    end
+                end
+            end
+            # Write resolved Overrides.toml to artifacts path
+            overrides_path = joinpath(homedir(), ".julia", "artifacts", "Overrides.toml")
+            mkpath(dirname(overrides_path))
+            open(overrides_path, "w") do io
+                TOML.print(io, overrides)
+            end
+          '
+      
+      - name: Download Sienna packages
+        uses: actions/download-artifact@v4
+        with:
+          name: sienna-packages
+          path: ${{ env.UPLOAD_DIR }}
+
+      - name: Dev Sienna packages
+        env:
+            JULIA_PKG_PRECOMPILE_AUTO: "0"
+        run: |
+          julia -e '
+            using Pkg, TOML
+            pkgs = split(ENV["SIENNA_PKGS"])
+            upload_dir = ENV["UPLOAD_DIR"]
+            
+            test_dir = joinpath(".", "test")
+            Pkg.activate(test_dir)
+            Pkg.develop(PackageSpec(path="."))
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
+            Pkg.resolve()
+            Pkg.status()
+
+            Pkg.activate(".")
+            proj = TOML.parsefile(joinpath(".", "Project.toml"))
+            deps = collect(keys(proj["deps"]))
+            pkgs_to_dev = filter(p -> (name = splitext(p)[1]; name in deps && name != proj["name"]), pkgs)
+            if !isempty(pkgs_to_dev)
+              @info "Developing additional dependencies $pkgs_to_dev"
+              Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs_to_dev])
+            else
+              @info "No additional dependencies to develop"
+            end
+
+            Pkg.resolve()
+            Pkg.status()
+          '
+      
       - uses: julia-actions/julia-buildpkg@latest
         env:
           PYTHON: ""
+
       - uses: julia-actions/julia-runtest@latest
         env:
           PYTHON: ""
+        
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
         with:
@@ -38,3 +186,83 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+    
+  test_sienna_package:
+    name: Test ${{ matrix.pkg }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      fail-fast: false  # we want to know what packages fail and what packages pass
+      matrix:
+        pkg:
+          - PowerSystems.jl
+          - InfrastructureSystems.jl
+          - PowerSystemCaseBuilder.jl
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+          arch: x64
+
+      - name: Use Julia cache
+        uses: julia-actions/cache@v2
+
+      - name: Generate OS-specific Overrides.toml
+        run: |
+          julia -e '
+            using TOML
+            # Load the Overrides.toml file
+            overrides = TOML.parsefile(".github/workflows/Overrides.toml")
+            # Get absolute upload dir path from environment
+            upload_dir = abspath(ENV["UPLOAD_DIR"])
+            # Replace variables in override values
+            for (uuid, settings) in overrides
+                for (k, v) in settings
+                    if occursin("\$UPLOAD_DIR", v)
+                        settings[k] = replace(v, "\$UPLOAD_DIR" => upload_dir)
+                    end
+                end
+            end
+            # Write resolved Overrides.toml to artifacts path
+            overrides_path = joinpath(homedir(), ".julia", "artifacts", "Overrides.toml")
+            mkpath(dirname(overrides_path))
+            open(overrides_path, "w") do io
+                TOML.print(io, overrides)
+            end
+          '
+
+      - name: Download Sienna packages
+        uses: actions/download-artifact@v4
+        with:
+          name: sienna-packages
+          path: ${{ env.UPLOAD_DIR }}
+
+      - name: Dev dependencies for ${{ matrix.pkg }}
+        run: |
+          julia -e '
+            using Pkg, TOML
+            pkgs = split(ENV["SIENNA_PKGS"])
+            upload_dir = ENV["UPLOAD_DIR"]
+            pkg_name = ENV["PKG_NAME"]
+            test_dir = joinpath(upload_dir, pkg_name, "test")
+            Pkg.activate(test_dir)
+            Pkg.develop([PackageSpec(path=joinpath(upload_dir, p)) for p in pkgs])
+            Pkg.resolve()
+            Pkg.status()
+          '
+        env:
+          PKG_NAME: ${{ matrix.pkg }}
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
+
+      - uses: julia-actions/julia-buildpkg@latest
+        env:
+          PYTHON: ""
+
+      - name: Run ${{ matrix.pkg }} tests
+        uses: julia-actions/julia-runtest@latest
+        with:
+          project: ${{ env.UPLOAD_DIR }}/${{ matrix.pkg }}
+        env:
+          PYTHON: ""
