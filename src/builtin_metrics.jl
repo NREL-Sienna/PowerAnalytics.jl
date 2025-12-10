@@ -100,6 +100,7 @@ export calc_active_power,
     calc_net_load_forecast,
     calc_curtailment,
     calc_curtailment_frac,
+    calc_outaged_active_power_capacity,
     calc_integration,
     calc_capacity_factor,
     calc_startup_cost,
@@ -221,6 +222,17 @@ const calc_curtailment_frac = ComponentTimedMetric(;
     ), component_agg_fn = weighted_mean, time_agg_fn = weighted_mean,
 )
 
+"Calculate the active power capacity that is not available due to outage"
+const calc_outaged_active_power_capacity = ComponentTimedMetric(;
+    name = "OutagedActivePowerCapacity", 
+    eval_fn =  (res::IS.Results, comp::Component; kwargs...) -> let
+        result = read_component_result(res, PSI.AvailableStatusParameter, comp; kwargs...)
+        max_active_power = PSY.get_max_active_power(comp)
+        (get_data_vec(result) .-= 1) .*= -1
+        get_data_vec(result) .*= max_active_power
+        return result
+    end 
+)
 # Helper function for calc_integration
 _integration_denoms(res; kwargs...) =
     compute(calc_system_load_forecast, res; kwargs...),

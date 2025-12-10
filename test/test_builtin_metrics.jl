@@ -93,6 +93,10 @@ function test_metric(::Val{:calc_net_load_forecast})
     @test calc_load_from_storage(make_selector(EnergyReservoirStorage), results_uc) isa
           ResultType
 end
+#TODO - modify the test results to have outages so the parameters are stored.
+function test_metric(::Val{:calc_outaged_active_power_capacity})
+    @test calc_outaged_active_power_capacity(make_selector(ThermalStandard), results_uc) isa ResultType
+end
 
 function test_metric(::Val{:calc_production_cost})
     @test calc_production_cost(make_selector(ThermalStandard), results_uc) isa ResultType
