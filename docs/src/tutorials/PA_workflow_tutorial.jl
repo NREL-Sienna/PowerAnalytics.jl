@@ -276,5 +276,3 @@ show(df; allcols = true)
 # Looking at the final dataframe, we can now easily compare the aggregated results of the selected metrics between the two simulation scenarios.
 #
 # Focusing on the thermal generation and renewable curtailment results for example, we observe a decrease of approximately 0.15% in total thermal generation and approximately 11.90% in renewable curtailment across the full simulation horizon and the entire system. The increased energy capacity of the storage device in the second scenario enables it to store more excess renewable energy rather than curtail it, which in turn reduces the need for thermal generation.
-
-
