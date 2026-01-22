@@ -33,4 +33,4 @@ Contributions to the development and enhancement of PowerAnalytics is welcome. P
 ## License
 
 PowerAnalytics is released under a BSD [license](https://github.com/nrel-sienna/PowerAnalytics.jl/blob/main/LICENSE). PowerAnalytics has been developed as part of the Scalable Integrated Infrastructure Planning (SIIP)
-initiative at the U.S. Department of Energy's National Renewable Energy Laboratory ([NREL](https://www.nrel.gov/))
+initiative at the U.S. Department of Energy's National Laboratory of the Rockies ([NLR](https://www.nlr.gov/), formerly NREL)
