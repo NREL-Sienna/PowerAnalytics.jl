@@ -11,13 +11,7 @@
 #   - 157 generators (including 76 thermal generators, 57 solar PV facilities, 4 wind turbines, 20 hydro units),
 #   - 1 short-duration (3 hours) storage device with 100% charging and discharging efficiency
 #
-# ```@raw html
-# <p align="center">
-#   <img src="../../assets/nodemap_RTSGMLC.png" width="700">
-#   <br>
-#   <b>Fig. 1 - <a href="https://github.com/GridMod/RTS-GMLC/blob/master/node_re_basemap.png">RTS-GMLC system</a></b>
-# </p>
-# ```
+# ![RTS-GMLC system map](https://github.com/GridMod/RTS-GMLC/blob/3ece0d3725c844056132393ee252b3083dd4eab4/node_re_basemap.png)
 #
 # ## Simulation Scenarios
 #
