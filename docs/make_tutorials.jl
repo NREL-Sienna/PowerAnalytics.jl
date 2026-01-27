@@ -122,6 +122,44 @@ function add_pkg_status_to_notebook(nb::Dict)
     return nb
 end
 
+# Add italicized "view online" comment after each image from ```@raw html ... ``` (or
+# the raw HTML / markdown form Literate writes). Used as a postprocess in Literate.notebook.
+# Expects _DOCS_BASE_URL to be defined by the includer (e.g. in make.jl).
+# Literate strips the backtick wrapper and outputs raw HTML; we match that multi-line block.
+function add_image_links(nb::Dict, outputfile_base::AbstractString)
+    tutorial_url = "$_DOCS_BASE_URL/tutorials/$(outputfile_base)/"
+    msg = "_If image is not available when viewing in a Jupyter notebook, view the tutorial online [here]($tutorial_url)._"
+    cells = get(nb, "cells", [])
+    for (idx, cell) in enumerate(cells)
+        get(cell, "cell_type", "") != "markdown" && continue
+        source = get(cell, "source", [])
+        isempty(source) && continue
+        text = join(source)
+        suffix = "\n\n" * msg * "\n"
+        append_after = m -> string(m) * suffix
+        # Literate outputs raw HTML (no ```@raw html```); match <p...>...<img...>...</p>
+        text = replace(text, r"<p[^>]*>[\s\S]*?<img[\s\S]*?</p>" => append_after)
+        # If source still had literal ```@raw html ... ``` in the notebook
+        text = replace(text, r"```@raw html[\s\S]*?```" => append_after)
+        # Markdown image ![...](...)
+        text = replace(text, r"!\[[^\]]*\]\([^\)]*\)" => append_after)
+        # Convert back to notebook source array (lines, last without trailing \n if non-empty)
+        lines = split(text, "\n"; keepempty = true)
+        new_source = String[]
+        for i in 1:length(lines)
+            if i < length(lines)
+                push!(new_source, lines[i] * "\n")
+            else
+                isempty(lines[i]) || push!(new_source, lines[i])
+            end
+        end
+        cell["source"] = new_source
+        cells[idx] = cell
+    end
+    nb["cells"] = cells
+    return nb
+end
+
 # Function to clean up old generated files
 function clean_old_generated_files(dir::String)
     if !isdir(dir)
@@ -137,6 +175,8 @@ function clean_old_generated_files(dir::String)
 end
 
 # Process tutorials with Literate
+# Markdown files are postprocessed to add download links for the Julia script and Jupyter notebook
+# Jupyter notebooks are postprocessed to add image links and pkg.status()
 function make_tutorials()
     # Exclude helper scripts that start with "_"
     if isdir("docs/src/tutorials")
@@ -179,13 +219,13 @@ function make_tutorials()
                     ),
                     execute = execute)
 
-                # Generate notebook
+                # Generate notebook (chain add_image_links after add_pkg_status_to_notebook)
                 Literate.notebook(infile_path,
                     tutorial_outputdir;
                     name = outputfile,
                     credit = false,
                     execute = false,
-                    postprocess = add_pkg_status_to_notebook)
+                    postprocess = nb -> add_image_links(add_pkg_status_to_notebook(nb), outputfile))
             end
         end
     end
