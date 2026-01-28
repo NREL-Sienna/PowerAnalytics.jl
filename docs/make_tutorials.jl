@@ -1,7 +1,53 @@
 using Pkg
 using Literate
+using DataFrames
 
+# Override show for DataFrames to limit output size during doc builds (REPL-style truncation)
+# This ensures large DataFrames are truncated in @example blocks, similar to REPL behavior
+# This avoids tutorial writers needing to manually truncate the output of large DataFrames.
+# Override both text/plain and text/html MIME types since Documenter may use either
+
+# Override text/plain representation
+function Base.show(io::IO, mime::MIME"text/plain", df::DataFrame)
+    # Use limited displaysize similar to REPL (24 rows, 80 columns)
+    limited_io = IOContext(io,
+        :displaysize => (10, 20),
+        :limit => true,
+        :compact => false)
+    # Use invoke to call the show method for AbstractDataFrame (parent type)
+    # This avoids infinite recursion by calling a different method signature
+    Base.invoke(Base.show, Tuple{IO, MIME"text/plain", AbstractDataFrame}, limited_io, mime, df)
+end
+
+# Override text/html representation (Documenter prefers this for large outputs)
+function Base.show(io::IO, mime::MIME"text/html", df::DataFrame)
+    # For HTML, also use limited displaysize to control PrettyTables output
+    # DataFrames uses PrettyTables.jl for HTML rendering
+    limited_io = IOContext(io,
+        :displaysize => (10, 20),
+        :limit => true,
+        :compact => false)
+    # Use invoke to call the show method for AbstractDataFrame (parent type)
+    Base.invoke(Base.show, Tuple{IO, MIME"text/html", AbstractDataFrame}, limited_io, mime, df)
+end
+
+# Function to clean up old generated files
+function clean_old_generated_files(dir::String)
+    if !isdir(dir)
+        @warn "Directory does not exist: $dir"
+        return
+    end
+    generated_files =
+        filter(f -> startswith(f, "generated_") && endswith(f, ".md"), readdir(dir))
+    for file in generated_files
+        rm(joinpath(dir, file); force = true)
+        @info "Removed old generated file: $file"
+    end
+end
+
+#########################################################
 # Literate post-processing functions for tutorial generation
+#########################################################
 
 # postprocess function to insert md
 function insert_md(content)
@@ -221,21 +267,10 @@ function add_image_links(nb::Dict, outputfile_base::AbstractString)
     return nb
 end
 
-# Function to clean up old generated files
-function clean_old_generated_files(dir::String)
-    if !isdir(dir)
-        @warn "Directory does not exist: $dir"
-        return
-    end
-    generated_files =
-        filter(f -> startswith(f, "generated_") && endswith(f, ".md"), readdir(dir))
-    for file in generated_files
-        rm(joinpath(dir, file); force = true)
-        @info "Removed old generated file: $file"
-    end
-end
-
+#########################################################
 # Process tutorials with Literate
+#########################################################
+
 # Markdown files are postprocessed to add download links for the Julia script and Jupyter notebook
 # Jupyter notebooks are postprocessed to add image links and pkg.status()
 function make_tutorials()
