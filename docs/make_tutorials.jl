@@ -13,6 +13,67 @@ function insert_md(content)
     return content
 end
 
+# Default display titles for Documenter admonition types when no custom title is given.
+# See https://documenter.juliadocs.org/stable/showcase/#Admonitions
+const _ADMONITION_DISPLAY_NAMES = Dict{String, String}(
+    "note" => "Note",
+    "info" => "Info",
+    "tip" => "Tip",
+    "warning" => "Warning",
+    "danger" => "Danger",
+    "compat" => "Compat",
+    "todo" => "TODO",
+    "details" => "Details",
+)
+
+# Preprocess Literate source to convert Documenter-style admonitions into Jupyter-friendly
+# blockquotes. Used only for notebook output; markdown keeps `!!! type` and is rendered by
+# Documenter. Admonitions are not recognized by common mark or Jupyter; see
+# https://fredrikekre.github.io/Literate.jl/v2/tips/#admonitions-compatibility
+function preprocess_admonitions_for_notebook(str::AbstractString)
+    lines = split(str, '\n'; keepempty = true)
+    out = String[]
+    i = 1
+    n = length(lines)
+    admonition_start = r"^# !!! (note|info|tip|warning|danger|compat|todo|details)(?:\s+\"([^\"]*)\")?\s*$"
+    content_line = r"^#     (.*)$"  # Documenter admonition body: # then 4 spaces
+    blank_comment = r"^#\s*$"      # # or # with only spaces
+
+    while i <= n
+        line = lines[i]
+        m = match(admonition_start, line)
+        if m !== nothing
+            typ = lowercase(m.captures[1])
+            custom_title = m.captures[2]
+            title = if custom_title !== nothing && !isempty(custom_title)
+                custom_title
+            else
+                get(_ADMONITION_DISPLAY_NAMES, typ, titlecase(typ))
+            end
+            push!(out, "# > *$(title)*")
+            push!(out, "# >")
+            i += 1
+            # Consume blank comment lines and content lines
+            while i <= n
+                l = lines[i]
+                if match(blank_comment, l) !== nothing
+                    push!(out, "# >")
+                    i += 1
+                elseif (cm = match(content_line, l)) !== nothing
+                    push!(out, "# > " * cm.captures[1])
+                    i += 1
+                else
+                    break
+                end
+            end
+            continue
+        end
+        push!(out, line)
+        i += 1
+    end
+    return join(out, '\n')
+end
+
 # Function to add download links to generated markdown
 function add_download_links(content, jl_file, ipynb_file)
     # Add download links at the top of the file after the first heading
@@ -219,12 +280,15 @@ function make_tutorials()
                     ),
                     execute = execute)
 
-                # Generate notebook (chain add_image_links after add_pkg_status_to_notebook)
+                # Generate notebook (chain add_image_links after add_pkg_status_to_notebook).
+                # preprocess_admonitions_for_notebook converts Documenter admonitions to blockquotes
+                # so they render in Jupyter; markdown output keeps !!! style for Documenter.
                 Literate.notebook(infile_path,
                     tutorial_outputdir;
                     name = outputfile,
                     credit = false,
                     execute = false,
+                    preprocess = preprocess_admonitions_for_notebook,
                     postprocess = nb -> add_image_links(add_pkg_status_to_notebook(nb), outputfile))
             end
         end
