@@ -109,6 +109,7 @@ function run_scenario(scenario::String)
         ini_cond_chronology = InterProblemChronology(),
     )
     output_folder = joinpath(@__DIR__, "_simulation_results_RTS")
+    rm(output_folder; recursive = true, force = true)
     mkpath(output_folder)
 
     # Build and Run the Simulation
