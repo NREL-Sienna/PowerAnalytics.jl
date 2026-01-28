@@ -1,34 +1,38 @@
 using Pkg
 using Literate
 using DataFrames
+using PrettyTables
 
-# Override show for DataFrames to limit output size during doc builds (REPL-style truncation)
-# This ensures large DataFrames are truncated in @example blocks, similar to REPL behavior
-# This avoids tutorial writers needing to manually truncate the output of large DataFrames.
-# Override both text/plain and text/html MIME types since Documenter may use either
+# Override show for DataFrames to limit output size during doc builds
+# This ensures large DataFrames are truncated when displayed as expression results in @example blocks
+# Explicit show() calls in tutorials with their own arguments are NOT affected (they use their own kwargs)
+# We override both text/plain and text/html since Documenter may use either
+# 
+# Strategy: Call PrettyTables.pretty_table directly with explicit row/column limits.
+# This bypasses DataFrames' default display logic and gives us full control.
 
-# Override text/plain representation
 function Base.show(io::IO, mime::MIME"text/plain", df::DataFrame)
-    # Use limited displaysize similar to REPL (24 rows, 80 columns)
-    limited_io = IOContext(io,
-        :displaysize => (10, 20),
-        :limit => true,
-        :compact => false)
-    # Use invoke to call the show method for AbstractDataFrame (parent type)
-    # This avoids infinite recursion by calling a different method signature
-    Base.invoke(Base.show, Tuple{IO, MIME"text/plain", AbstractDataFrame}, limited_io, mime, df)
+    # Call PrettyTables directly with row/column limits
+    # This ensures only 10 rows are shown regardless of DataFrame size
+    PrettyTables.pretty_table(io, df;
+        backend = :text,
+        maximum_number_of_rows = 10,
+        maximum_number_of_columns = 80,
+        show_omitted_cell_summary = true,
+        compact_printing = false,
+        limit_printing = true)
 end
 
-# Override text/html representation (Documenter prefers this for large outputs)
 function Base.show(io::IO, mime::MIME"text/html", df::DataFrame)
-    # For HTML, also use limited displaysize to control PrettyTables output
-    # DataFrames uses PrettyTables.jl for HTML rendering
-    limited_io = IOContext(io,
-        :displaysize => (10, 20),
-        :limit => true,
-        :compact => false)
-    # Use invoke to call the show method for AbstractDataFrame (parent type)
-    Base.invoke(Base.show, Tuple{IO, MIME"text/html", AbstractDataFrame}, limited_io, mime, df)
+    # For HTML output (which Documenter prefers for large outputs)
+    # Use PrettyTables HTML backend with explicit row/column limits
+    PrettyTables.pretty_table(io, df;
+        backend = :html,
+        maximum_number_of_rows = 10,
+        maximum_number_of_columns = 80,
+        show_omitted_cell_summary = true,
+        compact_printing = false,
+        limit_printing = true)
 end
 
 # Function to clean up old generated files
