@@ -181,20 +181,25 @@ function add_pkg_status_to_notebook(nb::Dict)
     Pkg.status(; io = io)
     pkg_status_output = String(take!(io))
 
-    # Create the content to insert: preface + pkg.status() in code block
+    # Create the content to insert: blockquote "Set up" with setup instructions and pkg.status()
+    # Blockquote title and body; hyperlinks for IJulia and create an environment
     preface_lines = [
         "\n",
-        "_This tutorial has demonstrated compatibility with the package versions below. If you run into any errors, first check your package versions for consistency using `Pkg.status()`._\n",
-        "\n",
+        "> **Set up**\n",
+        ">\n",
+        "> To run this notebook, first install the Julia kernel for Jupyter Notebooks using [IJulia](https://julialang.github.io/IJulia.jl/stable/manual/installation/), then [create an environment](https://pkgdocs.julialang.org/v1/environments/) for this tutorial with the packages listed with `using <PackageName>` further down.\n",
+        ">\n",
+        "> This tutorial has demonstrated compatibility with these package versions. If you run into any errors, first check your package versions for consistency using `Pkg.status()`.\n",
+        ">\n",
     ]
 
-    # Format Pkg.status() output as a code block
+    # Format Pkg.status() output as a code block inside the blockquote
     pkg_status_lines = split(pkg_status_output, '\n'; keepempty = true)
-    pkg_status_block = ["```\n"]
+    pkg_status_block = [" > ```\n"]
     for line in pkg_status_lines
-        push!(pkg_status_block, line * "\n")
+        push!(pkg_status_block, " > " * line * "\n")
     end
-    push!(pkg_status_block, "```\n", "\n")
+    push!(pkg_status_block, " > ```\n", "\n")
 
     # Find the first heading line in the source array
     heading_line_idx = nothing
