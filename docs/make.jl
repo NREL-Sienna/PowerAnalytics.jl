@@ -3,6 +3,10 @@ using PowerAnalytics
 import DataStructures: OrderedDict
 using DocumenterInterLinks
 using Dates
+using Literate
+
+# UPDATE FOR CURRENT MODULE NAME HERE
+const _DOCS_BASE_URL = "https://nrel-sienna.github.io/PowerAnalytics.jl/stable"
 
 ENV["GKSwstype"] = "100"  # Prevent GR from opening gksqt GUI
 
@@ -15,10 +19,13 @@ links = InterLinks(
     "HydroPowerSimulations" => "https://nrel-sienna.github.io/HydroPowerSimulations.jl/dev/",
 )
 
+include(joinpath(@__DIR__, "make_tutorials.jl"))
+make_tutorials()
+
 pages = OrderedDict(
     "Welcome Page" => "index.md",
     "Tutorials" => Any[
-        "Simulation Scenarios Analysis" => "tutorials/PA_workflow_tutorial.md",
+        "Simulation Scenarios Analysis" => "tutorials/generated_PA_workflow_tutorial.md",
     ],
     # TODO flesh out the how-tos, explanation
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],

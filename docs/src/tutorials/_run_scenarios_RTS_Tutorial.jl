@@ -11,6 +11,10 @@ const PSY = PowerSystems
 const SSS = StorageSystemsSimulations
 const PSB = PowerSystemCaseBuilder
 
+output_folder = joinpath(@__DIR__, "_simulation_results_RTS")
+rm(output_folder; recursive = true, force = true)
+mkpath(output_folder)
+
 # HiGHS Open Source Optimizer
 function get_optimizer_highs()
     solver = optimizer_with_attributes(
@@ -25,7 +29,7 @@ end
 #####################
 ##### Simulations ###
 #####################
-function run_scenario(scenario::String)
+function run_scenario(scenario::String, output_folder::String)
     # Load the System
     sys = PSB.build_system(PSISystems, "RTS_GMLC_DA_sys")
     transform_single_time_series!(sys, Hour(48), Hour(24))
@@ -108,8 +112,6 @@ function run_scenario(scenario::String)
         models = models,
         ini_cond_chronology = InterProblemChronology(),
     )
-    output_folder = joinpath(@__DIR__, "_simulation_results_RTS")
-    mkpath(output_folder)
 
     # Build and Run the Simulation
     sim = Simulation(;
@@ -127,5 +129,5 @@ end
 
 for scenario in ["Scenario_1", "Scenario_2"]
     @info "Running RTS-GMLC $scenario..."
-    run_scenario(scenario)
+    run_scenario(scenario, output_folder)
 end
