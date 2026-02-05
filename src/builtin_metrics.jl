@@ -287,7 +287,7 @@ const calc_shutdown_cost = ComponentTimedMetric(;
     name = "ShutdownCost",
     eval_fn = (
         (res::IS.Results, comp::Component; kwargs...) -> let
-            val = read_component_result(res, PSI.StartVariable, comp; kwargs...)
+            val = read_component_result(res, PSI.StopVariable, comp; kwargs...)
             stop_cost = PSY.get_shut_down(PSY.get_operation_cost(comp))
             get_data_vec(val) .*= stop_cost
             return val
