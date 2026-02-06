@@ -120,12 +120,6 @@ const calc_active_power = make_component_metric_from_entry(
     PSI.ActivePowerVariable,
 )
 
-"Calculate the production cost expression of the specified `ComponentSelector`"
-const calc_production_cost = make_component_metric_from_entry(
-    "ProductionCost",
-    PSI.ProductionCostExpression,
-)
-
 "Calculate the active power input to the specified (storage) `ComponentSelector`"
 const calc_active_power_in = make_component_metric_from_entry(
     "ActivePowerIn",
@@ -302,19 +296,25 @@ _has_startup_shutdown_costs(::PSY.MarketBidCost) = true
 _has_startup_shutdown_costs(component::PSY.Component) =
     _has_startup_shutdown_costs(PSY.get_operation_cost(component))
 
-"Calculate the production cost of the specified `ComponentSelector`, plus the startup and shutdown costs if they are defined"
-const calc_total_cost = ComponentTimedMetric(;
+"Calculate the variable portion of the production cost of the specified `ComponentSelector`, excluding the startup and shutdown costs if they are defined"
+const calc_production_cost = ComponentTimedMetric(;
     name = "TotalCost",
     eval_fn = (args...) -> let
-        production = compute(calc_production_cost, args...)
+        production = compute(calc_total_cost, args...)
         (results, component, _...) = args
         if _has_startup_shutdown_costs(component)
             startup = get_data_vec(compute(calc_startup_cost, args...))
             shutdown = get_data_vec(compute(calc_shutdown_cost, args...))
-            production[!, first(get_data_cols(production))] += startup + shutdown
+            production[!, first(get_data_cols(production))] -= startup + shutdown
         end
         return production
     end,
+)
+
+"Calculate the total production cost of the specified `ComponentSelector`, including the startup and shutdown costs if they are defined"
+const calc_total_cost = make_component_metric_from_entry(
+    "ProductionCost",
+    PSI.ProductionCostExpression,
 )
 
 "Calculate the number of discharge cycles a storage device has gone through in the time period"
