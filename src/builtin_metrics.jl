@@ -303,7 +303,7 @@ _has_startup_shutdown_costs(component::PSY.Component) =
     _has_startup_shutdown_costs(PSY.get_operation_cost(component))
 
 "Calculate the production cost of the specified `ComponentSelector`, which includes the startup and shutdown costs if they are defined"
-const calc_total_cost = calc_production_cost 
+const calc_total_cost = calc_production_cost
 
 "Calculate the number of discharge cycles a storage device has gone through in the time period"
 const calc_discharge_cycles = ComponentTimedMetric(;
