@@ -362,10 +362,19 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
     agg_fn = get_component_agg_fn(metric)
     meta_agg_fn = get_component_meta_agg_fn(metric)
     components = get_components(selector, results)
-    vals = [
-        compute(metric, results, com; kwargs...) for
-        com in components
-    ]
+    vals = Vector{DataFrame}()
+    for com in components
+        if com isa ComponentSelector
+            throw(
+                ArgumentError(
+                    "get_components for selector '$(get_name(selector))' returned a " *
+                    "ComponentSelector ($(typeof(com))) instead of a Component. " *
+                    "This would cause infinite recursion in compute.",
+                ),
+            )
+        end
+        push!(vals, compute(metric, results, com::Component; kwargs...))
+    end
     if length(vals) == 0
         if !isnothing(get_eval_zero(metric))
             result = get_eval_zero(metric)(results; kwargs...)
@@ -683,12 +692,25 @@ function compose_metrics(
     name::String,
     reduce_fn,
     metrics::Union{ComponentSelectorTimedMetric, SystemTimedMetric}...)
-    wrapped_metrics = [
+    wrapped_metrics = Tuple(
         (m isa SystemTimedMetric) ? component_selector_metric_from_system_metric(m) : m
         for
         m in metrics
-    ]
-    return compose_metrics(name, reduce_fn, wrapped_metrics...)
+    )
+    # Construct the CustomTimedMetric directly instead of recursively calling
+    # compose_metrics, to avoid potential infinite dispatch if the Union method
+    # is re-selected instead of the ComponentSelectorTimedMetric method.
+    return CustomTimedMetric(; name = name,
+        eval_fn = (res::IS.Results, sel::Union{Component, ComponentSelector}; kwargs...) ->
+            _common_compose_metrics(
+                res,
+                sel,
+                reduce_fn,
+                wrapped_metrics,
+                get_name(sel);
+                kwargs...,
+            ),
+    )
 end
 
 # FUNCTOR INTERFACE TO COMPUTE()
