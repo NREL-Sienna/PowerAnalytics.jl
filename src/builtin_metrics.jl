@@ -302,20 +302,8 @@ _has_startup_shutdown_costs(::PSY.MarketBidCost) = true
 _has_startup_shutdown_costs(component::PSY.Component) =
     _has_startup_shutdown_costs(PSY.get_operation_cost(component))
 
-"Calculate the production cost of the specified `ComponentSelector`, plus the startup and shutdown costs if they are defined"
-const calc_total_cost = ComponentTimedMetric(;
-    name = "TotalCost",
-    eval_fn = (args...) -> let
-        production = compute(calc_production_cost, args...)
-        (results, component, _...) = args
-        if _has_startup_shutdown_costs(component)
-            startup = get_data_vec(compute(calc_startup_cost, args...))
-            shutdown = get_data_vec(compute(calc_shutdown_cost, args...))
-            production[!, first(get_data_cols(production))] += startup + shutdown
-        end
-        return production
-    end,
-)
+"Calculate the production cost of the specified `ComponentSelector`, which includes the startup and shutdown costs if they are defined"
+const calc_total_cost = calc_production_cost
 
 "Calculate the number of discharge cycles a storage device has gone through in the time period"
 const calc_discharge_cycles = ComponentTimedMetric(;
