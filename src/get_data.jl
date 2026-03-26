@@ -264,6 +264,30 @@ function _filter_curtailment!(
     end
 end
 
+function _get_components_axis(
+    filter_func::Function,
+    component_type::Type{T},
+    system::PSY.System,
+) where {T <: PSY.Component}
+    return PSY.get_name.(
+        PSY.get_components(filter_func, component_type, system)
+)
+end
+
+function _get_components_axis(
+    filter_func::Function,
+    component_type::Type{<:PSY.Bus},
+    system::PSY.System,
+)
+    buses = PSY.get_components(filter_func, component_type, system)
+    bus_numbers_strings = Vector{String}(undef, length(buses))
+    for bus in buses
+        bus_number = PSY.get_number(bus)
+        bus_numbers_strings[bus_number] = string(bus_number)
+    end
+    return bus_numbers_strings
+end
+
 function filter_results!(
     results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     filter_func::Function,
@@ -271,13 +295,11 @@ function filter_results!(
 ) where {R <: IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
-        component_names =
-            PSY.get_name.(
-                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
-            )
-        DataFrames.select!(v, vcat(["DateTime"], component_names))
+        component_axis = _get_components_axis(filter_func, component_type, PSI.get_system(results))
+        DataFrames.select!(v, vcat(["DateTime"], component_axis))
     end
 end
+
 function filter_results!(
     results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     filter_func::Nothing,
@@ -575,11 +597,36 @@ function categorize_data(
     slacks = true,
 )
     category_dataframes = Dict{String, DataFrames.DataFrame}()
-    var_types = Dict(
-        last(split(string(x), "_")) => x for
-        x in keys(data) if !occursin("ActivePowerInVariable", string(x))
-    )
+    split_power_component_types = Set{String}()
+
+    var_types = Dict{String, Symbol}()
+    for k in keys(data)
+        keystring = string(k)
+        device_type_string = last(split(keystring, "__"))
+        if occursin("ActivePowerInVariable", keystring) || occursin("ActivePowerOutVariable", keystring)
+            push!(split_power_component_types, device_type_string)
+            continue
+        end
+        var_types[device_type_string] = k
+    end
+
+    split_power_categories = Dict{String, Dict}()
+    if !isempty(split_power_component_types)
+        for (category, list) in aggregation
+            if any(in.(split_power_component_types, Ref(first.(list))))
+                new_categories = [category * " In", category * " Out"]
+                for new_category in new_categories
+                    split_power_categories[new_category] =
+
+
+            end
+        end
+    end
+
     for (category, list) in aggregation
+        if category ∈ split_power_categories
+            continue
+        end
         category_df = DataFrames.DataFrame()
         for (component_type, variable) in list
             if haskey(var_types, component_type)
@@ -596,6 +643,24 @@ function categorize_data(
             category_dataframes[string(category)] = category_df
         end
     end
+
+    for category in split_power_categories
+        category_df = DataFrames.DataFrame()
+        for (component_type, variable) in aggregation[category]
+            var_type = ()
+            category_data = data[vartype]
+            colname = typeof(names(category_data)[1]) == String ? "$variable" : variable
+            DataFrames.insertcols!(
+                category_df,
+                (colname => category_data[:, colname]);
+                makeunique = true,
+            )
+        end
+        if !isempty(category_df)
+            category_dataframes[string(new_category)] = category_df
+        end
+    end
+
     if curtailment
         dfs = []
         for (key, val) in data
