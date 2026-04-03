@@ -369,11 +369,11 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
                 ArgumentError(
                     "get_components for selector '$(get_name(selector))' returned a " *
                     "ComponentSelector ($(typeof(com))) instead of a Component. " *
-                    "This would cause infinite recursion in compute.",
+                    "This would cause infinite recursion if compute is called.",
                 ),
             )
         end
-        push!(vals, compute(metric, results, com::Component; kwargs...))
+        push!(vals, compute(metric, results, com; kwargs...))
     end
     if length(vals) == 0
         if !isnothing(get_eval_zero(metric))
@@ -698,8 +698,7 @@ function compose_metrics(
         m in metrics
     )
     # Construct the CustomTimedMetric directly instead of recursively calling
-    # compose_metrics, to avoid potential infinite dispatch if the Union method
-    # is re-selected instead of the ComponentSelectorTimedMetric method.
+    # compose_metrics, to avoid potential infinite dispatch issues
     return CustomTimedMetric(; name = name,
         eval_fn = (res::IS.Results, sel::Union{Component, ComponentSelector}; kwargs...) ->
             _common_compose_metrics(
