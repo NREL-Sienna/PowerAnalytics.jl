@@ -362,19 +362,10 @@ function _compute_one(metric::ComponentTimedMetric, results::IS.Results,
     agg_fn = get_component_agg_fn(metric)
     meta_agg_fn = get_component_meta_agg_fn(metric)
     components = get_components(selector, results)
-    vals = Vector{DataFrame}()
-    for com in components
-        if com isa ComponentSelector
-            throw(
-                ArgumentError(
-                    "get_components for selector '$(get_name(selector))' returned a " *
-                    "ComponentSelector ($(typeof(com))) instead of a Component. " *
-                    "This would cause infinite recursion if compute is called.",
-                ),
-            )
-        end
-        push!(vals, compute(metric, results, com; kwargs...))
-    end
+    vals = [
+        compute(metric, results, com; kwargs...) for
+        com in components
+    ]
     if length(vals) == 0
         if !isnothing(get_eval_zero(metric))
             result = get_eval_zero(metric)(results; kwargs...)
