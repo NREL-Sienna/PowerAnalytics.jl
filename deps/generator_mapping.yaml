@@ -21,6 +21,7 @@ NG-CC:
 NG-Steam:
   - {gentype: Any, primemover: ST, fuel: NATURAL_GAS}
 Hydropower:
+  - {gentype: HydroGen, primemover: null, fuel: null}
   - {gentype: Any, primemover: HY, fuel: null}
 Coal:
   - {gentype: Any, primemover: null, fuel: COAL}
