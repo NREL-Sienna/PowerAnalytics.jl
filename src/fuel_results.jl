@@ -93,7 +93,8 @@ function make_fuel_dictionary(
     kwargs...,
 )
     filter_func2 = x -> PSY.get_available(x) && filter_func(x)
-    generators = PSY.get_components(filter_func2, PSY.StaticInjection, sys)
+    types = Union{PSY.StaticLoad, PSY.Generator, PSY.Storage}
+    generators = PSY.get_components(filter_func2, types, sys)
     gen_categories = Dict()
     for category in unique(values(mapping))
         gen_categories["$category"] = []
