@@ -149,7 +149,7 @@ end
     stor = PSY.EnergyReservoirStorage(nothing)
     PSY.set_bus!(stor, PSY.get_component(PSY.ACBus, sys, "nodeA"))
     PSY.set_available!(stor, true)
-    PSY.add_component!(sys, stor)    
+    PSY.add_component!(sys, stor)
 
     # Filter out everything → empty result
     cat_empty = PA.make_fuel_dictionary(sys; filter_func = x -> false)
