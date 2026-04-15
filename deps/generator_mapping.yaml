@@ -15,9 +15,11 @@ Storage:
   - {gentype: Any, primemover: BA, fuel: null}
   - {gentype: Any, primemover: PS, fuel: null}
 NG-CT:
-  - {gentype: Any, primemover: CT, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: GT, fuel: NATURAL_GAS}
 NG-CC:
   - {gentype: Any, primemover: CC, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: CA, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: CT, fuel: NATURAL_GAS}
 NG-Steam:
   - {gentype: Any, primemover: ST, fuel: NATURAL_GAS}
 Hydropower:
