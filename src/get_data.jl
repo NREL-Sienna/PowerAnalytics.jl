@@ -271,6 +271,7 @@ function filter_results!(
 ) where {R <: IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
+        component_type == PSY.System && continue 
         component_names =
             PSY.get_name.(
                 PSY.get_components(filter_func, component_type, PSI.get_system(results)),
