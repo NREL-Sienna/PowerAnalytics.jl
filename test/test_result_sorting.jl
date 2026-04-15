@@ -96,15 +96,15 @@ end
     @test isempty(
         symdiff(
             keys(cat),
-            ["Coal", "Wind", "Hydropower", "NG-CC", "NG-CT", "Storage", "PV", "Load"],
+            ["Coal", "Wind", "Hydropower", "NG-CC", "Storage", "PV", "Load"],
         ),
     )
 
     fuel = categorize_data(gen.data, cat)
-    @test length(fuel) == 8
+    @test length(fuel) == 7
 
     fuel_agg = PA.combine_categories(fuel)
-    @test size(fuel_agg) == (48, 8)
+    @test size(fuel_agg) == (48, 7)
 end
 
 @testset "Test system data getters" begin
