@@ -1,4 +1,4 @@
-# Will be superseded by https://github.com/NREL-Sienna/PowerSystems.jl/issues/1143
+# Will be superseded by https://github.com/Sienna-Platform/PowerSystems.jl/issues/1143
 function linear_fuel_to_linear_cost(fc::FuelCurve{LinearCurve})
     fuel_cost = get_fuel_cost(fc)
     !(fuel_cost isa Float64) && throw(ArgumentError("fuel_cost must be a scalar"))

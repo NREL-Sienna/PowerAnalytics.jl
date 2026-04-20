@@ -30,7 +30,7 @@ create_problem_results_dict(data_root, "UC"; populate_system = true)
 
 # See also
 `create_problem_results_dict` is a convenience function that calls public interface in
-[`PowerSimulations.jl`](https://nrel-sienna.github.io/PowerSimulations.jl/stable/). To read
+[`PowerSimulations.jl`](https://sienna-platform.github.io/PowerSimulations.jl/stable/). To read
 one results set, or several of them that are not all in the same parent directory, invoke
 that interface directly as needed:
 
