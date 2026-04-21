@@ -27,7 +27,7 @@
 #
 #   - **Scenario 2**: simulation using the RTS-GMLC test system with increased energy and power capacity of the storage device
 #
-# The simulations were performed using the [PowerSystems.jl](https://nrel-sienna.github.io/PowerSystems.jl/stable/) and [PowerSimulations.jl](https://nrel-sienna.github.io/PowerSimulations.jl/stable/) packages of Sienna. The [`CopperPlatePowerModel`](@extref) formulation was considered for the [`NetworkModel`](@extref PowerSimulations.NetworkModel), while the formulations chosen for each of the component types we want to include in the simulation are presented in the table below:
+# The simulations were performed using the [PowerSystems.jl](https://sienna-platform.github.io/PowerSystems.jl/stable/) and [PowerSimulations.jl](https://sienna-platform.github.io/PowerSimulations.jl/stable/) packages of Sienna. The [`CopperPlatePowerModel`](@extref) formulation was considered for the [`NetworkModel`](@extref PowerSimulations.NetworkModel), while the formulations chosen for each of the component types we want to include in the simulation are presented in the table below:
 #
 # | Component Type                                      | Formulation                                                                                    |
 # |:--------------------------------------------------- |:---------------------------------------------------------------------------------------------- |
@@ -43,11 +43,11 @@
 #
 # !!! info
 #
-#     More information regarding the different formulations can be found in the [`PowerSimulations.jl` Formulation Library](https://nrel-sienna.github.io/PowerSimulations.jl/stable/formulation_library/Introduction/).
+#     More information regarding the different formulations can be found in the [`PowerSimulations.jl` Formulation Library](https://sienna-platform.github.io/PowerSimulations.jl/stable/formulation_library/Introduction/).
 #
 # We document the above here for completeness, since those will directly define the structure of the optimization problem and consequently its auxiliary variables, expressions, parameters and variables for which realized result values are available.
 #
-# The script that was used to configure and execute the simulation scenarios referenced above can be found [here](https://github.com/NREL-Sienna/PowerAnalytics.jl/tree/main/docs/src/tutorials/_run_scenarios_RTS_Tutorial.jl).
+# The script that was used to configure and execute the simulation scenarios referenced above can be found [here](https://github.com/Sienna-Platform/PowerAnalytics.jl/tree/main/docs/src/tutorials/_run_scenarios_RTS_Tutorial.jl).
 #
 # ## Loading Simulation Scenario Results
 #
@@ -103,7 +103,7 @@ show(df; allcols = true)
 #
 # !!! info
 #
-#     For a complete list of the `PowerAnalytics.jl` built-in metrics, please refer to: [PowerAnalytics Built-In Metrics](https://nrel-sienna.github.io/PowerAnalytics.jl/stable/reference/public/#Built-in-Metrics).
+#     For a complete list of the `PowerAnalytics.jl` built-in metrics, please refer to: [PowerAnalytics Built-In Metrics](https://sienna-platform.github.io/PowerAnalytics.jl/stable/reference/public/#Built-in-Metrics).
 #
 # ### Obtain the thermal generation time series grouped by prime_mover
 #

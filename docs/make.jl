@@ -6,17 +6,17 @@ using Dates
 using Literate
 
 # UPDATE FOR CURRENT MODULE NAME HERE
-const _DOCS_BASE_URL = "https://nrel-sienna.github.io/PowerAnalytics.jl/stable"
+const _DOCS_BASE_URL = "https://sienna-platform.github.io/PowerAnalytics.jl/stable"
 
 ENV["GKSwstype"] = "100"  # Prevent GR from opening gksqt GUI
 
 links = InterLinks(
     "Julia" => "https://docs.julialang.org/en/v1/",
-    "InfrastructureSystems" => "https://nrel-sienna.github.io/InfrastructureSystems.jl/stable/",
-    "PowerSystems" => "https://nrel-sienna.github.io/PowerSystems.jl/stable/",
-    "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/",
-    "StorageSystemsSimulations" => "https://nrel-sienna.github.io/StorageSystemsSimulations.jl/stable/",
-    "HydroPowerSimulations" => "https://nrel-sienna.github.io/HydroPowerSimulations.jl/dev/",
+    "InfrastructureSystems" => "https://sienna-platform.github.io/InfrastructureSystems.jl/stable/",
+    "PowerSystems" => "https://sienna-platform.github.io/PowerSystems.jl/stable/",
+    "PowerSimulations" => "https://sienna-platform.github.io/PowerSimulations.jl/stable/",
+    "StorageSystemsSimulations" => "https://sienna-platform.github.io/StorageSystemsSimulations.jl/stable/",
+    "HydroPowerSimulations" => "https://sienna-platform.github.io/HydroPowerSimulations.jl/dev/",
 )
 
 include(joinpath(@__DIR__, "make_tutorials.jl"))
@@ -55,7 +55,7 @@ makedocs(
 
 
 deploydocs(
-    repo= "github.com/NREL-Sienna/PowerAnalytics.jl",
+    repo= "github.com/Sienna-Platform/PowerAnalytics.jl",
     target="build",
     branch="gh-pages",
     devbranch="main",
