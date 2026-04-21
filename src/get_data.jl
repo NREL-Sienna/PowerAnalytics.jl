@@ -369,7 +369,6 @@ function get_load_data(
     len = get(kwargs, :horizon, get(kwargs, :len, nothing))
     variable_keys = get(kwargs, :variable_keys, PSI.list_variable_keys(results))
     parameter_keys = get(kwargs, :parameter_keys, PSI.list_parameter_keys(results))
-    aux_variable_keys = get(kwargs, :aux_variable_keys, PSI.list_aux_variable_keys(results))
 
     variable_keys = get_load_variable_keys(results; variable_keys = variable_keys)
     parameter_keys = get_load_parameter_keys(results; parameter_keys = parameter_keys)
@@ -391,16 +390,6 @@ function get_load_data(
         table_format = IS.TableFormat.WIDE,
     )
     filter_results!(parameters, filter_func, results)
-
-    aux_variables = PSI.read_results_with_keys(
-        results,
-        aux_variable_keys;
-        start_time = initial_time,
-        len = len,
-        table_format = IS.TableFormat.WIDE,
-    )
-    filter_results!(aux_variables, filter_func, results)
-
     add_fixed_parameters!(variables, parameters)
 
     timestamps = PSI.get_realized_timestamps(results; start_time = initial_time, len = len)
