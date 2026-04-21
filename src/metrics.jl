@@ -683,12 +683,24 @@ function compose_metrics(
     name::String,
     reduce_fn,
     metrics::Union{ComponentSelectorTimedMetric, SystemTimedMetric}...)
-    wrapped_metrics = [
+    wrapped_metrics = Tuple(
         (m isa SystemTimedMetric) ? component_selector_metric_from_system_metric(m) : m
         for
         m in metrics
-    ]
-    return compose_metrics(name, reduce_fn, wrapped_metrics...)
+    )
+    # Construct the CustomTimedMetric directly instead of recursively calling
+    # compose_metrics, to avoid potential infinite dispatch issues
+    return CustomTimedMetric(; name = name,
+        eval_fn = (res::IS.Results, sel::Union{Component, ComponentSelector}; kwargs...) ->
+            _common_compose_metrics(
+                res,
+                sel,
+                reduce_fn,
+                wrapped_metrics,
+                get_name(sel);
+                kwargs...,
+            ),
+    )
 end
 
 # FUNCTOR INTERFACE TO COMPUTE()
