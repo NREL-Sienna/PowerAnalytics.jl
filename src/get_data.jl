@@ -550,11 +550,19 @@ end
 Re-categorizes data according to an aggregation dictionary
 * makes no guarantee of complete data collection *
 
+# Arguments
+- `include_charging`: If `true`, storage charging power (`ActivePowerInVariable`) is included
+  as negative values under a `"\$(category) Charging"` key for each category that has charging
+  components. Defaults to `false` for backward compatibility.
+
 # Example
 
 ```julia
 aggregation = PA.make_fuel_dictionary(results_uc.system)
 categorize_data(gen_uc.data, aggregation)
+
+# Include storage charging as negative values
+categorize_data(gen_uc.data, aggregation; include_charging = true)
 ```
 
 """
@@ -563,14 +571,20 @@ function categorize_data(
     aggregation::Dict;
     curtailment = true,
     slacks = true,
+    include_charging = false,
 )
     category_dataframes = Dict{String, DataFrames.DataFrame}()
     var_types = Dict(
         last(split(string(x), "_")) => x for
         x in keys(data) if !occursin("ActivePowerInVariable", string(x))
     )
+    in_var_types = Dict(
+        last(split(string(x), "_")) => x for
+        x in keys(data) if occursin("ActivePowerInVariable", string(x))
+    )
     for (category, list) in aggregation
         category_df = DataFrames.DataFrame()
+        charging_df = DataFrames.DataFrame()
         for (component_type, variable) in list
             if haskey(var_types, component_type)
                 category_data = data[var_types[component_type]]
@@ -581,9 +595,23 @@ function categorize_data(
                     makeunique = true,
                 )
             end
+            if include_charging && haskey(in_var_types, component_type)
+                charging_data = data[in_var_types[component_type]]
+                colname = typeof(names(charging_data)[1]) == String ? "$variable" : variable
+                if colname in names(charging_data)
+                    DataFrames.insertcols!(
+                        charging_df,
+                        (colname => -charging_data[:, colname]);
+                        makeunique = true,
+                    )
+                end
+            end
         end
         if !isempty(category_df)
             category_dataframes[string(category)] = category_df
+        end
+        if !isempty(charging_df)
+            category_dataframes["$(string(category)) Charging"] = charging_df
         end
     end
     if curtailment
