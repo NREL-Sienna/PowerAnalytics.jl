@@ -3,24 +3,25 @@ problem_results = run_test_prob()
 
 @testset "test filter results" begin
     gen = PA.get_generation_data(results_uc; curtailment = false)
-    @test keys(gen.data) ==
-          Set([:ActivePowerVariable__HydroTurbine,
+    @test keys(gen.data) == Set([
+        :ActivePowerVariable__HydroTurbine,
         :ActivePowerOutVariable__EnergyReservoirStorage,
         :ActivePowerTimeSeriesParameter__RenewableNonDispatch,
         :ActivePowerVariable__RenewableDispatch,
         :ActivePowerInVariable__EnergyReservoirStorage,
         :ActivePowerTimeSeriesParameter__HydroDispatch,
-        :ActivePowerVariable__ThermalStandard])
+        :ActivePowerVariable__ThermalStandard,
+    ])
     @test length(gen.time) == 48
 
     gen = PA.get_generation_data(
         results_uc;
         variable_keys = [
-            PowerSimulations.VariableKey{ActivePowerVariable, ThermalStandard}(""),
-            PowerSimulations.VariableKey{ActivePowerVariable, RenewableDispatch}(""),
+            PowerSimulations.VariableKey{ActivePowerVariable,ThermalStandard}(""),
+            PowerSimulations.VariableKey{ActivePowerVariable,RenewableDispatch}(""),
         ],
         parameter_keys = [
-            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, RenewableDispatch}(
+            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter,RenewableDispatch}(
                 "",
             ),
         ],
@@ -38,7 +39,7 @@ problem_results = run_test_prob()
     load = PA.get_load_data(
         results_ed;
         parameter_keys = [
-            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, PowerLoad}(""),
+            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter,PowerLoad}(""),
         ],
         initial_time = Dates.DateTime("2020-01-02T02:00:00"),
         len = 3,
@@ -140,4 +141,25 @@ end
     # Test with a system with `DeterministicSingleTimeSeries`
     sys = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
     @test length(PA.get_load_data(sys; aggregation = ACBus).data) == 3
+end
+
+@testset "categorize_data surfaces slack variables" begin
+    ts = collect(
+        Dates.DateTime("2024-01-01T00:00:00"):Dates.Hour(1):Dates.DateTime(
+            "2024-01-01T02:00:00",
+        ),
+    )
+    df_up = DataFrames.DataFrame(; DateTime = ts, var = [1.0, 2.0, 3.0])
+    df_dn = DataFrames.DataFrame(; DateTime = ts, var = [0.5, 1.5, 2.5])
+    data = Dict{Symbol,DataFrames.DataFrame}(
+        :SystemBalanceSlackUp__System => df_up,
+        :SystemBalanceSlackDown__System => df_dn,
+    )
+
+    result = PA.categorize_data(data, Dict())
+
+    @test haskey(result, "Unserved Energy")
+    @test haskey(result, "Over Generation")
+    @test result["Unserved Energy"] === df_up
+    @test result["Over Generation"] === df_dn
 end
