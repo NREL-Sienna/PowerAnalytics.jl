@@ -1,13 +1,13 @@
 
 # the fundamental struct for plotting
 struct PowerData
-    data::Dict{Symbol, DataFrames.DataFrame}
-    time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}}
+    data::Dict{Symbol,DataFrames.DataFrame}
+    time::Union{StepRange{Dates.DateTime},Vector{Dates.DateTime}}
 end
 
 function PowerData(
-    data::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
-    time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}},
+    data::Dict{PSI.OptimizationContainerKey,DataFrames.DataFrame},
+    time::Union{StepRange{Dates.DateTime},Vector{Dates.DateTime}},
 )
     d = Dict(zip(Symbol.(PSI.encode_keys_as_strings(keys(data))), values(data)))
 
@@ -16,8 +16,8 @@ function PowerData(
 end
 
 function PowerData(
-    data::Dict{String, DataFrames.DataFrame},
-    time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}},
+    data::Dict{String,DataFrames.DataFrame},
+    time::Union{StepRange{Dates.DateTime},Vector{Dates.DateTime}},
 )
     d = Dict(zip(Symbol.(keys(data))), values(data))
 
@@ -25,7 +25,7 @@ function PowerData(
     return PowerData(d, time)
 end
 
-function PowerData(data::Dict{String, DataFrames.DataFrame})
+function PowerData(data::Dict{String,DataFrames.DataFrame})
     d = Dict(zip(Symbol.(keys(data)), no_datetime.(values(data))))
     return PowerData(d, first(values(data)).DateTime)
 end
@@ -50,7 +50,7 @@ end
 function get_generation_variable_keys(
     results::IS.Results;
     variable_keys::Vector{T} = PSI.list_variable_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     # TODO: add slacks
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in variable_keys
@@ -68,7 +68,7 @@ end
 function get_storage_variable_keys(
     results::IS.Results;
     variable_keys::Vector{T} = PSI.list_variable_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in variable_keys
         if PSI.get_component_type(k) <: PSY.Storage &&
@@ -82,7 +82,7 @@ end
 function get_generation_parameter_keys(
     results::IS.Results;
     parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in parameter_keys
         if PSI.get_component_type(k) <: PSY.Generator &&
@@ -96,7 +96,7 @@ end
 function get_generation_aux_variable_keys(
     results::IS.Results;
     aux_variable_keys::Vector{T} = PSI.list_aux_variable_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     # TODO: add slacks
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in aux_variable_keys
@@ -112,7 +112,7 @@ end
 function get_load_variable_keys(
     results::IS.Results;
     variable_keys::Vector{T} = PSI.list_variable_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in variable_keys
         if PSI.get_component_type(k) <: PSY.ElectricLoad &&
@@ -126,7 +126,7 @@ end
 function get_load_parameter_keys(
     results::IS.Results;
     parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in parameter_keys
         if PSI.get_component_type(k) <: PSY.ElectricLoad &&
@@ -142,7 +142,7 @@ end
 function get_service_variable_keys(
     results::IS.Results;
     variable_keys::Vector{T} = PSI.list_variable_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in variable_keys
         if PSI.get_component_type(k) <: PSY.Service &&
@@ -156,7 +156,7 @@ end
 function get_service_parameter_names(
     results::IS.Results;
     parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
-) where {T <: PSI.OptimizationContainerKey}
+) where {T<:PSI.OptimizationContainerKey}
     filter_keys = Vector{PSI.OptimizationContainerKey}()
     for k in parameter_keys
         if PSI.get_component_type(k) <: PSY.ElectricLoad &&
@@ -171,9 +171,9 @@ end
 no_datetime(df::DataFrames.DataFrame) = df[:, propertynames(df) .!== :DateTime]
 
 function add_fixed_parameters!(
-    variables::Dict{V, DataFrames.DataFrame},
-    parameters::Dict{P, DataFrames.DataFrame},
-) where {V <: PSI.OptimizationContainerKey, P <: PSI.OptimizationContainerKey}
+    variables::Dict{V,DataFrames.DataFrame},
+    parameters::Dict{P,DataFrames.DataFrame},
+) where {V<:PSI.OptimizationContainerKey,P<:PSI.OptimizationContainerKey}
     # fixed output should be added to plots when there exists a parameter of the form
     # :P__max_active_power__* but there is no corresponding :P__* variable
     for (param_key, param) in parameters
@@ -189,9 +189,9 @@ function add_fixed_parameters!(
 end
 
 function add_aux_variables!(
-    variables::Dict{V, DataFrames.DataFrame},
-    aux_variables::Dict{A, DataFrames.DataFrame},
-) where {V <: PSI.OptimizationContainerKey, A <: PSI.OptimizationContainerKey}
+    variables::Dict{V,DataFrames.DataFrame},
+    aux_variables::Dict{A,DataFrames.DataFrame},
+) where {V<:PSI.OptimizationContainerKey,A<:PSI.OptimizationContainerKey}
     # fixed output should be added to plots when there exists a parameter of the form
     # :P__max_active_power__* but there is no corresponding :P__* variable
     for (param_key, param) in aux_variables
@@ -223,7 +223,7 @@ function _curtailment_parameters(
     curtailment_parameters = Vector{
         NamedTuple{
             (:parameter, :variable),
-            Tuple{PSI.OptimizationContainerKey, PSI.OptimizationContainerKey},
+            Tuple{PSI.OptimizationContainerKey,PSI.OptimizationContainerKey},
         },
     }()
     for pk in curtailable_parameters
@@ -242,7 +242,7 @@ function _filter_curtailment!(
     curtailment_parameters::Vector{
         NamedTuple{
             (:parameter, :variable),
-            Tuple{PSI.OptimizationContainerKey, PSI.OptimizationContainerKey},
+            Tuple{PSI.OptimizationContainerKey,PSI.OptimizationContainerKey},
         },
     },
 )
@@ -265,24 +265,23 @@ function _filter_curtailment!(
 end
 
 function filter_results!(
-    results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
+    results_dict::Dict{PSI.OptimizationContainerKey,DataFrames.DataFrame},
     filter_func::Function,
     results::R,
-) where {R <: IS.Results}
+) where {R<:IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
-        component_names =
-            PSY.get_name.(
-                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
-            )
+        component_names = PSY.get_name.(
+            PSY.get_components(filter_func, component_type, PSI.get_system(results)),
+        )
         DataFrames.select!(v, vcat(["DateTime"], component_names))
     end
 end
 function filter_results!(
-    results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
+    results_dict::Dict{PSI.OptimizationContainerKey,DataFrames.DataFrame},
     filter_func::Nothing,
     results::R,
-) where {R <: IS.Results} end
+) where {R<:IS.Results} end
 
 function get_generation_data(
     results::R;
@@ -292,9 +291,9 @@ function get_generation_data(
     #     Type{PSY.System},
     #     Type{<:PSY.AggregationTopology},
     # } = PSY.StaticInjection,
-    filter_func::Union{Function, Nothing} = nothing,
+    filter_func::Union{Function,Nothing} = nothing,
     kwargs...,
-) where {R <: IS.Results}
+) where {R<:IS.Results}
     initial_time = get(kwargs, :initial_time, get(kwargs, :start_time, nothing))
     len = get(kwargs, :horizon, get(kwargs, :len, nothing))
     variable_keys = get(kwargs, :variable_keys, PSI.list_variable_keys(results))
@@ -361,9 +360,9 @@ end
 
 function get_load_data(
     results::R;
-    filter_func::Union{Function, Nothing} = nothing,
+    filter_func::Union{Function,Nothing} = nothing,
     kwargs...,
-) where {R <: IS.Results}
+) where {R<:IS.Results}
     initial_time = get(kwargs, :initial_time, get(kwargs, :start_time, nothing))
     len = get(kwargs, :horizon, get(kwargs, :len, nothing))
     variable_keys = get(kwargs, :variable_keys, PSI.list_variable_keys(results))
@@ -414,7 +413,7 @@ function _get_loads(system::PSY.System, bus::PSY.ACBus)
         PSY.get_bus(load) == bus
     ]
 end
-function _get_loads(system::PSY.System, agg::T) where {T <: PSY.AggregationTopology}
+function _get_loads(system::PSY.System, agg::T) where {T<:PSY.AggregationTopology}
     return PSY.get_components_in_aggregation_topology(PSY.StaticLoad, system, agg)
 end
 function _get_loads(system::PSY.System, load::PSY.StaticLoad)
@@ -444,7 +443,7 @@ function get_load_data(
     end
     horizon = get(kwargs, :horizon, PSY.get_forecast_horizon(system))
     initial_time = get(kwargs, :initial_time, PSY.get_forecast_initial_timestamp(system))
-    parameters = Dict{Symbol, DataFrames.DataFrame}()
+    parameters = Dict{Symbol,DataFrames.DataFrame}()
     PSY.set_units_base_system!(system, "SYSTEM_BASE")
     resolution = nothing
     len = nothing
@@ -458,7 +457,7 @@ function get_load_data(
             keys = filter(
                 key ->
                     PSY.get_time_series_type(key) <: PSY.AbstractDeterministic &&
-                        PSY.get_name(key) == "max_active_power",
+                    PSY.get_name(key) == "max_active_power",
                 PSY.get_time_series_keys(load),
             )
             @assert length(keys) == 1
@@ -485,13 +484,7 @@ function get_load_data(
     time_range = if isnothing(len)
         Dates.DateTime[]
     else
-        collect(
-            range(
-                initial_time;
-                step = resolution,
-                length = len,
-            ),
-        )
+        collect(range(initial_time; step = resolution, length = len))
     end
 
     return PowerData(parameters, time_range)
@@ -499,9 +492,9 @@ end
 
 function get_service_data(
     results::R;
-    filter_func::Union{Function, Nothing} = nothing,
+    filter_func::Union{Function,Nothing} = nothing,
     kwargs...,
-) where {R <: IS.Results}
+) where {R<:IS.Results}
     initial_time = get(kwargs, :initial_time, get(kwargs, :start_time, nothing))
     len = get(kwargs, :horizon, get(kwargs, :len, nothing))
     variable_keys = get(kwargs, :variable_keys, PSI.list_variable_keys(results))
@@ -536,9 +529,9 @@ PG.combine_categories(gen_uc.data)
 
 """
 function combine_categories(
-    data::Union{Dict{Symbol, DataFrames.DataFrame}, Dict{String, DataFrames.DataFrame}};
-    names::Union{Vector{String}, Vector{Symbol}, Nothing} = nothing,
-    aggregate::Union{Function, Nothing} = nothing,
+    data::Union{Dict{Symbol,DataFrames.DataFrame},Dict{String,DataFrames.DataFrame}};
+    names::Union{Vector{String},Vector{Symbol},Nothing} = nothing,
+    aggregate::Union{Function,Nothing} = nothing,
 )
     aggregate = isnothing(aggregate) ? x -> sum(x; dims = 2) : aggregate
     names = isnothing(names) ? keys(data) : names
@@ -569,12 +562,12 @@ categorize_data(gen_uc.data, aggregation)
 
 """
 function categorize_data(
-    data::Dict{Symbol, DataFrames.DataFrame},
+    data::Dict{Symbol,DataFrames.DataFrame},
     aggregation::Dict;
     curtailment = true,
     slacks = true,
 )
-    category_dataframes = Dict{String, DataFrames.DataFrame}()
+    category_dataframes = Dict{String,DataFrames.DataFrame}()
     var_types = Dict(
         last(split(string(x), "_")) => x for
         x in keys(data) if !occursin("ActivePowerInVariable", string(x))
@@ -609,7 +602,7 @@ function categorize_data(
     end
     if slacks
         for (slack, slack_name) in BALANCE_SLACKVARS
-            for id in findall(x -> occursin(string(slack), x), string.(keys(data)))
+            for id in findall(x -> occursin(string(nameof(slack)), x), string.(keys(data)))
                 slack_key = collect(keys(data))[id]
                 category_dataframes[slack_name] = data[slack_key]
             end
