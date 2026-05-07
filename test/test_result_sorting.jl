@@ -141,3 +141,21 @@ end
     sys = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
     @test length(PA.get_load_data(sys; aggregation = ACBus).data) == 3
 end
+
+@testset "Test natural-gas prime-mover categorization" begin
+    mapping = PA.get_generator_mapping()
+    # NG-CT should catch both classic combustion-turbine (CT) and gas-turbine (GT)
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CT, nothing, mapping,
+    ) == "NG-CT"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.GT, nothing, mapping,
+    ) == "NG-CT"
+    # NG-CC should catch combined-cycle (CC) and the steam side (CA) of decomposed CC plants
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CC, nothing, mapping,
+    ) == "NG-CC"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CA, nothing, mapping,
+    ) == "NG-CC"
+end
