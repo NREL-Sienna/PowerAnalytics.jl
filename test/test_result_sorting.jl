@@ -3,24 +3,25 @@ problem_results = run_test_prob()
 
 @testset "test filter results" begin
     gen = PA.get_generation_data(results_uc; curtailment = false)
-    @test keys(gen.data) ==
-          Set([:ActivePowerVariable__HydroTurbine,
+    @test keys(gen.data) == Set([
+        :ActivePowerVariable__HydroTurbine,
         :ActivePowerOutVariable__EnergyReservoirStorage,
         :ActivePowerTimeSeriesParameter__RenewableNonDispatch,
         :ActivePowerVariable__RenewableDispatch,
         :ActivePowerInVariable__EnergyReservoirStorage,
         :ActivePowerTimeSeriesParameter__HydroDispatch,
-        :ActivePowerVariable__ThermalStandard])
+        :ActivePowerVariable__ThermalStandard,
+    ])
     @test length(gen.time) == 48
 
     gen = PA.get_generation_data(
         results_uc;
         variable_keys = [
-            PowerSimulations.VariableKey{ActivePowerVariable, ThermalStandard}(""),
-            PowerSimulations.VariableKey{ActivePowerVariable, RenewableDispatch}(""),
+            PowerSimulations.VariableKey{ActivePowerVariable,ThermalStandard}(""),
+            PowerSimulations.VariableKey{ActivePowerVariable,RenewableDispatch}(""),
         ],
         parameter_keys = [
-            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, RenewableDispatch}(
+            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter,RenewableDispatch}(
                 "",
             ),
         ],
@@ -38,7 +39,7 @@ problem_results = run_test_prob()
     load = PA.get_load_data(
         results_ed;
         parameter_keys = [
-            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter, PowerLoad}(""),
+            PowerSimulations.ParameterKey{ActivePowerTimeSeriesParameter,PowerLoad}(""),
         ],
         initial_time = Dates.DateTime("2020-01-02T02:00:00"),
         len = 3,
@@ -140,4 +141,75 @@ end
     # Test with a system with `DeterministicSingleTimeSeries`
     sys = PSB.build_system(PSB.PSISystems, "5_bus_hydro_uc_sys")
     @test length(PA.get_load_data(sys; aggregation = ACBus).data) == 3
+end
+
+@testset "categorize_data surfaces slack variables" begin
+    ts = collect(
+        Dates.DateTime("2024-01-01T00:00:00"):Dates.Hour(1):Dates.DateTime(
+            "2024-01-01T02:00:00",
+        ),
+    )
+    df_up = DataFrames.DataFrame(; DateTime = ts, var = [1.0, 2.0, 3.0])
+    df_dn = DataFrames.DataFrame(; DateTime = ts, var = [0.5, 1.5, 2.5])
+    data = Dict{Symbol,DataFrames.DataFrame}(
+        :SystemBalanceSlackUp__System => df_up,
+        :SystemBalanceSlackDown__System => df_dn,
+    )
+
+    result = PA.categorize_data(data, Dict())
+
+    @test haskey(result, "Unserved Energy")
+    @test haskey(result, "Over Generation")
+    @test result["Unserved Energy"] === df_up
+    @test result["Over Generation"] === df_dn
+end
+
+@testset "Test make_fuel_dictionary filter_func applies to relevant component types" begin
+    sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
+
+    # Add a Storage component
+    stor = PSY.EnergyReservoirStorage(nothing)
+    PSY.set_bus!(stor, PSY.get_component(PSY.ACBus, sys, "nodeA"))
+    PSY.set_available!(stor, true)
+    PSY.add_component!(sys, stor)
+
+    # Filter out everything → empty result
+    cat_empty = PA.make_fuel_dictionary(sys; filter_func = x -> false)
+    @test all(isempty, values(cat_empty))
+    # Filter to one component of each type and verify exactly one result each time
+    for T in (PSY.StaticLoad, PSY.Generator, PSY.Storage)
+        target = PSY.get_name(first(PSY.get_components(T, sys)))
+        cat_one = PA.make_fuel_dictionary(sys; filter_func = x -> PSY.get_name(x) == target)
+        @test sum(length(v) for v in values(cat_one)) == 1
+    end
+end
+
+@testset "Test natural-gas prime-mover categorization" begin
+    mapping = PA.get_generator_mapping()
+    # NG-CT should catch both classic combustion-turbine (CT) and gas-turbine (GT)
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CT, nothing, mapping,
+    ) == "NG-CT"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.GT, nothing, mapping,
+    ) == "NG-CT"
+    # NG-CC should catch combined-cycle (CC) and the steam side (CA) of decomposed CC plants
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CC, nothing, mapping,
+    ) == "NG-CC"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CA, nothing, mapping,
+    ) == "NG-CC"
+end
+
+@testset "Test HydroGen subtypes map to Hydropower" begin
+    mapping = PA.get_generator_mapping()
+    # HydroPumpTurbine advertises primemover=PS; without the HydroGen rule it
+    # would fall through to the generic `{Any, PS, null}` Storage rule.
+    @test PA.get_generator_category(
+        PSY.HydroPumpTurbine, nothing, PSY.PrimeMovers.PS, nothing, mapping,
+    ) == "Hydropower"
+    @test PA.get_generator_category(
+        PSY.HydroTurbine, nothing, PSY.PrimeMovers.HY, nothing, mapping,
+    ) == "Hydropower"
 end
