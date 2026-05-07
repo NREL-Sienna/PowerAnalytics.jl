@@ -23,6 +23,9 @@ NG-CC:
 NG-Steam:
   - {gentype: Any, primemover: ST, fuel: NATURAL_GAS}
 Hydropower:
+  # Catch all HydroGen subtypes (e.g., HydroPumpTurbine with primemover=PS) before
+  # they fall through to the generic Storage `{Any, PS, null}` rule above.
+  - {gentype: HydroGen, primemover: null, fuel: null}
   - {gentype: Any, primemover: HY, fuel: null}
 Coal:
   - {gentype: Any, primemover: null, fuel: COAL}

@@ -201,3 +201,15 @@ end
         PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CA, nothing, mapping,
     ) == "NG-CC"
 end
+
+@testset "Test HydroGen subtypes map to Hydropower" begin
+    mapping = PA.get_generator_mapping()
+    # HydroPumpTurbine advertises primemover=PS; without the HydroGen rule it
+    # would fall through to the generic `{Any, PS, null}` Storage rule.
+    @test PA.get_generator_category(
+        PSY.HydroPumpTurbine, nothing, PSY.PrimeMovers.PS, nothing, mapping,
+    ) == "Hydropower"
+    @test PA.get_generator_category(
+        PSY.HydroTurbine, nothing, PSY.PrimeMovers.HY, nothing, mapping,
+    ) == "Hydropower"
+end
