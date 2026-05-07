@@ -5,9 +5,6 @@ using DocumenterInterLinks
 using Dates
 using Literate
 
-# UPDATE FOR CURRENT MODULE NAME HERE
-const _DOCS_BASE_URL = "https://sienna-platform.github.io/PowerAnalytics.jl/stable"
-
 ENV["GKSwstype"] = "100"  # Prevent GR from opening gksqt GUI
 
 links = InterLinks(

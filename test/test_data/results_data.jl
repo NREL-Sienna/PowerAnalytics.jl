@@ -96,8 +96,8 @@ function run_test_sim(result_dir::String, sim_name::String)
         results = _execute_simulation(result_dir, sim_name)
     end
 
-    results_uc = get_decision_problem_results(results, "UC")
-    results_ed = get_decision_problem_results(results, "ED")
+    results_uc = get_decision_problem_results(results, "UC"; populate_system = true)
+    results_ed = get_decision_problem_results(results, "ED"; populate_system = true)
 
     return results_uc, results_ed
 end
@@ -156,14 +156,12 @@ function _execute_simulation(base_path, sim_name)
                 c_sys5_hy_uc;
                 optimizer = highs_optimizer,
                 name = "UC",
-                system_to_file = true,
             ),
             DecisionModel(
                 template_hydro_st_ed,
                 c_sys5_hy_ed;
                 optimizer = highs_optimizer,
                 name = "ED",
-                system_to_file = true,
             ),
         ],
     )
@@ -202,36 +200,20 @@ end
 
 function _try_load_simulation_results(sim_path)
     !isdir(sim_path) && return nothing
-    c_sys5_hy_uc_path = get_system_file_path(joinpath(sim_path, "problems", "UC"))
-    isnothing(c_sys5_hy_uc_path) && return nothing
-    c_sys5_hy_ed_path = get_system_file_path(joinpath(sim_path, "problems", "ED"))
-    isnothing(c_sys5_hy_ed_path) && return nothing
-    !isfile(c_sys5_hy_uc_path) || !isfile(c_sys5_hy_ed_path) && return nothing
+    # In PSI 0.34+, systems are stored in the data_store HDF5 file rather than as
+    # separate JSON files. Check for the data_store directory as a proxy for a
+    # completed simulation.
+    data_store_path = joinpath(sim_path, "data_store")
+    !isdir(data_store_path) && return nothing
 
     try
         results = SimulationResults(sim_path)
-        results_uc = get_decision_problem_results(results, "UC")
-        results_ed = get_decision_problem_results(results, "ED")
-        @info "Reading UC system from" sim_path
-        c_sys5_hy_uc = System(c_sys5_hy_uc_path; time_series_read_only = true)
-        @info "Reading ED system from" sim_path
-        c_sys5_hy_ed = System(c_sys5_hy_ed_path; time_series_read_only = true)
-        set_system!(results_uc, c_sys5_hy_uc)
-        set_system!(results_ed, c_sys5_hy_ed)
+        # Verify both problems are available (will throw if not)
+        get_decision_problem_results(results, "UC")
+        get_decision_problem_results(results, "ED")
         return results
     catch e
         @info "Failed to load the results from $sim_path. The results may be incomplete. $e"
-    end
-
-    return nothing
-end
-
-function get_system_file_path(path)
-    !isdir(path) && return nothing
-    files = readdir(path)
-    for filename in files
-        m = match(r"system-[\w-]+.json", filename)
-        !isnothing(m) && return joinpath(path, m.match)
     end
 
     return nothing
