@@ -146,3 +146,18 @@ all_metric_names = filter(x -> getproperty(PowerAnalytics.Metrics, x) isa Metric
     @test isconst(PowerAnalytics.Metrics, metric_name)
     test_metric(Val(metric_name))
 end
+
+# Regression test for https://github.com/Sienna-Platform/PowerAnalytics.jl/issues/54.
+# Computing a `ComponentTimedMetric` over a type-based `ComponentSelector` (the original
+# reproducer was `calc_active_power(make_selector(ThermalStandard), results_uc)`) was
+# reported to hit `StackOverflowError`. The bug is not reproducible on current `main`
+# (the `IS.ComponentSelector` contract guarantees `get_components` returns components, not
+# selectors, so `_compute_one` cannot recurse via dispatch). This test pins the reproducer
+# down explicitly so any future regression of either the IS contract or PowerAnalytics'
+# dispatch chain is caught immediately.
+@testset "Regression: Issue #54 — calc_active_power with ComponentSelector dispatch" begin
+    result = calc_active_power(make_selector(ThermalStandard), results_uc)
+    @test result isa ResultType
+    @test DATETIME_COL in names(result)
+    @test length(get_data_cols(result)) >= 1
+end
