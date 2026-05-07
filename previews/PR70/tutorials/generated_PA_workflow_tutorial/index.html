@@ -32,13 +32,13 @@ using PowerAnalytics.Metrics</code></pre><p>To begin our analysis, we first spec
       <td style = "text-align: left;">StorageEnergyOutput__EnergyReservoirStorage</td>
     </tr>
     <tr class = "dataRow">
-      <td style = "text-align: left;">TimeDurationOff__ThermalStandard</td>
+      <td style = "text-align: left;">TimeDurationOn__ThermalStandard</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: left;">HydroEnergyOutput__HydroTurbine</td>
     </tr>
     <tr class = "dataRow">
-      <td style = "text-align: left;">TimeDurationOn__ThermalStandard</td>
+      <td style = "text-align: left;">TimeDurationOff__ThermalStandard</td>
     </tr>
   </tbody>
 </table>
@@ -51,13 +51,10 @@ using PowerAnalytics.Metrics</code></pre><p>To begin our analysis, we first spec
   </thead>
   <tbody>
     <tr class = "dataRow">
-      <td style = "text-align: left;">FuelConsumptionExpression__ThermalStandard</td>
-    </tr>
-    <tr class = "dataRow">
       <td style = "text-align: left;">ProductionCostExpression__ThermalStandard</td>
     </tr>
     <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerBalance__System</td>
+      <td style = "text-align: left;">ProductionCostExpression__RenewableDispatch</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: left;">ProductionCostExpression__HydroDispatch</td>
@@ -66,7 +63,10 @@ using PowerAnalytics.Metrics</code></pre><p>To begin our analysis, we first spec
       <td style = "text-align: left;">ProductionCostExpression__HydroTurbine</td>
     </tr>
     <tr class = "dataRow">
-      <td style = "text-align: left;">ProductionCostExpression__RenewableDispatch</td>
+      <td style = "text-align: left;">FuelConsumptionExpression__ThermalStandard</td>
+    </tr>
+    <tr class = "dataRow">
+      <td style = "text-align: left;">ActivePowerBalance__System</td>
     </tr>
   </tbody>
 </table>
@@ -79,19 +79,19 @@ using PowerAnalytics.Metrics</code></pre><p>To begin our analysis, we first spec
   </thead>
   <tbody>
     <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerTimeSeriesParameter__HydroTurbine</td>
+      <td style = "text-align: left;">ActivePowerTimeSeriesParameter__HydroDispatch</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: left;">ActivePowerTimeSeriesParameter__PowerLoad</td>
     </tr>
     <tr class = "dataRow">
+      <td style = "text-align: left;">ActivePowerTimeSeriesParameter__RenewableDispatch</td>
+    </tr>
+    <tr class = "dataRow">
       <td style = "text-align: left;">ActivePowerTimeSeriesParameter__RenewableNonDispatch</td>
     </tr>
     <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerTimeSeriesParameter__HydroDispatch</td>
-    </tr>
-    <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerTimeSeriesParameter__RenewableDispatch</td>
+      <td style = "text-align: left;">ActivePowerTimeSeriesParameter__HydroTurbine</td>
     </tr>
   </tbody>
 </table>
@@ -104,19 +104,7 @@ using PowerAnalytics.Metrics</code></pre><p>To begin our analysis, we first spec
   </thead>
   <tbody>
     <tr class = "dataRow">
-      <td style = "text-align: left;">StartVariable__ThermalStandard</td>
-    </tr>
-    <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerInVariable__EnergyReservoirStorage</td>
-    </tr>
-    <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerOutVariable__EnergyReservoirStorage</td>
-    </tr>
-    <tr class = "dataRow">
-      <td style = "text-align: left;">OnVariable__ThermalStandard</td>
-    </tr>
-    <tr class = "dataRow">
-      <td style = "text-align: left;">StopVariable__ThermalStandard</td>
+      <td style = "text-align: left;">ActivePowerVariable__HydroTurbine</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: left;">ActivePowerVariable__HydroDispatch</td>
@@ -125,13 +113,25 @@ using PowerAnalytics.Metrics</code></pre><p>To begin our analysis, we first spec
       <td style = "text-align: left;">ActivePowerVariable__RenewableDispatch</td>
     </tr>
     <tr class = "dataRow">
-      <td style = "text-align: left;">ActivePowerVariable__HydroTurbine</td>
+      <td style = "text-align: left;">EnergyVariable__EnergyReservoirStorage</td>
+    </tr>
+    <tr class = "dataRow">
+      <td style = "text-align: left;">ActivePowerInVariable__EnergyReservoirStorage</td>
+    </tr>
+    <tr class = "dataRow">
+      <td style = "text-align: left;">StartVariable__ThermalStandard</td>
+    </tr>
+    <tr class = "dataRow">
+      <td style = "text-align: left;">StopVariable__ThermalStandard</td>
+    </tr>
+    <tr class = "dataRow">
+      <td style = "text-align: left;">OnVariable__ThermalStandard</td>
+    </tr>
+    <tr class = "dataRow">
+      <td style = "text-align: left;">ActivePowerOutVariable__EnergyReservoirStorage</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: left;">ActivePowerVariable__ThermalStandard</td>
-    </tr>
-    <tr class = "dataRow">
-      <td style = "text-align: left;">EnergyVariable__EnergyReservoirStorage</td>
     </tr>
   </tbody>
 </table>
@@ -236,7 +236,7 @@ show(df; allcols = true)</code></pre><pre class="documenter-example-output"><cod
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-01T09:00:00</td>
       <td style = "text-align: right;">0.0</td>
-      <td style = "text-align: right;">711.4117144443758</td>
+      <td style = "text-align: right;">711.4117144443751</td>
       <td style = "text-align: right;">2259.666666656</td>
     </tr>
     <tr>
@@ -303,7 +303,7 @@ show(df; allcols = true)</code></pre><pre class="documenter-example-output"><cod
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-01T09:00:00</td>
-      <td style = "text-align: right;">2971.0783811003757</td>
+      <td style = "text-align: right;">2971.0783811003753</td>
     </tr>
     <tr>
       <td style = "text-align: right;">&vellip;</td>
@@ -328,12 +328,12 @@ show(df; allcols = true)</code></pre><pre class="documenter-example-output"><cod
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-06T00:00:00</td>
       <td style = "text-align: right;">1</td>
-      <td style = "text-align: right;">359079.80978511984</td>
+      <td style = "text-align: right;">359079.80978527485</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-07T00:00:00</td>
       <td style = "text-align: right;">2</td>
-      <td style = "text-align: right;">343793.76222327264</td>
+      <td style = "text-align: right;">343765.1485447813</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-01T00:00:00</td>
@@ -348,7 +348,7 @@ show(df; allcols = true)</code></pre><pre class="documenter-example-output"><cod
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-03T00:00:00</td>
       <td style = "text-align: right;">5</td>
-      <td style = "text-align: right;">463551.4437197103</td>
+      <td style = "text-align: right;">463554.1103865102</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-04T00:00:00</td>
@@ -358,7 +358,7 @@ show(df; allcols = true)</code></pre><pre class="documenter-example-output"><cod
     <tr class = "dataRow">
       <td style = "text-align: right;">2020-07-05T00:00:00</td>
       <td style = "text-align: right;">7</td>
-      <td style = "text-align: right;">372475.3838054727</td>
+      <td style = "text-align: right;">372483.38380688225</td>
     </tr>
   </tbody>
 </table>
@@ -529,5 +529,5 @@ Computing for scenario: Scenario_2
 <span class="sgr1"> Row </span>│<span class="sgr1"> Scenario    DateTime             Thermal Generation (MWh)  Renewables Curtailment (MWh)  Storage Charging (MWh)  Storage Discharging (MWh)  Storage SOC (MWh)  Objective Value  Solve Time (s)  Memory Allocated </span>
 <span class="sgr1">     </span>│<span class="sgr90"> String      DateTime             Float64                   Float64                       Float64                 Float64                    Float64            Float64          Float64         Float64          </span>
 ─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-   1 │ Scenario_1  2020-07-01T00:00:00                 2.7871e6                        27417.9                 7126.95                    7126.95      55741.6              1.32496e8         94.6891         2.38881e8
-   2 │ Scenario_2  2020-07-01T00:00:00                 2.78266e6                       27417.9                48499.3                    48499.3           5.72454e5        1.29789e8         78.8062         1.13279e8</code></pre><p>Looking at the final dataframe, we can now easily compare the aggregated results of the selected metrics between the two simulation scenarios.</p><p>Focusing on the thermal generation and renewable curtailment results for example, we observe a decrease of approximately 0.15% in total thermal generation and approximately 11.90% in renewable curtailment across the full simulation horizon and the entire system. The increased energy capacity of the storage device in the second scenario enables it to store more excess renewable energy rather than curtail it, which in turn reduces the need for thermal generation.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Welcome Page</a><a class="docs-footer-nextpage" href="../../reference/public/">Public API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 5 May 2026 21:00">Tuesday 5 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+   1 │ Scenario_1  2020-07-01T00:00:00                 2.78708e6                       27417.9                 7083.92                    7083.92      55698.5              1.32486e8         94.8464         2.38884e8
+   2 │ Scenario_2  2020-07-01T00:00:00                 2.78266e6                       27417.9                48499.7                    48499.7           5.72426e5        1.29788e8         79.2099         1.13282e8</code></pre><p>Looking at the final dataframe, we can now easily compare the aggregated results of the selected metrics between the two simulation scenarios.</p><p>Focusing on the thermal generation and renewable curtailment results for example, we observe a decrease of approximately 0.15% in total thermal generation and approximately 11.90% in renewable curtailment across the full simulation horizon and the entire system. The increased energy capacity of the storage device in the second scenario enables it to store more excess renewable energy rather than curtail it, which in turn reduces the need for thermal generation.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Welcome Page</a><a class="docs-footer-nextpage" href="../../reference/public/">Public API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 7 May 2026 19:06">Thursday 7 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
