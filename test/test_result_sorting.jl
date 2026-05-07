@@ -163,3 +163,23 @@ end
     @test result["Unserved Energy"] === df_up
     @test result["Over Generation"] === df_dn
 end
+
+@testset "Test make_fuel_dictionary filter_func applies to relevant component types" begin
+    sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
+
+    # Add a Storage component
+    stor = PSY.EnergyReservoirStorage(nothing)
+    PSY.set_bus!(stor, PSY.get_component(PSY.ACBus, sys, "nodeA"))
+    PSY.set_available!(stor, true)
+    PSY.add_component!(sys, stor)
+
+    # Filter out everything → empty result
+    cat_empty = PA.make_fuel_dictionary(sys; filter_func = x -> false)
+    @test all(isempty, values(cat_empty))
+    # Filter to one component of each type and verify exactly one result each time
+    for T in (PSY.StaticLoad, PSY.Generator, PSY.Storage)
+        target = PSY.get_name(first(PSY.get_components(T, sys)))
+        cat_one = PA.make_fuel_dictionary(sys; filter_func = x -> PSY.get_name(x) == target)
+        @test sum(length(v) for v in values(cat_one)) == 1
+    end
+end
