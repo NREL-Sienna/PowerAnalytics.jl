@@ -616,9 +616,8 @@ function categorize_data(
             if any(in.(split_power_component_types, Ref(first.(list))))
                 new_categories = [category * " In", category * " Out"]
                 for new_category in new_categories
-                    split_power_categories[new_category] =
-
-
+                    split_power_categories[new_category] 
+                end
             end
         end
     end
