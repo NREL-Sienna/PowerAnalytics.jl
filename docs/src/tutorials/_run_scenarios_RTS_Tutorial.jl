@@ -123,7 +123,7 @@ function run_scenario(scenario::String, output_folder::String)
         simulation_folder = output_folder,
     )
 
-    build!(sim; console_level = Logging.Info, file_level = Logging.Debug, serialize = false)
+    build!(sim; console_level = Logging.Info, file_level = Logging.Debug)
     execute!(sim; enable_progress_bar = true)
 end
 

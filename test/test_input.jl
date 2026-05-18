@@ -41,10 +41,15 @@ end
         scenario_names = [TEST_SIM_NAME, TEST_DUPLICATE_RESULTS_NAME]
         scenarios = create_problem_results_dict(TEST_RESULT_DIR, problem)
         @test Set(keys(scenarios)) == Set(scenario_names)
-        scenarios = create_problem_results_dict(TEST_RESULT_DIR, problem, scenario_names)
+        scenarios = create_problem_results_dict(
+            TEST_RESULT_DIR,
+            problem,
+            scenario_names;
+            populate_system = true,
+        )
         @test Set(keys(scenarios)) == Set(scenario_names)
         @test IS.compare_values(
-            get_system!(scenarios[TEST_SIM_NAME]),
+            get_system(scenarios[TEST_SIM_NAME]),
             get_system(stock_results),
         )
     end
