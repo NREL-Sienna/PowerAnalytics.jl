@@ -112,8 +112,14 @@ function make_fuel_dictionary(
                 nothing
             end
         ext = get(PSY.get_ext(gen), "ext_category", nothing)
-        category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
-        push!(gen_categories["$category"], (string(nameof(typeof(gen))), PSY.get_name(gen)))
+        category = something(
+            get_generator_category(typeof(gen), fuel, pm, ext, mapping),
+            UNMAPPED_GENERATOR_CATEGORY,
+        )
+        push!(
+            get!(gen_categories, "$category", []),
+            (string(nameof(typeof(gen))), PSY.get_name(gen)),
+        )
     end
 
     for battery in PSY.get_components(PSY.Storage, sys)
@@ -122,14 +128,20 @@ function make_fuel_dictionary(
         end
 
         ext = get(PSY.get_ext(battery), "ext_category", nothing)
-        category = get_generator_category(
-            typeof(battery),
-            nothing,
-            PSY.get_prime_mover_type(battery),
-            ext,
-            mapping,
+        category = something(
+            get_generator_category(
+                typeof(battery),
+                nothing,
+                PSY.get_prime_mover_type(battery),
+                ext,
+                mapping,
+            ),
+            UNMAPPED_GENERATOR_CATEGORY,
         )
-        push!(gen_categories["$category"], (string(nameof(typeof(battery))), PSY.get_name(battery)))
+        push!(
+            get!(gen_categories, "$category", []),
+            (string(nameof(typeof(battery))), PSY.get_name(battery)),
+        )
     end
 
     [delete!(gen_categories, "$k") for (k, v) in gen_categories if isempty(v)]
