@@ -5,6 +5,9 @@ using DocumenterInterLinks
 using Dates
 using Literate
 
+# UPDATE FOR CURRENT MODULE NAME HERE
+const _DOCS_BASE_URL = "https://sienna-platform.github.io/PowerAnalytics.jl/stable"
+
 ENV["GKSwstype"] = "100"  # Prevent GR from opening gksqt GUI
 
 links = InterLinks(
@@ -27,11 +30,11 @@ pages = OrderedDict(
     # TODO flesh out the how-tos, explanation
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
     # "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
-    "Reference" => Any[ 
+    "Reference" => Any[
         "Public API" => "reference/public.md",
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
         "Internals" => "reference/internal.md"]]
-     
+
 )
 
 # Run simulation scenarios for RTS-GMLC Tutorial
