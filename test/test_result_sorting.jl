@@ -76,6 +76,21 @@ problem_results = run_test_prob()
     @test length(sub_gen.data) == 8
 end
 
+@testset "_get_components_axis handles non-contiguous bus numbers" begin
+    # Regression: the bus method previously allocated a length-N vector and
+    # indexed it by bus number. Bus numbers are arbitrary positive identifiers,
+    # so a number greater than the bus count threw BoundsError (and a sparse
+    # set left #undef slots -> UndefRefError).
+    sys = PSB.build_system(PSB.PSITestSystems, "c_sys5_all_components")
+    buses = collect(PSY.get_components(PSY.ACBus, sys))
+    PSY.set_number!(buses[1], 9999)  # far larger than length(buses)
+    expected = Set(string.(PSY.get_number.(buses)))
+    axis = PA._get_components_axis(x -> true, PSY.ACBus, sys)
+    @test Set(axis) == expected
+    @test length(axis) == length(buses)
+    @test "9999" in axis
+end
+
 @testset "test curtailment calculations" begin
     curtailment_params = PA._curtailment_parameters(
         PA.get_generation_parameter_keys(results_uc),

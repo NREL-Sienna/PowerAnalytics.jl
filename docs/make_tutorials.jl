@@ -382,7 +382,9 @@ function add_image_links(nb::Dict, outputfile_base::AbstractString)
             markdown_image_pattern.pattern * "|" *
             standalone_img_pattern.pattern * ")",
         )
-        if occursin(image_fragment_pattern, text)
+        # Append the note only if the cell has an image and does not already
+        # carry the note, so the function is idempotent as documented above.
+        if occursin(image_fragment_pattern, text) && !occursin(msg, text)
             text *= suffix
         end
         # Convert back to notebook source array (lines, last without trailing \n if non-empty)

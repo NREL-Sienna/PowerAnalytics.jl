@@ -93,10 +93,10 @@ function make_fuel_dictionary(
     kwargs...,
 )
     filter_func2 = x -> PSY.get_available(x) && filter_func(x)
-    gen_categories = Dict{String, Any}()
+    gen_categories = Dict{String, Vector{Tuple{String, String}}}()
 
     for category in unique(values(mapping))
-        gen_categories["$category"] = []
+        gen_categories["$category"] = Tuple{String, String}[]
     end
 
     for gen in PSY.get_components(PSY.Generator, sys)
@@ -117,7 +117,7 @@ function make_fuel_dictionary(
             UNMAPPED_GENERATOR_CATEGORY,
         )
         push!(
-            get!(gen_categories, "$category", []),
+            get!(gen_categories, "$category", Tuple{String, String}[]),
             (string(nameof(typeof(gen))), PSY.get_name(gen)),
         )
     end
@@ -139,12 +139,12 @@ function make_fuel_dictionary(
             UNMAPPED_GENERATOR_CATEGORY,
         )
         push!(
-            get!(gen_categories, "$category", []),
+            get!(gen_categories, "$category", Tuple{String, String}[]),
             (string(nameof(typeof(battery))), PSY.get_name(battery)),
         )
     end
 
-    [delete!(gen_categories, "$k") for (k, v) in gen_categories if isempty(v)]
+    filter!(p -> !isempty(p.second), gen_categories)
     return gen_categories
 end
 

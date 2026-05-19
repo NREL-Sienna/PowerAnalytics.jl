@@ -280,12 +280,11 @@ function _get_components_axis(
     system::PSY.System,
 )
     buses = PSY.get_components(filter_func, component_type, system)
-    bus_numbers_strings = Vector{String}(undef, length(buses))
-    for bus in buses
-        bus_number = PSY.get_number(bus)
-        bus_numbers_strings[bus_number] = string(bus_number)
-    end
-    return bus_numbers_strings
+    # Bus numbers are arbitrary positive identifiers, not 1..N row indices, so
+    # they must not be used to index a length-N vector. Return the number
+    # strings in component order, matching the generic method's `get_name.`
+    # idiom; the caller selects DataFrame columns by name, so order is free.
+    return string.(PSY.get_number.(buses))
 end
 
 function filter_results!(
@@ -688,10 +687,22 @@ function categorize_data(
         end
     end
     if slacks
+        data_keys = collect(keys(data))
         for (slack, slack_name) in BALANCE_SLACKVARS
-            for id in findall(x -> occursin(string(nameof(slack)), x), string.(keys(data)))
-                slack_key = collect(keys(data))[id]
-                category_dataframes[slack_name] = data[slack_key]
+            ids =
+                findall(x -> occursin(string(nameof(slack)), x), string.(data_keys))
+            isempty(ids) && continue
+            if length(ids) == 1
+                # Single match: pass the original DataFrame through unchanged.
+                category_dataframes[slack_name] = data[data_keys[ids[1]]]
+            else
+                # Multiple matching keys: concatenate them instead of letting
+                # each iteration overwrite the previous (only the first keeps
+                # its DateTime column to avoid duplicates).
+                first_df = data[data_keys[ids[1]]]
+                rest = [no_datetime(data[data_keys[i]]) for i in ids[2:end]]
+                category_dataframes[slack_name] =
+                    hcat(first_df, rest...; makeunique = true)
             end
         end
     end
