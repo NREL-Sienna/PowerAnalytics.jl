@@ -268,17 +268,32 @@ end
 end
 
 @testset "make_fuel_dictionary does not crash on unmapped generators" begin
-    # A NATURAL_GAS unit whose prime mover is coded as OT has no entry in the
-    # default generator_mapping.yaml (NG is only mapped to CT/GT/CC/CA/ST).
-    # get_generator_category returns `nothing` for it by design; make_fuel_dictionary
-    # must route that into the "Other" catch-all rather than KeyError-ing.
+    # Every PSY.ThermalFuels value now has a fuel-only fallback, so any
+    # fuel-bearing unit is always categorized. A genuinely-unmapped generator is
+    # one with no fuel and a prime mover that matches no rule (here a
+    # RenewableDispatch coded with the OT prime mover). get_generator_category
+    # returns `nothing` for it by design; make_fuel_dictionary must route that
+    # into the "Other" catch-all rather than KeyError-ing.
+    mapping = PA.get_generator_mapping()
+    # The unmatched lookup emits the by-design @error; capture it locally with
+    # `@test_logs` so it does not leak into the suite-wide "no Error log events"
+    # guard in runtests.jl.
+    unmapped_cat =
+        @test_logs (:error, r"No mapping defined") match_mode = :any PA.get_generator_category(
+            PSY.RenewableDispatch,
+            nothing,
+            PSY.PrimeMovers.OT,
+            nothing,
+            mapping,
+        )
+    @test unmapped_cat === nothing
+
     sys = PSB.build_system(
         PSB.PSITestSystems,
         "c_sys5_all_components";
         name = "unmapped_gen_sys",
     )
-    g = first(PSY.get_components(PSY.ThermalStandard, sys))
-    PSY.set_fuel!(g, PSY.ThermalFuels.NATURAL_GAS)
+    g = first(PSY.get_components(PSY.RenewableDispatch, sys))
     PSY.set_prime_mover_type!(g, PSY.PrimeMovers.OT)
 
     # Pre-fix this throws `KeyError: key "nothing"`. The @error data-quality log
@@ -290,7 +305,48 @@ end
             sys,
         )
     @test haskey(cat, "Other")
-    @test ("ThermalStandard", PSY.get_name(g)) in cat["Other"]
+    @test ("RenewableDispatch", PSY.get_name(g)) in cat["Other"]
+end
+
+@testset "fuel-only fallbacks cover the full ThermalFuels enum (CATS regression)" begin
+    # Regression for the CATS plotting flood: the 4d45fdc mapping refactor
+    # dropped the pre-refactor fuel-only fallbacks, so real systems with units
+    # whose prime mover is OT/IC (and gas/waste/coal fuels) errored on every
+    # categorization. Every PSY.ThermalFuels value must now resolve via a
+    # fuel-only fallback regardless of prime mover.
+    mapping = PA.get_generator_mapping()
+    for fuel in instances(PSY.ThermalFuels)
+        for pm in (PSY.PrimeMovers.OT, PSY.PrimeMovers.IC, PSY.PrimeMovers.ST)
+            @test PA.get_generator_category(
+                PSY.ThermalStandard, string(fuel), pm, nothing, mapping,
+            ) !== nothing
+        end
+    end
+
+    # The fuels reported by the CATS system land in the expected buckets, and
+    # the gas prime-mover specificity (GT/CC/CA/CT) is preserved.
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.OT, nothing, mapping,
+    ) == "NG-Steam"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.IC, nothing, mapping,
+    ) == "NG-Steam"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "OTHER_GAS", PSY.PrimeMovers.OT, nothing, mapping,
+    ) == "NG-Steam"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "MUNICIPAL_WASTE", PSY.PrimeMovers.OT, nothing, mapping,
+    ) == "Biopower"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "MUNICIPAL_WASTE", PSY.PrimeMovers.ST, nothing, mapping,
+    ) == "Biopower"
+    # Prime-mover-specific gas rules still win over the fuel-only fallback.
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.GT, nothing, mapping,
+    ) == "NG-CT"
+    @test PA.get_generator_category(
+        PSY.ThermalStandard, "NATURAL_GAS", PSY.PrimeMovers.CC, nothing, mapping,
+    ) == "NG-CC"
 end
 
 @testset "Test HydroGen subtypes map to Hydropower" begin
