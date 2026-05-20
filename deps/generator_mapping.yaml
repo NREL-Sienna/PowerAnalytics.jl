@@ -24,6 +24,7 @@ NG-CC:
   - {gentype: Any, primemover: CC, fuel: NATURAL_GAS}
   - {gentype: Any, primemover: CA, fuel: NATURAL_GAS}
   - {gentype: Any, primemover: CT, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: CS, fuel: NATURAL_GAS}
 NG-Steam:
   - {gentype: Any, primemover: ST, fuel: NATURAL_GAS}
   # Fuel-only fallbacks: generic/unrecognized prime mover (e.g. OT, IC) for gas
