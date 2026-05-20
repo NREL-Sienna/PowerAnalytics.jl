@@ -607,13 +607,15 @@ function categorize_data(
 
     # Categories that contain a split-power component type (e.g. storage, which
     # reports separate ActivePowerIn/OutVariable) are emitted as "<category> In"
-    # and "<category> Out" instead of a single combined category.
-    split_categories = Set{String}()
+    # and "<category> Out" instead of a single combined category. Keep the
+    # original key type so `aggregation[category]` works even if `aggregation`
+    # is keyed by something other than `String`; we stringify only at write time.
+    split_categories = Set{keytype(aggregation)}()
     for (category, list) in aggregation
         if any(
             component_type in split_power_component_types for (component_type, _) in list
         )
-            push!(split_categories, string(category))
+            push!(split_categories, category)
         end
     end
 

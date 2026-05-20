@@ -130,11 +130,15 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_uc, HydroReservoir, HydroEnergyModelReservoir)
     set_service_model!(template_hydro_st_uc, VariableReserve{ReserveUp}, RangeReserve)
 
+    # ED runs on a PTDF network with DC power flow evaluation in the loop so
+    # PowerAnalytics gets exercised on results that carry power-flow auxiliary
+    # variables (regression coverage for downstream issues that only surface
+    # when the aux-variable codepath is populated).
     template_hydro_st_ed = ProblemTemplate(
         NetworkModel(
-            CopperPlatePowerModel;
+            PTDFPowerModel;
             use_slacks = true,
-            duals = [CopperPlateBalanceConstraint],
+            power_flow_evaluation = PowerSimulations.PFS.DCPowerFlow(),
         ),
     )
     set_device_model!(template_hydro_st_ed, ThermalStandard, ThermalBasicDispatch)
@@ -142,6 +146,7 @@ function _execute_simulation(base_path, sim_name)
     set_device_model!(template_hydro_st_ed, RenewableNonDispatch, FixedOutput)
     set_device_model!(template_hydro_st_ed, RenewableDispatch, RenewableFullDispatch)
     set_device_model!(template_hydro_st_ed, HydroDispatch, FixedOutput)
+    set_device_model!(template_hydro_st_ed, Line, StaticBranch)
     set_device_model!(
         template_hydro_st_ed,
         EnergyReservoirStorage,

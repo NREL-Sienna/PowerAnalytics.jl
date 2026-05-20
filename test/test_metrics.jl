@@ -616,7 +616,12 @@ end
         [nothing, mysel, mysel],
         ["slack", "power", "final"],
     )
-    @test all(results4[!, "slack"] .^ 2 .* results4[!, "power"] .== results4[!, "final"])
+    @test all(
+        isapprox.(
+            results4[!, "slack"] .^ 2 .* results4[!, "power"],
+            results4[!, "final"],
+        ),
+    )
 end
 
 @testset "Test agg_meta basics" begin
