@@ -14,7 +14,7 @@ make_system_metric_from_entry(
 ) =
     SystemTimedMetric(; name = name,
         eval_fn = (res::IS.Results; kwargs...) ->
-            read_system_result(res, key, kwargs...))
+            read_system_result(res, key; kwargs...))
 
 """
 Compute the mean of `values` weighted by the corresponding entries of `weights`. Arguments

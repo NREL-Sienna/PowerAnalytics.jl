@@ -30,11 +30,11 @@ pages = OrderedDict(
     # TODO flesh out the how-tos, explanation
     # "How to..." => Any[#="stub" => "how_to_guides/stub.md"=#],
     # "Explanation" => Any[#="stub" => "explanation/stub.md"=#],
-    "Reference" => Any[ 
+    "Reference" => Any[
         "Public API" => "reference/public.md",
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
         "Internals" => "reference/internal.md"]]
-     
+
 )
 
 # Run simulation scenarios for RTS-GMLC Tutorial

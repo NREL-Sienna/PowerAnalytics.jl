@@ -19,7 +19,7 @@ function PowerData(
     data::Dict{String, DataFrames.DataFrame},
     time::Union{StepRange{Dates.DateTime}, Vector{Dates.DateTime}},
 )
-    d = Dict(zip(Symbol.(keys(data))), values(data))
+    d = Dict(zip(Symbol.(keys(data)), values(data)))
 
     rename_load!(d)
     return PowerData(d, time)
@@ -264,6 +264,29 @@ function _filter_curtailment!(
     end
 end
 
+function _get_components_axis(
+    filter_func::Function,
+    component_type::Type{T},
+    system::PSY.System,
+) where {T <: PSY.Component}
+    return PSY.get_name.(
+        PSY.get_components(filter_func, component_type, system)
+    )
+end
+
+function _get_components_axis(
+    filter_func::Function,
+    component_type::Type{<:PSY.Bus},
+    system::PSY.System,
+)
+    buses = PSY.get_components(filter_func, component_type, system)
+    # Bus numbers are arbitrary positive identifiers, not 1..N row indices, so
+    # they must not be used to index a length-N vector. Return the number
+    # strings in component order, matching the generic method's `get_name.`
+    # idiom; the caller selects DataFrame columns by name, so order is free.
+    return string.(PSY.get_number.(buses))
+end
+
 function filter_results!(
     results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     filter_func::Function,
@@ -271,13 +294,12 @@ function filter_results!(
 ) where {R <: IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
-        component_names =
-            PSY.get_name.(
-                PSY.get_components(filter_func, component_type, PSI.get_system(results)),
-            )
-        DataFrames.select!(v, vcat(["DateTime"], component_names))
+        component_axis =
+            _get_components_axis(filter_func, component_type, PSI.get_system(results))
+        DataFrames.select!(v, vcat(["DateTime"], component_axis))
     end
 end
+
 function filter_results!(
     results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     filter_func::Nothing,
@@ -485,13 +507,7 @@ function get_load_data(
     time_range = if isnothing(len)
         Dates.DateTime[]
     else
-        collect(
-            range(
-                initial_time;
-                step = resolution,
-                length = len,
-            ),
-        )
+        collect(range(initial_time; step = resolution, length = len))
     end
 
     return PowerData(parameters, time_range)
@@ -575,27 +591,92 @@ function categorize_data(
     slacks = true,
 )
     category_dataframes = Dict{String, DataFrames.DataFrame}()
-    var_types = Dict(
-        last(split(string(x), "_")) => x for
-        x in keys(data) if !occursin("ActivePowerInVariable", string(x))
-    )
+    split_power_component_types = Set{String}()
+
+    var_types = Dict{String, Symbol}()
+    for k in keys(data)
+        keystring = string(k)
+        device_type_string = last(split(keystring, "__"))
+        if occursin("ActivePowerInVariable", keystring) ||
+           occursin("ActivePowerOutVariable", keystring)
+            push!(split_power_component_types, device_type_string)
+            continue
+        end
+        var_types[device_type_string] = k
+    end
+
+    # Categories that contain a split-power component type (e.g. storage, which
+    # reports separate ActivePowerIn/OutVariable) are emitted as "<category> In"
+    # and "<category> Out" instead of a single combined category. Keep the
+    # original key type so `aggregation[category]` works even if `aggregation`
+    # is keyed by something other than `String`; we stringify only at write time.
+    split_categories = Set{keytype(aggregation)}()
+    for (category, list) in aggregation
+        if any(
+            component_type in split_power_component_types for (component_type, _) in list
+        )
+            push!(split_categories, category)
+        end
+    end
+
+    # Non-split components: one column per component under the original category.
+    # Split-power components are skipped here and handled by the In/Out pass below.
     for (category, list) in aggregation
         category_df = DataFrames.DataFrame()
-        for (component_type, variable) in list
-            if haskey(var_types, component_type)
-                category_data = data[var_types[component_type]]
-                colname = typeof(names(category_data)[1]) == String ? "$variable" : variable
-                DataFrames.insertcols!(
-                    category_df,
-                    (colname => category_data[:, colname]);
-                    makeunique = true,
-                )
-            end
+        for (component_type, component_name) in list
+            component_type in split_power_component_types && continue
+            haskey(var_types, component_type) || continue
+            category_data = data[var_types[component_type]]
+            colname =
+                if typeof(names(category_data)[1]) == String
+                    "$component_name"
+                else
+                    component_name
+                end
+            DataFrames.insertcols!(
+                category_df,
+                (colname => category_data[:, colname]);
+                makeunique = true,
+            )
         end
         if !isempty(category_df)
             category_dataframes[string(category)] = category_df
         end
     end
+
+    # Split pass: discharging (ActivePowerOutVariable) is generation (+),
+    # charging (ActivePowerInVariable) is load (-).
+    for category in split_categories
+        list = aggregation[category]
+        for (suffix, variable_prefix, sign) in (
+            ("Out", "ActivePowerOutVariable", 1.0),
+            ("In", "ActivePowerInVariable", -1.0),
+        )
+            split_df = DataFrames.DataFrame()
+            for (component_type, component_name) in list
+                component_type in split_power_component_types || continue
+                key = Symbol(variable_prefix * "__" * component_type)
+                haskey(data, key) || continue
+                component_data = data[key]
+                colname =
+                    if typeof(names(component_data)[1]) == String
+                        "$component_name"
+                    else
+                        component_name
+                    end
+                string(colname) in names(component_data) || continue
+                DataFrames.insertcols!(
+                    split_df,
+                    (colname => sign .* component_data[:, colname]);
+                    makeunique = true,
+                )
+            end
+            if !isempty(split_df)
+                category_dataframes["$category $suffix"] = split_df
+            end
+        end
+    end
+
     if curtailment
         dfs = []
         for (key, val) in data
@@ -608,10 +689,22 @@ function categorize_data(
         end
     end
     if slacks
+        data_keys = collect(keys(data))
         for (slack, slack_name) in BALANCE_SLACKVARS
-            for id in findall(x -> occursin(string(slack), x), string.(keys(data)))
-                slack_key = collect(keys(data))[id]
-                category_dataframes[slack_name] = data[slack_key]
+            ids =
+                findall(x -> occursin(string(nameof(slack)), x), string.(data_keys))
+            isempty(ids) && continue
+            if length(ids) == 1
+                # Single match: pass the original DataFrame through unchanged.
+                category_dataframes[slack_name] = data[data_keys[ids[1]]]
+            else
+                # Multiple matching keys: concatenate them instead of letting
+                # each iteration overwrite the previous (only the first keeps
+                # its DateTime column to avoid duplicates).
+                first_df = data[data_keys[ids[1]]]
+                rest = [no_datetime(data[data_keys[i]]) for i in ids[2:end]]
+                category_dataframes[slack_name] =
+                    hcat(first_df, rest...; makeunique = true)
             end
         end
     end

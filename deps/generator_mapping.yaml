@@ -11,19 +11,43 @@ Petroleum:
   - {gentype: Any, primemover: null, fuel: RESIDUAL_FUEL_OIL}
   - {gentype: Any, primemover: null, fuel: WASTE_OIL}
   - {gentype: Any, primemover: null, fuel: PETROLEUM_COKE}
+  - {gentype: Any, primemover: null, fuel: JET_FUEL}
+  - {gentype: Any, primemover: null, fuel: KEROSENE}
+  - {gentype: Any, primemover: null, fuel: PROPANE}
+  - {gentype: Any, primemover: null, fuel: SYNTHESIS_GAS_PETROLEUM_COKE}
 Storage:
   - {gentype: Any, primemover: BA, fuel: null}
   - {gentype: Any, primemover: PS, fuel: null}
 NG-CT:
-  - {gentype: Any, primemover: CT, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: GT, fuel: NATURAL_GAS}
 NG-CC:
   - {gentype: Any, primemover: CC, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: CA, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: CT, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: CS, fuel: NATURAL_GAS}
 NG-Steam:
   - {gentype: Any, primemover: ST, fuel: NATURAL_GAS}
+  # Fuel-only fallbacks: generic/unrecognized prime mover (e.g. OT, IC) for gas
+  # fuels routes to NG-Steam, matching the pre-refactor project convention.
+  # The specific GT/CC/CA/CT/ST rules above still win because the lookup tries
+  # the actual prime mover before falling back to the fuel-only rule.
+  - {gentype: Any, primemover: null, fuel: NATURAL_GAS}
+  - {gentype: Any, primemover: null, fuel: OTHER_GAS}
+  - {gentype: Any, primemover: null, fuel: BLASTE_FURNACE_GAS}
 Hydropower:
+  # Catch all HydroGen subtypes (e.g., HydroPumpTurbine with primemover=PS) before
+  # they fall through to the generic Storage `{Any, PS, null}` rule above.
+  - {gentype: HydroGen, primemover: null, fuel: null}
   - {gentype: Any, primemover: HY, fuel: null}
 Coal:
   - {gentype: Any, primemover: null, fuel: COAL}
+  - {gentype: Any, primemover: null, fuel: ANTHRACITE_COAL}
+  - {gentype: Any, primemover: null, fuel: BITUMINOUS_COAL}
+  - {gentype: Any, primemover: null, fuel: SUBBITUMINOUS_COAL}
+  - {gentype: Any, primemover: null, fuel: LIGNITE_COAL}
+  - {gentype: Any, primemover: null, fuel: REFINED_COAL}
+  - {gentype: Any, primemover: null, fuel: WASTE_COAL}
+  - {gentype: Any, primemover: null, fuel: SYNTHESIS_GAS_COAL}
 Nuclear:
   - {gentype: Any, primemover: null, fuel: NUCLEAR}
 Geothermal:
@@ -32,12 +56,26 @@ Biopower:
   - {gentype: Any, primemover: null, fuel: AG_BYPRODUCT}
   - {gentype: Any, primemover: null, fuel: WOOD_WASTE_SOLIDS}
   - {gentype: Any, primemover: null, fuel: WOOD_WASTE_LIQUIDS}
+  # Biogenic waste and biomass-derived fuels (EIA groups municipal solid waste,
+  # landfill/biomass gas, sludge and tire-derived fuel under biomass).
+  - {gentype: Any, primemover: null, fuel: MUNICIPAL_WASTE}
+  - {gentype: Any, primemover: null, fuel: LANDFILL_GAS}
+  - {gentype: Any, primemover: null, fuel: BLACK_LIQUOR}
+  - {gentype: Any, primemover: null, fuel: SLUDGE_WASTE}
+  - {gentype: Any, primemover: null, fuel: TIREDERIVED_FUEL}
+  - {gentype: Any, primemover: null, fuel: OTHER_BIOMASS_LIQUIDS}
+  - {gentype: Any, primemover: null, fuel: OTHER_BIOMASS_SOLIDS}
+  - {gentype: Any, primemover: null, fuel: OTHEHR_BIOMASS_GAS}
 CSP:
   - {gentype: Any, primemover: CP, fuel: null}
 Load:
   - {gentype: ElectricLoad, primemover: null, fuel: null}
 Other:
   - {gentype: Generator, primemover: OT, fuel: OTHER}
+  # Fallback: any generator with fuel OTHER, regardless of prime mover.
+  - {gentype: Generator, primemover: null, fuel: OTHER}
+  # Waste-heat recovery has no primary fuel; it is not a generation category.
+  - {gentype: Any, primemover: null, fuel: WASTE_HEAT}
 __META:
   non_generators:
     - Storage

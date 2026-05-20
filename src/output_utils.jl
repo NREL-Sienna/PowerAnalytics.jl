@@ -30,7 +30,7 @@ function get_agg_meta(df)
     (length(my_data_cols) == 1) && return get_agg_meta(df, first(my_data_cols))
     throw(
         ArgumentError(
-            "DataFrame has $(size(the_data, 2)) columns of data, must specify a column name",
+            "DataFrame has $(length(my_data_cols)) columns of data, must specify a column name",
         ),
     )
 end
@@ -45,7 +45,7 @@ function set_agg_meta!(df, val)
     (length(my_data_cols) == 1) && return set_agg_meta!(df, first(my_data_cols), val)
     throw(
         ArgumentError(
-            "DataFrame has $(size(the_data, 2)) columns of data, must specify a column name",
+            "DataFrame has $(length(my_data_cols)) columns of data, must specify a column name",
         ),
     )
 end

@@ -93,13 +93,17 @@ function make_fuel_dictionary(
     kwargs...,
 )
     filter_func2 = x -> PSY.get_available(x) && filter_func(x)
-    generators = PSY.get_components(filter_func2, PSY.StaticInjection, sys)
-    gen_categories = Dict()
+    gen_categories = Dict{String, Vector{Tuple{String, String}}}()
+
     for category in unique(values(mapping))
-        gen_categories["$category"] = []
+        gen_categories["$category"] = Tuple{String, String}[]
     end
 
-    for gen in generators
+    for gen in PSY.get_components(PSY.Generator, sys)
+        if !filter_func2(gen)
+            continue
+        end
+
         fuel = hasmethod(PSY.get_fuel, Tuple{typeof(gen)}) ? PSY.get_fuel(gen) : nothing
         pm =
             if hasmethod(PSY.get_prime_mover_type, Tuple{typeof(gen)})
@@ -108,10 +112,39 @@ function make_fuel_dictionary(
                 nothing
             end
         ext = get(PSY.get_ext(gen), "ext_category", nothing)
-        category = get_generator_category(typeof(gen), fuel, pm, ext, mapping)
-        push!(gen_categories["$category"], (string(nameof(typeof(gen))), PSY.get_name(gen)))
+        category = something(
+            get_generator_category(typeof(gen), fuel, pm, ext, mapping),
+            UNMAPPED_GENERATOR_CATEGORY,
+        )
+        push!(
+            get!(gen_categories, "$category", Tuple{String, String}[]),
+            (string(nameof(typeof(gen))), PSY.get_name(gen)),
+        )
     end
-    [delete!(gen_categories, "$k") for (k, v) in gen_categories if isempty(v)]
+
+    for battery in PSY.get_components(PSY.Storage, sys)
+        if !filter_func2(battery)
+            continue
+        end
+
+        ext = get(PSY.get_ext(battery), "ext_category", nothing)
+        category = something(
+            get_generator_category(
+                typeof(battery),
+                nothing,
+                PSY.get_prime_mover_type(battery),
+                ext,
+                mapping,
+            ),
+            UNMAPPED_GENERATOR_CATEGORY,
+        )
+        push!(
+            get!(gen_categories, "$category", Tuple{String, String}[]),
+            (string(nameof(typeof(battery))), PSY.get_name(battery)),
+        )
+    end
+
+    filter!(p -> !isempty(p.second), gen_categories)
     return gen_categories
 end
 
