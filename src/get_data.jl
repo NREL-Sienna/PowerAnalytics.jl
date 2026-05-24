@@ -108,6 +108,21 @@ function get_generation_aux_variable_keys(
     return filter_keys
 end
 
+function get_load_aux_variable_keys(
+    results::IS.Results;
+    aux_variable_keys::Vector{T} = PSI.list_aux_variable_keys(results),
+) where {T <: PSI.OptimizationContainerKey}
+    # TODO: add slacks
+    filter_keys = Vector{PSI.OptimizationContainerKey}()
+    for k in aux_variable_keys
+        if PSI.get_component_type(k) <: PSY.ElectricLoad &&
+           PSI.get_entry_type(k) == PSI.PowerOutput
+            push!(filter_keys, k)
+        end
+    end
+    return filter_keys
+end
+
 #### Load Names ####
 function get_load_variable_keys(
     results::IS.Results;
@@ -394,6 +409,8 @@ function get_load_data(
 
     variable_keys = get_load_variable_keys(results; variable_keys = variable_keys)
     parameter_keys = get_load_parameter_keys(results; parameter_keys = parameter_keys)
+    aux_variable_keys =
+        get_load_aux_variable_keys(results; aux_variable_keys = aux_variable_keys)
 
     variables = PSI.read_results_with_keys(
         results,
