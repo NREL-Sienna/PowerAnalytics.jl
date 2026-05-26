@@ -302,6 +302,9 @@ function _get_components_axis(
     return string.(PSY.get_number.(buses))
 end
 
+_skip_filtering(::Type{PSY.System}) = true
+_skip_filtering(::Type{T}) where {T <: PSY.Component} = false
+
 function filter_results!(
     results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     filter_func::Function,
@@ -309,6 +312,7 @@ function filter_results!(
 ) where {R <: IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
+        _skip_filtering(component_type) && continue
         component_axis =
             _get_components_axis(filter_func, component_type, PSI.get_system(results))
         DataFrames.select!(v, vcat(["DateTime"], component_axis))
