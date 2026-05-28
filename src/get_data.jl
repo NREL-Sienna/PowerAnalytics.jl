@@ -108,6 +108,21 @@ function get_generation_aux_variable_keys(
     return filter_keys
 end
 
+function get_load_aux_variable_keys(
+    results::IS.Results;
+    aux_variable_keys::Vector{T} = PSI.list_aux_variable_keys(results),
+) where {T <: PSI.OptimizationContainerKey}
+    # TODO: add slacks
+    filter_keys = Vector{PSI.OptimizationContainerKey}()
+    for k in aux_variable_keys
+        if PSI.get_component_type(k) <: PSY.ElectricLoad &&
+           PSI.get_entry_type(k) == PSI.PowerOutput
+            push!(filter_keys, k)
+        end
+    end
+    return filter_keys
+end
+
 #### Load Names ####
 function get_load_variable_keys(
     results::IS.Results;
@@ -287,6 +302,9 @@ function _get_components_axis(
     return string.(PSY.get_number.(buses))
 end
 
+_skip_filtering(::Type{PSY.System}) = true
+_skip_filtering(::Type{T}) where {T <: PSY.Component} = false
+
 function filter_results!(
     results_dict::Dict{PSI.OptimizationContainerKey, DataFrames.DataFrame},
     filter_func::Function,
@@ -294,6 +312,7 @@ function filter_results!(
 ) where {R <: IS.Results}
     for (k, v) in results_dict
         component_type = PSI.get_component_type(k)#getfield(PSY, Symbol(last(split(String(k), "__"))))
+        _skip_filtering(component_type) && continue
         component_axis =
             _get_components_axis(filter_func, component_type, PSI.get_system(results))
         DataFrames.select!(v, vcat(["DateTime"], component_axis))
@@ -394,6 +413,8 @@ function get_load_data(
 
     variable_keys = get_load_variable_keys(results; variable_keys = variable_keys)
     parameter_keys = get_load_parameter_keys(results; parameter_keys = parameter_keys)
+    aux_variable_keys =
+        get_load_aux_variable_keys(results; aux_variable_keys = aux_variable_keys)
 
     variables = PSI.read_results_with_keys(
         results,
