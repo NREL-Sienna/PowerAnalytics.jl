@@ -219,9 +219,13 @@ function add_fixed_parameters!(
 ) where {V <: PSI.OptimizationContainerKey, P <: PSI.OptimizationContainerKey}
     # fixed output should be added to plots when there exists a parameter of the form
     # :P__max_active_power__* but there is no corresponding :P__* variable
+    # Snapshot before the loop so that parameters we add during iteration (e.g. the
+    # first of two Source parameters) do not falsely block subsequent parameters for
+    # the same component type.
+    existing_variable_component_types =
+        Set(PSI.get_component_type.(keys(variables)))
     for (param_key, param) in parameters
-        PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
-            continue
+        PSI.get_component_type(param_key) ∈ existing_variable_component_types && continue
         if !haskey(variables, param_key)
             mult =
                 any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
