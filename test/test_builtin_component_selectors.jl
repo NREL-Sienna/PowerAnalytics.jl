@@ -20,7 +20,7 @@ end
     @test Set(keys(injector_categories)) ==
           Set(["Biopower", "CSP", "Coal", "Geothermal", "Hydropower", "NG-CC", "NG-CT",
         "NG-Steam", "Nuclear", "Other", "PV", "Petroleum", "Wind",
-        "Storage", "Load"])
+        "Storage", "Source", "Load"])
     @test Set(keys(generator_categories)) ==
           Set(["Biopower", "CSP", "Coal", "Geothermal", "Hydropower", "NG-CC", "NG-CT",
         "NG-Steam", "Nuclear", "Other", "PV", "Petroleum", "Wind"])
