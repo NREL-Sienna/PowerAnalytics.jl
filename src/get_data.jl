@@ -671,7 +671,9 @@ function categorize_data(
         keystring = string(k)
         device_type_string = last(split(keystring, "__"))
         if occursin("ActivePowerInVariable", keystring) ||
-           occursin("ActivePowerOutVariable", keystring)
+           occursin("ActivePowerOutVariable", keystring) ||
+           occursin("ActivePowerInTimeSeriesParameter", keystring) ||
+           occursin("ActivePowerOutTimeSeriesParameter", keystring)
             push!(split_power_component_types, device_type_string)
             continue
         end
@@ -721,14 +723,27 @@ function categorize_data(
     # charging (ActivePowerInVariable) is load (-).
     for category in split_categories
         list = aggregation[category]
-        for (suffix, variable_prefix, sign) in (
-            ("Out", "ActivePowerOutVariable", 1.0),
-            ("In", "ActivePowerInVariable", -1.0),
+        for (suffix, variable_prefixes, sign) in (
+            (
+                "Out",
+                ["ActivePowerOutVariable", "ActivePowerOutTimeSeriesParameter"],
+                1.0,
+            ),
+            (
+                "In",
+                ["ActivePowerInVariable", "ActivePowerInTimeSeriesParameter"],
+                -1.0,
+            ),
         )
             split_df = DataFrames.DataFrame()
             for (component_type, component_name) in list
                 component_type in split_power_component_types || continue
-                key = Symbol(variable_prefix * "__" * component_type)
+                key = findfirst(
+                    p -> haskey(data, Symbol(p * "__" * component_type)),
+                    variable_prefixes,
+                )
+                isnothing(key) && continue
+                key = Symbol(variable_prefixes[key] * "__" * component_type)
                 haskey(data, key) || continue
                 component_data = data[key]
                 colname =

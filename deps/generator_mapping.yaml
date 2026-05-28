@@ -76,7 +76,10 @@ Other:
   - {gentype: Generator, primemover: null, fuel: OTHER}
   # Waste-heat recovery has no primary fuel; it is not a generation category.
   - {gentype: Any, primemover: null, fuel: WASTE_HEAT}
+Source:
+  - {gentype: Source, primemover: null, fuel: null}
 __META:
   non_generators:
     - Storage
     - Load
+    - Source

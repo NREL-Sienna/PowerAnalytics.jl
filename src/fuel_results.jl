@@ -144,6 +144,22 @@ function make_fuel_dictionary(
         )
     end
 
+    for source in PSY.get_components(PSY.Source, sys)
+        if !filter_func2(source)
+            continue
+        end
+
+        ext = get(PSY.get_ext(source), "ext_category", nothing)
+        category = something(
+            get_generator_category(typeof(source), nothing, nothing, ext, mapping),
+            UNMAPPED_GENERATOR_CATEGORY,
+        )
+        push!(
+            get!(gen_categories, "$category", Tuple{String, String}[]),
+            (string(nameof(typeof(source))), PSY.get_name(source)),
+        )
+    end
+
     filter!(p -> !isempty(p.second), gen_categories)
     return gen_categories
 end
