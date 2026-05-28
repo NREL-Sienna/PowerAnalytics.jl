@@ -79,6 +79,34 @@ function get_storage_variable_keys(
     return filter_keys
 end
 
+function get_source_variable_keys(
+    results::IS.Results;
+    variable_keys::Vector{T} = PSI.list_variable_keys(results),
+) where {T <: PSI.OptimizationContainerKey}
+    filter_keys = Vector{PSI.OptimizationContainerKey}()
+    for k in variable_keys
+        if PSI.get_component_type(k) <: PSY.Source &&
+           PSI.get_entry_type(k) ∈ SUPPORTED_SOURCE_VARIABLES
+            push!(filter_keys, k)
+        end
+    end
+    return filter_keys
+end
+
+function get_source_parameter_keys(
+    results::IS.Results;
+    parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
+) where {T <: PSI.OptimizationContainerKey}
+    filter_keys = Vector{PSI.OptimizationContainerKey}()
+    for k in parameter_keys
+        if PSI.get_component_type(k) <: PSY.Source &&
+           PSI.get_entry_type(k) ∈ SUPPORTED_SOURCE_PARAMETERS
+            push!(filter_keys, k)
+        end
+    end
+    return filter_keys
+end
+
 function get_generation_parameter_keys(
     results::IS.Results;
     parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
@@ -343,6 +371,7 @@ function get_generation_data(
     aux_variable_keys = get(kwargs, :aux_variable_keys, PSI.list_aux_variable_keys(results))
     curtailment = get(kwargs, :curtailment, true)
     storage = get(kwargs, :storage, true)
+    sources = get(kwargs, :sources, true)
 
     if curtailment && (haskey(kwargs, :variable_keys) || haskey(kwargs, :parameter_keys))
         @warn "Cannot guarantee curtailment calculations with specified keys"
@@ -355,8 +384,27 @@ function get_generation_data(
             get_storage_variable_keys(results; variable_keys = variable_keys),
         )
     end
+    if sources
+        injection_keys = vcat(
+            injection_keys,
+            get_source_variable_keys(results; variable_keys = variable_keys),
+        )
+    end
 
     parameter_keys = get_generation_parameter_keys(results; parameter_keys = parameter_keys)
+    if sources
+        parameter_keys = vcat(
+            parameter_keys,
+            get_source_parameter_keys(
+                results;
+                parameter_keys = get(
+                    kwargs,
+                    :parameter_keys,
+                    PSI.list_parameter_keys(results),
+                ),
+            ),
+        )
+    end
 
     aux_variable_keys =
         get_generation_aux_variable_keys(results; aux_variable_keys = aux_variable_keys)
