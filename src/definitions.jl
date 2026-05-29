@@ -5,6 +5,9 @@ const SUPPORTED_CURTAILMENT_PARAMETERS = [PSI.ActivePowerTimeSeriesParameter]
 const SUPPORTED_CURTAILMENT_VARIABLES = [PSI.ActivePowerVariable]
 const SUPPORTED_LOAD_VARIABLES = [PSI.ActivePowerVariable]
 const SUPPORTED_STORAGE_VARIABLES = [PSI.ActivePowerInVariable, PSI.ActivePowerOutVariable]
+const SUPPORTED_SOURCE_VARIABLES = [PSI.ActivePowerInVariable, PSI.ActivePowerOutVariable]
+const SUPPORTED_SOURCE_PARAMETERS =
+    [PSI.ActivePowerInTimeSeriesParameter, PSI.ActivePowerOutTimeSeriesParameter]
 const SUPPORTED_SERVICE_VARIABLES = [PSI.ActivePowerReserveVariable]
 
 const SUPPORTED_OVERGENERATION_VARIABLE = PSI.SystemBalanceSlackDown

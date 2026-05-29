@@ -79,6 +79,34 @@ function get_storage_variable_keys(
     return filter_keys
 end
 
+function get_source_variable_keys(
+    results::IS.Results;
+    variable_keys::Vector{T} = PSI.list_variable_keys(results),
+) where {T <: PSI.OptimizationContainerKey}
+    filter_keys = Vector{PSI.OptimizationContainerKey}()
+    for k in variable_keys
+        if PSI.get_component_type(k) <: PSY.Source &&
+           PSI.get_entry_type(k) ∈ SUPPORTED_SOURCE_VARIABLES
+            push!(filter_keys, k)
+        end
+    end
+    return filter_keys
+end
+
+function get_source_parameter_keys(
+    results::IS.Results;
+    parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
+) where {T <: PSI.OptimizationContainerKey}
+    filter_keys = Vector{PSI.OptimizationContainerKey}()
+    for k in parameter_keys
+        if PSI.get_component_type(k) <: PSY.Source &&
+           PSI.get_entry_type(k) ∈ SUPPORTED_SOURCE_PARAMETERS
+            push!(filter_keys, k)
+        end
+    end
+    return filter_keys
+end
+
 function get_generation_parameter_keys(
     results::IS.Results;
     parameter_keys::Vector{T} = PSI.list_parameter_keys(results),
@@ -191,9 +219,13 @@ function add_fixed_parameters!(
 ) where {V <: PSI.OptimizationContainerKey, P <: PSI.OptimizationContainerKey}
     # fixed output should be added to plots when there exists a parameter of the form
     # :P__max_active_power__* but there is no corresponding :P__* variable
+    # Snapshot before the loop so that parameters we add during iteration (e.g. the
+    # first of two Source parameters) do not falsely block subsequent parameters for
+    # the same component type.
+    existing_variable_component_types =
+        Set(PSI.get_component_type.(keys(variables)))
     for (param_key, param) in parameters
-        PSI.get_component_type(param_key) ∈ PSI.get_component_type.(keys(variables)) &&
-            continue
+        PSI.get_component_type(param_key) ∈ existing_variable_component_types && continue
         if !haskey(variables, param_key)
             mult =
                 any(PSI.get_component_type(param_key) .<: NEGATIVE_PARAMETERS) ? -1.0 : 1.0
@@ -343,6 +375,7 @@ function get_generation_data(
     aux_variable_keys = get(kwargs, :aux_variable_keys, PSI.list_aux_variable_keys(results))
     curtailment = get(kwargs, :curtailment, true)
     storage = get(kwargs, :storage, true)
+    sources = get(kwargs, :sources, true)
 
     if curtailment && (haskey(kwargs, :variable_keys) || haskey(kwargs, :parameter_keys))
         @warn "Cannot guarantee curtailment calculations with specified keys"
@@ -355,8 +388,27 @@ function get_generation_data(
             get_storage_variable_keys(results; variable_keys = variable_keys),
         )
     end
+    if sources
+        injection_keys = vcat(
+            injection_keys,
+            get_source_variable_keys(results; variable_keys = variable_keys),
+        )
+    end
 
     parameter_keys = get_generation_parameter_keys(results; parameter_keys = parameter_keys)
+    if sources
+        parameter_keys = vcat(
+            parameter_keys,
+            get_source_parameter_keys(
+                results;
+                parameter_keys = get(
+                    kwargs,
+                    :parameter_keys,
+                    PSI.list_parameter_keys(results),
+                ),
+            ),
+        )
+    end
 
     aux_variable_keys =
         get_generation_aux_variable_keys(results; aux_variable_keys = aux_variable_keys)
@@ -619,7 +671,9 @@ function categorize_data(
         keystring = string(k)
         device_type_string = last(split(keystring, "__"))
         if occursin("ActivePowerInVariable", keystring) ||
-           occursin("ActivePowerOutVariable", keystring)
+           occursin("ActivePowerOutVariable", keystring) ||
+           occursin("ActivePowerInTimeSeriesParameter", keystring) ||
+           occursin("ActivePowerOutTimeSeriesParameter", keystring)
             push!(split_power_component_types, device_type_string)
             continue
         end
@@ -667,30 +721,46 @@ function categorize_data(
 
     # Split pass: discharging (ActivePowerOutVariable) is generation (+),
     # charging (ActivePowerInVariable) is load (-).
+    # ActivePowerInTimeSeriesParameter is already negative (its multiplier is
+    # active_power_limits.min, which is negative), so no sign flip is needed for it.
     for category in split_categories
         list = aggregation[category]
-        for (suffix, variable_prefix, sign) in (
-            ("Out", "ActivePowerOutVariable", 1.0),
-            ("In", "ActivePowerInVariable", -1.0),
+        for (suffix, variable_prefix_sign_pairs) in (
+            (
+                "Out",
+                [
+                    ("ActivePowerOutVariable", 1.0),
+                    ("ActivePowerOutTimeSeriesParameter", 1.0),
+                ],
+            ),
+            (
+                "In",
+                [
+                    ("ActivePowerInVariable", -1.0),
+                    ("ActivePowerInTimeSeriesParameter", 1.0),
+                ],
+            ),
         )
             split_df = DataFrames.DataFrame()
             for (component_type, component_name) in list
                 component_type in split_power_component_types || continue
-                key = Symbol(variable_prefix * "__" * component_type)
-                haskey(data, key) || continue
-                component_data = data[key]
-                colname =
-                    if typeof(names(component_data)[1]) == String
-                        "$component_name"
-                    else
-                        component_name
-                    end
-                string(colname) in names(component_data) || continue
-                DataFrames.insertcols!(
-                    split_df,
-                    (colname => sign .* component_data[:, colname]);
-                    makeunique = true,
-                )
+                for (variable_prefix, sign) in variable_prefix_sign_pairs
+                    key = Symbol(variable_prefix * "__" * component_type)
+                    haskey(data, key) || continue
+                    component_data = data[key]
+                    colname =
+                        if typeof(names(component_data)[1]) == String
+                            "$component_name"
+                        else
+                            component_name
+                        end
+                    string(colname) in names(component_data) || continue
+                    DataFrames.insertcols!(
+                        split_df,
+                        (colname => sign .* component_data[:, colname]);
+                        makeunique = true,
+                    )
+                end
             end
             if !isempty(split_df)
                 category_dataframes["$category $suffix"] = split_df
